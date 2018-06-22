@@ -39,7 +39,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
 
-    'registration',
+    'rest_registration',
     'rest_framework',
     'rest_framework.authtoken',
 ) + LOCAL_APPS
@@ -164,6 +164,24 @@ ENABLE_DEBUG_TOOLBAR = env.bool(
     'DEBUG',
     default=False,
 )
+
+# --- DJANGO REST FRAMEWORK ---
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    )
+}
+
+# --- REST REGISTRATION ---
+REST_REGISTRATION = {
+    'REGISTER_VERIFICATION_ENABLED': False,
+
+    'RESET_PASSWORD_VERIFICATION_URL': '/reset-password/',
+
+    'REGISTER_EMAIL_VERIFICATION_ENABLED': False,
+
+    'VERIFICATION_FROM_EMAIL': 'no-reply@example.com',
+}
 
 if ENABLE_DEBUG_TOOLBAR:
     INSTALLED_APPS += (
