@@ -1,0 +1,12 @@
+version: "3.2"
+services:
+  base:
+    image: ${REPOSITORY_URL}/django:${BUILD_NUMBER}
+    environment:
+      ALLOWED_HOSTS: ${DEPLOY_HOSTNAME}
+    env_file: ${COMPOSE_ENV_FILE}
+    volumes:
+      - static:/static
+      - media:/media
+    networks:
+      - default

@@ -1,0 +1,38 @@
+version: '3'
+services:
+  redis:
+    image: redis
+    command: redis-server
+    volumes:
+      - "redis:/data"
+    ports:
+      - "6379:6379"
+  postgres:
+    image: postgres
+    ports:
+      - "5432:5432"
+  celery:
+    build:
+      context: .
+      dockerfile: ./compose/django/Dockerfile
+    command: celery -A medfinder.celery worker -l info
+    volumes:
+      - .:/code
+    depends_on:
+      - postgres
+      - redis
+  django:
+    build:
+      context: .
+      dockerfile: ./compose/django/Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/code
+    depends_on:
+      - postgres
+      - redis
+      - celery
+volumes:
+  redis:

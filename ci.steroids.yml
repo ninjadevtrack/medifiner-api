@@ -1,0 +1,53 @@
+version: "3.2"
+services:
+  postgres:
+    image: postgres
+    networks:
+      - default
+    environment:
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - data:/var/lib/postgresql/data
+  web:
+    build:
+      context: .
+      dockerfile: ./compose/nginx/Dockerfile
+    image: ${REPOSITORY_URL}/web:${BUILD_NUMBER}
+    deploy:
+      lb:
+        port: 80
+        host: "${DEPLOY_HOSTNAME}"
+    volumes:
+      - static:/static:ro
+      - media:/media:ro
+    networks:
+      - default
+      - traefik-net
+  django:
+    extends:
+      file: ci.base.yml
+      service: base
+    build:
+      context: .
+      dockerfile: ./compose/django/Dockerfile
+    command: uwsgi --ini=./compose/django/uwsgi.ini
+  bootstrap:
+    extends:
+      file: ci.base.yml
+      service: base
+    command: python manage.py bootstrap
+    deploy:
+      restart_policy:
+        condition: on-failure
+volumes:
+  static:
+    local_bind: yes
+  media:
+    local_bind: yes
+  data:
+    local_bind: yes
+networks:
+  default:
+    driver: overlay
+  traefik-net:
+    external: true

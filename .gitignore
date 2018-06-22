@@ -1,0 +1,54 @@
+
+__pycache__
+*.py[cod]
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
+
+# Translations
+*.mo
+
+# Mr Developer
+.project
+.pydevproject
+
+# Django project template
+# Uncomment after setting the project up is finished
+# syntax: regexp
+# ^logs/
+# ^media/
+# ^static/
+# ^locale/
+medfinder/settings/local.py
+
+.env
+dev.override.yml
+
+/logs/
+/media/
+/static/
+celerybeat-schedule
+locale/
