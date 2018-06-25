@@ -201,6 +201,8 @@ if ENABLE_DEBUG_TOOLBAR:
 
 PHONENUMBER_DEFAULT_REGION = 'US'
 
+DECIMAL_SEPARATOR = '.'
+
 # --- SENTRY ---
 # INSTALLED_APPS += ('raven.contrib.django.raven_compat',)
 # RAVEN_CONFIG = {
