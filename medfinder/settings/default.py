@@ -26,8 +26,9 @@ SECRET_KEY = env('SECRET_KEY')
 SITE_ID = env('SITE_ID')
 
 LOCAL_APPS = (
-    'medfinder',
     'auth_ex',
+    'medfinder',
+    'medications'
 )
 
 INSTALLED_APPS = (
@@ -194,6 +195,9 @@ if ENABLE_DEBUG_TOOLBAR:
         'SHOW_TOOLBAR_CALLBACK': lambda *x: True,
     }
 
+# ---PHONENUMBER FIELD ---
+
+PHONENUMBER_DEFAULT_REGION = 'US'
 
 # --- SENTRY ---
 # INSTALLED_APPS += ('raven.contrib.django.raven_compat',)
