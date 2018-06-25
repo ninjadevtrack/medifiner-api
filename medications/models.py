@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 
+from localflavor.us.models import USStateField, USZipCodeField
 from phonenumber_field.modelfields import PhoneNumberField
 
 
@@ -22,11 +23,11 @@ class Organization(models.Model):
         max_length=255,
     )
     phone = PhoneNumberField(
-        'phone',
+        'organization phone',
         blank=True,
     )
     website = models.URLField(
-        'website',
+        'organization website',
         max_length=255,
         blank=True,
     )
@@ -38,3 +39,92 @@ class Organization(models.Model):
     class Meta:
         verbose_name = 'organization'
         verbose_name_plural = 'organizations'
+
+
+class Provider(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        related_name='providers',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    store_number = models.PositiveIntegerField(
+        'store number',
+        default=0,
+    )
+    name = models.CharField(
+        'name',
+        max_length=255,
+    )
+    address = models.CharField(
+        'address',
+        max_length=255,
+    )
+    city = models.CharField(
+        'city',
+        max_length=255,
+    )
+    state = USStateField(
+        'us state',
+    )
+    zip = USZipCodeField(
+        'zip code',
+    )
+    phone = PhoneNumberField(
+        'provider phone',
+    )
+    website = models.URLField(
+        'provider website',
+        max_length=255,
+        blank=True,
+    )
+    email = models.EmailField(
+        'provider email address',
+        unique=True,
+        error_messages={
+            'unique': 'A provider with that email already exists.',
+        },
+    )
+    operating_hours = models.CharField(
+        'operating hours',
+        max_length=255,
+    )
+    notes = models.TextField(
+        'notes',
+        blank=True,
+    )
+    insurance_accepted = models.TextField(
+        'insurance accepted',
+        blank=True,
+    )
+    lat = models.DecimalField(
+        'latitude',
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+    )
+    long = models.DecimalField(
+        'longitude',
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+    )
+    start_date = models.DateTimeField(
+        'start date',
+        null=True,
+    )
+    end_date = models.DateTimeField(
+        'start date',
+        null=True,
+    )
+    # TODO: field 'type', is it choices? what's that?
+    walkins_accepted = models.NullBooleanField(
+        'walkins accepted',
+    )
+
+    class Meta:
+        verbose_name = 'provider'
+        verbose_name_plural = 'providers'
+
+    def __str__(self):
+        return self.name
