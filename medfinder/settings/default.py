@@ -40,6 +40,8 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
 
+    'localflavor',
+    'phonenumber_field',
     'registration',
     'rest_framework',
     'rest_framework.authtoken',
@@ -198,6 +200,8 @@ if ENABLE_DEBUG_TOOLBAR:
 # ---PHONENUMBER FIELD ---
 
 PHONENUMBER_DEFAULT_REGION = 'US'
+
+DECIMAL_SEPARATOR = '.'
 
 # --- SENTRY ---
 # INSTALLED_APPS += ('raven.contrib.django.raven_compat',)
