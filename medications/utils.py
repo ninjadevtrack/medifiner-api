@@ -14,8 +14,11 @@ def get_lat_lng(location):
     response = urlopen(url).read()
     result = simplejson.loads(response)
     if result['status'] == 'OK':
-        lat = str(result['results'][0]['geometry']['location']['lat'])
-        lng = str(result['results'][0]['geometry']['location']['lng'])
-        return (lat, lng)
+        try:
+            lat = str(result['results'][0]['geometry']['location']['lat'])
+            lng = str(result['results'][0]['geometry']['location']['lng'])
+            return (lat, lng)
+        except (IndexError, KeyError):
+            return (None, None)
     else:
         return (None, None)
