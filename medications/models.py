@@ -199,3 +199,39 @@ class Medication(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ProviderMedicationThrough(models.Model):
+    provider = models.ForeignKey(
+        Provider,
+        related_name='provider_medication',
+        on_delete=models.CASCADE,
+    )
+    medication = models.ForeignKey(
+        Medication,
+        related_name='provider_medication',
+        on_delete=models.CASCADE,
+    )
+    supply = models.CharField(
+        _('medication supply'),
+        max_length=32,
+    )
+    level = models.PositiveIntegerField(
+        _('medication level'),
+        default=0,
+    )
+    start_date = models.DateTimeField(
+        _('date'),
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = _('provider medication relation')
+        verbose_name_plural = _('provider medication relations')
+
+    def __str__(self):
+        return '{} - {}'.format(self.provider, self.medication)
+
+    def save(self, *args, **kwargs):
+        # TODO: supply to level ampping
+        super().save(*args, **kwargs)
