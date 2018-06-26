@@ -105,9 +105,9 @@ class Provider(models.Model):
         _('notes'),
         blank=True,
     )
-    insurance_accepted = models.TextField(
+    insurance_accepted = models.BooleanField(
         _('insurance accepted'),
-        blank=True,
+        default=False,
     )
     lat = models.DecimalField(
         _('latitude'),
@@ -199,3 +199,48 @@ class Medication(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ProviderMedicationThrough(models.Model):
+    provider = models.ForeignKey(
+        Provider,
+        related_name='provider_medication',
+        on_delete=models.CASCADE,
+    )
+    medication = models.ForeignKey(
+        Medication,
+        related_name='provider_medication',
+        on_delete=models.CASCADE,
+    )
+    supply = models.CharField(
+        _('medication supply'),
+        max_length=32,
+    )
+    level = models.PositiveIntegerField(
+        _('medication level'),
+        default=0,
+    )
+    date = models.DateTimeField(
+        _('date'),
+        default=timezone.now,
+        help_text=_('Date of addition/update of this medication'),
+    )
+
+    class Meta:
+        verbose_name = _('provider medication relation')
+        verbose_name_plural = _('provider medication relations')
+
+    def __str__(self):
+        return '{} - {}'.format(self.provider, self.medication)
+
+    def save(self, *args, **kwargs):
+        # Using a simple map for now, according to the specs
+        # TODO: We need to ask client if this can get more complicated.
+        supply_to_level_map = {
+            '<24': 1,
+            '24': 2,
+            '24-48': 3,
+            '>48': 4,
+        }
+        self.level = supply_to_level_map.get(self.supply, 0)
+        super().save(*args, **kwargs)
