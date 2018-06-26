@@ -105,9 +105,9 @@ class Provider(models.Model):
         _('notes'),
         blank=True,
     )
-    insurance_accepted = models.TextField(
+    insurance_accepted = models.BooleanField(
         _('insurance accepted'),
-        blank=True,
+        default=False,
     )
     lat = models.DecimalField(
         _('latitude'),
