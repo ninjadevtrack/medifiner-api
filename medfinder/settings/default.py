@@ -42,7 +42,7 @@ INSTALLED_APPS = (
 
     'localflavor',
     'phonenumber_field',
-    'registration',
+    'rest_registration',
     'rest_framework',
     'rest_framework.authtoken',
 ) + LOCAL_APPS
