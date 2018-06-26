@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from django.utils.translation import ugettext_lazy as _
 
 from localflavor.us.models import USStateField, USZipCodeField
 from phonenumber_field.modelfields import PhoneNumberField
@@ -21,31 +22,31 @@ class Organization(models.Model):
         null=True,
     )
     contact_name = models.CharField(
-        'contact name',
+        _('contact name'),
         max_length=255,
         blank=True,
     )
     organization_name = models.CharField(
-        'organization name',
+        _('organization name'),
         max_length=255,
     )
     phone = PhoneNumberField(
-        'organization phone',
+        _('organization phone'),
         blank=True,
     )
     website = models.URLField(
-        'organization website',
+        _('organization website'),
         max_length=255,
         blank=True,
     )
     registration_date = models.DateTimeField(
-        'registration_date',
+        _('registration_date'),
         default=timezone.now
     )
 
     class Meta:
-        verbose_name = 'organization'
-        verbose_name_plural = 'organizations'
+        verbose_name = _('organization')
+        verbose_name_plural = _('organizations')
 
     def __str__(self):
         return self.organization_name
@@ -59,93 +60,95 @@ class Provider(models.Model):
         null=True,
     )
     store_number = models.PositiveIntegerField(
-        'store number',
+        _('store number'),
         default=0,
     )
     name = models.CharField(
-        'name',
+        _('provider name'),
         max_length=255,
     )
     address = models.CharField(
-        'address',
+        _('provider address'),
         max_length=255,
     )
     city = models.CharField(
-        'city',
+        _('provider city'),
         max_length=255,
     )
     state = USStateField(
-        'us state',
+        _('us state'),
     )
     zip = USZipCodeField(
-        'zip code',
+        _('zip code'),
     )
     phone = PhoneNumberField(
-        'provider phone',
+        _('provider phone'),
     )
     website = models.URLField(
-        'provider website',
+        _('provider website'),
         max_length=255,
         blank=True,
     )
     email = models.EmailField(
-        'provider email address',
+        _('provider email address'),
         unique=True,
         error_messages={
             'unique': 'A provider with that email already exists.',
         },
     )
     operating_hours = models.CharField(
-        'operating hours',
+        _('operating hours'),
         max_length=255,
         blank=True,
     )
     notes = models.TextField(
-        'notes',
+        _('notes'),
         blank=True,
     )
     insurance_accepted = models.TextField(
-        'insurance accepted',
+        _('insurance accepted'),
         blank=True,
     )
     lat = models.DecimalField(
-        'latitude',
+        _('latitude'),
         max_digits=9,
         decimal_places=6,
         null=True,
         blank=True
     )
     lng = models.DecimalField(
-        'longitude',
+        _('longitude'),
         max_digits=9,
         decimal_places=6,
         null=True,
         blank=True,
     )
     change_coordinates = models.BooleanField(
-        'change coordinates',
+        _('change coordinates'),
         default=False,
-        help_text='Check this if you want the application to recalculate the'
-                  ' coordinates. Used in case address has been changed',
+        help_text=_(
+            'Check this if you want the application to recalculate the'
+            ' coordinates. Used in case address has been changed'
+        ),
     )
     start_date = models.DateTimeField(
-        'start date',
+        _('start date'),
         null=True,
         blank=True,
     )
     end_date = models.DateTimeField(
-        'start date',
+        _('start date'),
         null=True,
         blank=True,
     )
     # TODO: field 'type', is it choices? what's that?
     walkins_accepted = models.NullBooleanField(
-        'walkins accepted',
+        _('walkins accepted'),
     )
 
     class Meta:
-        verbose_name = 'provider'
-        verbose_name_plural = 'providers'
+        verbose_name = _('provider')
+        verbose_name_plural = _('providers')
 
     def __str__(self):
         return self.name
@@ -177,3 +180,22 @@ class Provider(models.Model):
             self.lat, self.lng = get_lat_lng(location)
             self.change_coordinates = False
         super().save(*args, **kwargs)
+
+
+class Medication(models.Model):
+    name = models.CharField(
+        _('medication name'),
+        max_length=255,
+    )
+    ndc = models.CharField(
+        _('national drug code'),
+        max_length=32,
+        unique=True,
+    )
+
+    class Meta:
+        verbose_name = _('medication')
+        verbose_name_plural = _('medications')
+
+    def __str__(self):
+        return self.name
