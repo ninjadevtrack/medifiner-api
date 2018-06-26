@@ -222,7 +222,7 @@ class ProviderMedicationThrough(models.Model):
     )
     start_date = models.DateTimeField(
         _('date'),
-        auto_now_add=True,
+        default=timezone.now,
     )
 
     class Meta:
