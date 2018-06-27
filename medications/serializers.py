@@ -15,6 +15,13 @@ class CSVUploadSerializer(serializers.Serializer):
             'csv_file',
         )
 
+    def is_valid(self, organization_id, raise_exception=False):
+        if not organization_id:
+            raise serializers.ValidationError(
+                {'csv_file': _('This user has not organization related.')}
+            )
+        return super().is_valid(raise_exception)
+
     def validate(self, data):
         file = data.get('csv_file')
         if not file.name.endswith('.csv'):
