@@ -10,6 +10,10 @@ api_urlpatterns = [
     path('medications/', include(medications_api_urlpatterns)),
 ]
 
+api_urlpatterns = [
+    path('accounts/', include('rest_registration.api.urls')),
+]
+
 urlpatterns = [
     path(r'admin/', admin.site.urls),
     path('api/v1/', include(api_urlpatterns)),

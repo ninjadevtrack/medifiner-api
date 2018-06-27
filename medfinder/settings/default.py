@@ -168,6 +168,8 @@ ENABLE_DEBUG_TOOLBAR = env.bool(
     default=False,
 )
 
+# --- DJANGO REST FRAMEWORK ---
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
@@ -176,6 +178,32 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+# --- REST REGISTRATION ---
+FRONTEND_URL = env('FRONTEND_URL', default='localhost:8000')
+REST_REGISTRATION = {
+    'REGISTER_VERIFICATION_ENABLED': True,
+
+    'RESET_PASSWORD_VERIFICATION_URL': '/reset-password/',
+
+    'REGISTER_EMAIL_VERIFICATION_ENABLED': True,
+
+    'VERIFICATION_FROM_EMAIL': 'no-reply@example.com',
+
+    'REGISTER_VERIFICATION_URL':
+    'https://{}/verify-user/'.format(FRONTEND_URL),
+
+    'RESET_PASSWORD_VERIFICATION_URL':
+    'https://{}/reset-password/'.format(FRONTEND_URL),
+
+    'REGISTER_EMAIL_VERIFICATION_URL':
+    'https://{}/verify-email/'.format(FRONTEND_URL),
+}
+
+EMAIL_BACKEND = env(
+    'EMAIL_BACKEND',
+    default='django.core.mail.backends.smtp.EmailBackend',
+)
 
 if ENABLE_DEBUG_TOOLBAR:
     INSTALLED_APPS += (
