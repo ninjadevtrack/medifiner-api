@@ -1,3 +1,10 @@
-from django.shortcuts import render
+from rest_framework.generics import GenericAPIView
+from rest_framework.parsers import MultiPartParser
 
-# Create your views here.
+
+from .serializers import CSVUploadSerializer
+
+
+class CSVUploadView(GenericAPIView):
+    serializer_class = CSVUploadSerializer
+    parser_classes = (MultiPartParser,)
