@@ -168,6 +168,15 @@ ENABLE_DEBUG_TOOLBAR = env.bool(
     default=False,
 )
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
+
 if ENABLE_DEBUG_TOOLBAR:
     INSTALLED_APPS += (
         'debug_toolbar',
