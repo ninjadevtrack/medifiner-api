@@ -95,6 +95,7 @@ class Provider(models.Model):
         error_messages={
             'unique': 'A provider with that email already exists.',
         },
+        null=True,
     )
     operating_hours = models.CharField(
         _('operating hours'),
@@ -151,7 +152,10 @@ class Provider(models.Model):
         verbose_name_plural = _('providers')
 
     def __str__(self):
-        return self.name
+        return '{} - store number: {}'.format(
+            self.name if self.name else 'provider',
+            self.store_number,
+        )
 
     # Geocode using full address
     def _get_full_address(self):
@@ -244,3 +248,11 @@ class ProviderMedicationThrough(models.Model):
         }
         self.level = supply_to_level_map.get(self.supply, 0)
         super().save(*args, **kwargs)
+
+
+class TemporaryFile(models.Model):
+    # Since we cannot pass files to celery, and also cannot pass temporary
+    # files to celery since the temporary python files are closed after the
+    # request is finished, we have to create an object in our database with
+    # the csv file and them make celery delete it.
+    file = models.FileField()

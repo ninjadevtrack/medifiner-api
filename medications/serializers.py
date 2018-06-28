@@ -15,14 +15,16 @@ class CSVUploadSerializer(serializers.Serializer):
             'csv_file',
         )
 
-    def is_valid(self, organization_id, raise_exception=False):
-        if not organization_id:
+    def validate(self, data):
+        user = self.context.get('request').user
+        if hasattr(user, 'organization'):
+            organization = user.organization
+        else:
+            organization = None
+        if not organization:
             raise serializers.ValidationError(
                 {'csv_file': _('This user has not organization related.')}
             )
-        return super().is_valid(raise_exception)
-
-    def validate(self, data):
         file = data.get('csv_file')
         if not file.name.endswith('.csv'):
             raise serializers.ValidationError(
@@ -35,7 +37,9 @@ class CSVUploadSerializer(serializers.Serializer):
                 {
                     'csv_file':
                     _(
-                        'Wrong headers in CSV file, headers must be: {}'
+                        'Wrong headers in CSV file, headers must be: {}. '
                     ). format(', '.join(field_rows))}
             )
+        data['csv_file'] = file
+        data['organization_id'] = organization.id
         return data
