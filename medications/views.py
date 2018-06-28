@@ -24,10 +24,6 @@ class CSVUploadView(GenericAPIView):
             temporary_csv_file.id,
             organization_id,
         )
-        # generate_medications(
-        #     temporary_csv_file.id,
-        #     organization_id,
-        # ) 
         return Response(
             {'status': _('The medications creation proccess has been queued')},
             status=status.HTTP_200_OK,

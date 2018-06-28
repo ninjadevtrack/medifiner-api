@@ -169,7 +169,7 @@ class Provider(models.Model):
     full_address = property(_get_full_address)
 
     def save(self, *args, **kwargs):
-        if self.change_coordinates:
+        if self.change_coordinates or not self.pk:
             location = '+'.join(
                 filter(
                     None,
