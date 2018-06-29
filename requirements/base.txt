@@ -1,5 +1,6 @@
 celery==4.2.0
 Django==2.0.6
+django-user-activity-log2==0.0.21
 django-environ==0.4.4
 django-model-utils==3.1.2
 django-registration-redux==2.4

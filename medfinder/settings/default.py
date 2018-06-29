@@ -39,6 +39,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
 
+    'activity_log',
     'rest_registration',
     'rest_framework',
     'rest_framework.authtoken',
@@ -89,6 +90,7 @@ MIDDLEWARE = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
+    'activity_log.middleware.ActivityLogMiddleware',
 )
 
 ROOT_URLCONF = 'medfinder.urls'
@@ -96,6 +98,11 @@ WSGI_APPLICATION = 'medfinder.wsgi.application'
 
 USE_TZ = True
 TIME_ZONE = 'UTC'
+
+# --- ACTIVITY LOG ---
+
+ACTIVITYLOG_METHODS = ('POST',)
+
 
 # --- LANGUAGES ---
 USE_I18N = True

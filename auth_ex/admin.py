@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import ugettext_lazy as _
+from activity_log.admin import LogAdmin
+from activity_log.models import ActivityLog
 
 from .forms import UserChangeForm, UserCreationForm
 from .models import User
@@ -32,4 +34,20 @@ class UserAdmin(UserAdmin):
     ordering = ('email',)
 
 
+class CustomLogAdmin(LogAdmin):
+    # Crete custom adming for Logs in order to avoid creating and updating logs
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            self.readonly_fields = [
+                field.name for field in obj.__class__._meta.fields
+            ]
+        return self.readonly_fields
+
+
 admin.site.register(User, UserAdmin)
+admin.site.unregister(ActivityLog)
+admin.site.register(ActivityLog, CustomLogAdmin)
