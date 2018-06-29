@@ -1,10 +1,10 @@
 from django.contrib import admin
 
 from .models import (
-	Organization,
-	Provider,
-	Medication,
-	ProviderMedicationThrough,
+    Organization,
+    Provider,
+    Medication,
+    ProviderMedicationThrough,
 )
 
 

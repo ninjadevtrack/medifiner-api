@@ -15,9 +15,10 @@ services:
     build:
       context: .
       dockerfile: ./compose/django/Dockerfile
-    command: celery -A medfinder.celery worker -l info
+    command: celery -A medfinder worker -l debug -E
     volumes:
       - .:/code
+      - media:/media
     depends_on:
       - postgres
       - redis
@@ -30,9 +31,12 @@ services:
       - "8000:8000"
     volumes:
       - .:/code
+      - media:/media
     depends_on:
       - postgres
       - redis
       - celery
 volumes:
+  media:
+    driver: local
   redis:
