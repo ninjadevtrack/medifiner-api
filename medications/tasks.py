@@ -77,9 +77,6 @@ def generate_medications(temporary_csv_file_id, organization_id):
             # we can get. Python get from dict uses much less programmatic time
             # than a SQL get.
             medication_map[medication.ndc] = medication
-            # TODO: the ndc may not be unique in cases when the same medication
-            # has different weights or number of pills. To be checked
-            # with the client.
 
         if provider and medication:
             # Create or update the relation object
