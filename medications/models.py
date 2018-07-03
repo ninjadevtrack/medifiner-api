@@ -187,6 +187,7 @@ class Provider(models.Model):
 
 
 class Medication(models.Model):
+    # Model for medication created from the csv that users upload.
     name = models.CharField(
         _('medication name'),
         max_length=255,
@@ -250,9 +251,36 @@ class ProviderMedicationThrough(models.Model):
         super().save(*args, **kwargs)
 
 
+class ExistingMedication(models.Model):
+    # Model for medication imported from the database.
+    name = models.CharField(
+        _('medication name'),
+        max_length=255,
+    )
+    ndc = models.CharField(
+        _('national drug code'),
+        max_length=32,
+        unique=True,
+    )
+    import_date = models.DateTimeField(
+        _('import date'),
+        auto_now_add=True,
+        help_text=_(
+            'Date of import from the national database of this medication'
+        ),
+    )
+
+    class Meta:
+        verbose_name = _('existing medication')
+        verbose_name_plural = _('existing medications')
+
+    def __str__(self):
+        return self.name
+
+
 class TemporaryFile(models.Model):
     # Since we cannot pass files to celery, and also cannot pass temporary
     # files to celery since the temporary python files are closed after the
     # request is finished, we have to create an object in our database with
-    # the csv file and them make celery delete it.
+    # the csv file and then make celery delete it.
     file = models.FileField()

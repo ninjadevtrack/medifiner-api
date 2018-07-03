@@ -5,6 +5,7 @@ from .models import (
     Provider,
     Medication,
     ProviderMedicationThrough,
+    ExistingMedication,
 )
 
 
@@ -21,3 +22,4 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
 admin.site.register(Organization)
 admin.site.register(Provider)
 admin.site.register(Medication)
+admin.site.register(ExistingMedication)

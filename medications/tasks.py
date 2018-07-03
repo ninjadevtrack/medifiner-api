@@ -1,9 +1,16 @@
+import re
 import csv
 
+from io import BytesIO
+from zipfile import ZipFile
+from urllib.request import urlopen
 from celery import shared_task
 from django.db import transaction
+from django.db.utils import IntegrityError
+from django.conf import settings
 
 from .models import (
+    ExistingMedication,
     Medication,
     Organization,
     Provider,
@@ -88,3 +95,35 @@ def generate_medications(temporary_csv_file_id, organization_id):
 
     # Make celery delete the django object that has our csv file
     temporary_file_obj.delete()
+
+
+# TODO: Create celerybeat task 
+# TODO: should it be atomic?
+def import_existing_medications():
+    # create a pattern to validate ndc's
+    pattern = re.compile(
+        '\d{4}-\d{4}-\d{2}|\d{5}-\d{3}-\d{2}|\d{5}-\d{4}-\d{1}|\d{5}-\*\d{3}-\d{2}'
+    )
+    url = urlopen(settings.NDC_DATABASE_URL)
+    if not url:
+        return
+    zipfile = ZipFile(BytesIO(url.read()))
+    if 'package.xls' in zipfile.namelist():
+        # For now just assume that this is the file to use, not product.xls
+        extracted_xls_file = zipfile.open('package.xls')
+        all_medications = [
+            line.decode('utf-8').split('\t')
+            for line in extracted_xls_file.readlines()
+        ]
+        for medication in all_medications:
+            ndc = medication[2]
+            name = medication[3]
+            if bool(pattern.match(ndc)):
+                try:
+                    ExistingMedication.objects.get_or_create(
+                        ndc=ndc,
+                        name=name
+                    )
+                except IntegrityError:
+                    # During development found a duplicate ndc
+                    pass

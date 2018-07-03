@@ -240,6 +240,8 @@ PHONENUMBER_DEFAULT_REGION = 'US'
 
 DECIMAL_SEPARATOR = '.'
 
+NDC_DATABASE_URL = env('NDC_DATABASE_URL', default='')
+
 # --- SENTRY ---
 # INSTALLED_APPS += ('raven.contrib.django.raven_compat',)
 # RAVEN_CONFIG = {
