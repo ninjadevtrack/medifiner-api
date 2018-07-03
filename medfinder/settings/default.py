@@ -26,8 +26,9 @@ SECRET_KEY = env('SECRET_KEY')
 SITE_ID = env('SITE_ID')
 
 LOCAL_APPS = (
-    'medfinder',
     'auth_ex',
+    'medfinder',
+    'medications'
 )
 
 INSTALLED_APPS = (
@@ -39,6 +40,8 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
 
+    'localflavor',
+    'phonenumber_field',
     'rest_registration',
     'rest_framework',
     'rest_framework.authtoken',
@@ -166,9 +169,13 @@ ENABLE_DEBUG_TOOLBAR = env.bool(
 )
 
 # --- DJANGO REST FRAMEWORK ---
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',
     )
 }
 
@@ -227,6 +234,11 @@ if ENABLE_DEBUG_TOOLBAR:
         'SHOW_TOOLBAR_CALLBACK': lambda *x: True,
     }
 
+# ---PHONENUMBER FIELD ---
+
+PHONENUMBER_DEFAULT_REGION = 'US'
+
+DECIMAL_SEPARATOR = '.'
 
 # --- SENTRY ---
 RAVEN_DSN = env('RAVEN_DSN', default='')
