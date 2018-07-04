@@ -6,7 +6,7 @@ from zipfile import ZipFile
 from urllib.request import urlopen
 from celery import shared_task
 from django.db import transaction
-from django.db.utils import IntegrityError
+from django.core.cache import cache
 from django.conf import settings
 
 from .models import (
@@ -104,6 +104,7 @@ def import_existing_medications():
         '\d{4}-\d{4}-\d{2}|\d{5}-\d{3}-\d{2}|\d{5}-\d{4}-\d{1}|\d{5}-\*\d{3}-\d{2}'
     )
     url = urlopen(settings.NDC_DATABASE_URL)
+    cached_ndc_list = cache.get('cached_ndc_list', [])
     if not url:
         return
     zipfile = ZipFile(BytesIO(url.read()))
@@ -117,13 +118,18 @@ def import_existing_medications():
         for medication in all_medications:
             ndc = medication[2]
             name = medication[3]
+            if ndc in cached_ndc_list:
+                # No need to create if ndc is in the cache
+                continue
             # Since name is only useful to check in the admin if this
             # medication exists, we can just truncate it in case it
             # exceeds max_lenght constraint
             if len(name) > 255:
                 name = name[:255]
             if bool(pattern.match(ndc)):
-                ExistingMedication.objects.get_or_create(
+                ExistingMedication.objects.create(
                     ndc=ndc,
                     name=name
                 )
+                cached_ndc_list.append(ndc)
+    cache.set('cached_ndc_list', cached_ndc_list, None)
