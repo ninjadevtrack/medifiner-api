@@ -24,6 +24,10 @@ from .models import (
 def generate_medications(temporary_csv_file_id, organization_id):
     # Already checked in serializer validation that this organization exists.
     organization = Organization.objects.get(pk=organization_id)
+    existing_ndc_codes = ExistingMedication.objects.values_list(
+        'ndc',
+        flat=True,
+    )
     provider = None
     medication = None
     medication_map = {}  # Use this map to save queries to the DB
@@ -32,66 +36,76 @@ def generate_medications(temporary_csv_file_id, organization_id):
     reader = csv.DictReader(decoded_file)
     for row in reader:
         # Iterate through the rows to get the neccessary information
+        store_number = row.get('store #')
+        address = row.get('address')
+        city = row.get('city')
+        zip_code = row.get('zipcode')
+        state = row.get('state')
+        phone = row.get('phone')
+        ndc_code = row.get('med_code')
+        med_name = row.get('med_name')
 
-        if provider:
-            # Check if we already have a provider cached and if it is the same
-            # as the next in line to avoid too much queries to the DB.
-            if provider.store_number != row.get('store #'):
+        # First check if the ndc code exists in real life, if not, don't use
+        # unnecesary time in meaningless queries
+        if ndc_code in existing_ndc_codes:
+            if provider:
+                # Check if we already have a provider cached and if it is the
+                # same as the next in line to avoid too much queries to the DB.
+                if provider.store_number != store_number:
+                    provider, _ = Provider.objects.get_or_create(
+                        organization=organization,
+                        store_number=store_number,
+                        address=address,
+                        city=city,
+                        zip=zip_code,
+                        state=state,
+                        phone=phone,
+                    )
+            else:
+                # In the first row after headers we don't have any provider, so
+                # we have to get it from the DB or create it
                 provider, _ = Provider.objects.get_or_create(
                     organization=organization,
-                    store_number=row.get('store #'),
-                    address=row.get('address'),
-                    city=row.get('city'),
-                    zip=row.get('zipcode'),
-                    state=row.get('state'),
-                    phone=row.get('phone'),
+                    store_number=store_number,
+                    address=address,
+                    city=city,
+                    zip=zip_code,
+                    state=state,
+                    phone=phone,
                 )
-        else:
-            # In the first row after headers we don't have any provider, so we
-            # have to get it from the DB or create it
-            provider, _ = Provider.objects.get_or_create(
-                organization=organization,
-                store_number=row.get('store #'),
-                address=row.get('address'),
-                city=row.get('city'),
-                zip=row.get('zipcode'),
-                state=row.get('state'),
-                phone=row.get('phone'),
-            )
+            if medication:
+                # Will do the same check as in provider
+                if medication.ndc != ndc_code:
+                    # Second check in the medication_map to lookup if this
+                    # medication has been created already from this file
+                    medication = medication_map.get(ndc_code, None)
+                    if not medication:
+                        medication, _ = Medication.objects.get_or_create(
+                            name=med_name,
+                            ndc=ndc_code,
+                        )
+            else:
+                # In the first row after headers we don't have any medication,
+                # so we have to get it from the DB or create it
+                medication, _ = Medication.objects.get_or_create(
+                    name=med_name,
+                    ndc=ndc_code,
+                )
+            if medication:
+                # Add the actual medication (whatever it is) to the medication
+                # map. We will use as key the ndc which is supossed to be a
+                # real life id which should be unique, the value will be the
+                # object that we can get. Python get from dict uses much
+                # less programmatic time than a SQL get.
+                medication_map[medication.ndc] = medication
 
-        if medication:
-            # Will do the same check as in provider
-            if medication.ndc != row.get('med_code'):
-                # Second check in the medication_map to lookup if this
-                # medication has been created already from this file
-                medication = medication_map.get(row.get('med_code'), None)
-                if not medication:
-                    medication, _ = Medication.objects.get_or_create(
-                        name=row.get('med_name'),
-                        ndc=row.get('med_code'),
-                    )
-        else:
-            # In the first row after headers we don't have any medication, so
-            # we have to get it from the DB or create it
-            medication, _ = Medication.objects.get_or_create(
-                name=row.get('med_name'),
-                ndc=row.get('med_code'),
-            )
-        if medication:
-            # Add the actual medication (whatever it is) to the medication map
-            # We will use as key the ndc which is supossed to be a real life
-            # id which should be unique, the value will be the object that
-            # we can get. Python get from dict uses much less programmatic time
-            # than a SQL get.
-            medication_map[medication.ndc] = medication
-
-        if provider and medication:
-            # Create or update the relation object
-            ProviderMedicationThrough.objects.update_or_create(
-                provider=provider,
-                medication=medication,
-                supply=row.get('supply_level'),
-            )
+            if provider and medication:
+                # Create or update the relation object
+                ProviderMedicationThrough.objects.update_or_create(
+                    provider=provider,
+                    medication=medication,
+                    supply=row.get('supply_level'),
+                )
 
     # Make celery delete the django object that has our csv file
     temporary_file_obj.delete()
