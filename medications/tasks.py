@@ -117,19 +117,14 @@ def import_existing_medications():
         ]
         for medication in all_medications:
             ndc = medication[2]
-            name = medication[3]
+            description = medication[3]
             if ndc in cached_ndc_list:
                 # No need to create if ndc is in the cache
                 continue
-            # Since name is only useful to check in the admin if this
-            # medication exists, we can just truncate it in case it
-            # exceeds max_lenght constraint
-            if len(name) > 255:
-                name = name[:255]
             if bool(pattern.match(ndc)):
                 ExistingMedication.objects.create(
                     ndc=ndc,
-                    name=name
+                    description=description
                 )
                 cached_ndc_list.append(ndc)
     cache.set('cached_ndc_list', cached_ndc_list, None)

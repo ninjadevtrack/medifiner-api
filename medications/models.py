@@ -252,9 +252,9 @@ class ProviderMedicationThrough(models.Model):
 
 class ExistingMedication(models.Model):
     # Model for medication imported from the database.
-    name = models.CharField(
-        _('medication name'),
-        max_length=255,
+    description = models.TextField(
+        _('medication description'),
+        blank=True,
     )
     ndc = models.CharField(
         _('national drug code'),
@@ -273,7 +273,7 @@ class ExistingMedication(models.Model):
         verbose_name_plural = _('existing medications')
 
     def __str__(self):
-        return self.name
+        return self.ndc
 
 
 class TemporaryFile(models.Model):

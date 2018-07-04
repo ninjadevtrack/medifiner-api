@@ -19,7 +19,14 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(ExistingMedication)
+class ExistingMedicationAdmin(admin.ModelAdmin):
+    model = ExistingMedication
+    search_fields = ('ndc', 'description')
+    readonly_fields = ('import_date', )
+    list_display = ('ndc', 'import_date', 'description')
+
+
 admin.site.register(Organization)
 admin.site.register(Provider)
 admin.site.register(Medication)
-admin.site.register(ExistingMedication)
