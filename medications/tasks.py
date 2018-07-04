@@ -97,8 +97,7 @@ def generate_medications(temporary_csv_file_id, organization_id):
     temporary_file_obj.delete()
 
 
-# TODO: Create celerybeat task 
-# TODO: should it be atomic?
+@shared_task
 def import_existing_medications():
     # create a pattern to validate ndc's
     pattern = re.compile(
@@ -118,12 +117,13 @@ def import_existing_medications():
         for medication in all_medications:
             ndc = medication[2]
             name = medication[3]
+            # Since name is only useful to check in the admin if this
+            # medication exists, we can just truncate it in case it
+            # exceeds max_lenght constraint
+            if len(name) > 255:
+                name = name[:255]
             if bool(pattern.match(ndc)):
-                try:
-                    ExistingMedication.objects.get_or_create(
-                        ndc=ndc,
-                        name=name
-                    )
-                except IntegrityError:
-                    # During development found a duplicate ndc
-                    pass
+                ExistingMedication.objects.get_or_create(
+                    ndc=ndc,
+                    name=name
+                )

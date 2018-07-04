@@ -239,8 +239,7 @@ class ProviderMedicationThrough(models.Model):
         return '{} - {}'.format(self.provider, self.medication)
 
     def save(self, *args, **kwargs):
-        # Using a simple map for now, according to the specs
-        # TODO: We need to ask client if this can get more complicated.
+        # Using a simple map for now, according to the specs.
         supply_to_level_map = {
             '<24': 1,
             '24': 2,
@@ -260,7 +259,6 @@ class ExistingMedication(models.Model):
     ndc = models.CharField(
         _('national drug code'),
         max_length=32,
-        unique=True,
     )
     import_date = models.DateTimeField(
         _('import date'),

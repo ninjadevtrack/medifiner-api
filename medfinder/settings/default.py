@@ -4,8 +4,9 @@ Django default settings for medfinder project.
 Crate a local.py in this same folder to set your local settings.
 
 """
-
 from os import path
+
+from celery.schedules import crontab
 from django.utils.translation import ugettext_lazy as _
 import environ
 
@@ -161,6 +162,14 @@ REGISTRATION_AUTO_LOGIN = False
 
 # --- CELERY ---
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/')
+
+CELERY_BEAT_SCHEDULE = {
+    'import_existing_medications': {
+        'task': 'medications.tasks.import_existing_medications',
+        'schedule': crontab(day_of_month=15),
+        'relative': True,
+    },
+}
 
 #DEBUG TOOLBAR
 ENABLE_DEBUG_TOOLBAR = env.bool(
