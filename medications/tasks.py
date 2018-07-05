@@ -48,7 +48,9 @@ def generate_medications(temporary_csv_file_id, organization_id):
         # First check if the ndc code exists in real life, if not, don't use
         # unnecesary time in meaningless queries
         if ndc_code in existing_ndc_codes:
-            if provider:
+            if not provider or (
+                provider and provider.store_number != ndc_code
+            ):
                 # Check if we already have a provider cached and if it is the
                 # same as the next in line to avoid too much queries to the DB.
                 if provider.store_number != store_number:
@@ -61,36 +63,17 @@ def generate_medications(temporary_csv_file_id, organization_id):
                         state=state,
                         phone=phone,
                     )
-            else:
-                # In the first row after headers we don't have any provider, so
-                # we have to get it from the DB or create it
-                provider, _ = Provider.objects.get_or_create(
-                    organization=organization,
-                    store_number=store_number,
-                    address=address,
-                    city=city,
-                    zip=zip_code,
-                    state=state,
-                    phone=phone,
-                )
-            if medication:
+            if not medication or (medication.ndc != ndc_code):
                 # Will do the same check as in provider
-                if medication.ndc != ndc_code:
-                    # Second check in the medication_map to lookup if this
-                    # medication has been created already from this file
-                    medication = medication_map.get(ndc_code, None)
-                    if not medication:
-                        medication, _ = Medication.objects.get_or_create(
-                            name=med_name,
-                            ndc=ndc_code,
-                        )
-            else:
-                # In the first row after headers we don't have any medication,
-                # so we have to get it from the DB or create it
-                medication, _ = Medication.objects.get_or_create(
-                    name=med_name,
-                    ndc=ndc_code,
-                )
+                # Second check in the medication_map to lookup if this
+                # medication has been created already from this file
+                medication = medication_map.get(ndc_code, None)
+                if not medication:
+                    medication, _ = Medication.objects.get_or_create(
+                        name=med_name,
+                        ndc=ndc_code,
+                    )
+
             if medication:
                 # Add the actual medication (whatever it is) to the medication
                 # map. We will use as key the ndc which is supossed to be a
