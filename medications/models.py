@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
@@ -29,6 +30,7 @@ class Organization(models.Model):
     organization_name = models.CharField(
         _('organization name'),
         max_length=255,
+        default=None,
     )
     phone = PhoneNumberField(
         _('organization phone'),
