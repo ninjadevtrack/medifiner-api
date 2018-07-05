@@ -50,5 +50,7 @@ dev.override.yml
 /logs/
 /media/
 /static/
+celerybeat.pid
 celerybeat-schedule
 locale/
+.pytest_cache
