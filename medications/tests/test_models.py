@@ -1,11 +1,13 @@
 import pytest
+import factory
 
+from django.utils import timezone
+from django.db.utils import DataError
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from medications.factories import OrganizationFactory
 
 pytestmark = pytest.mark.django_db()
-ORGANIZATION_NAME = 'Test Organization'
+ORGANIZATION_NAME = 'Test organization'
 
 
 class TestOrganization: 
@@ -21,8 +23,8 @@ class TestOrganization:
 
     def test_user(self, django_user_model):
         user = django_user_model.objects.create(
-            email='example@example.com',
-            password='secretkey',
+            email=factory.Faker('email'),
+            password=factory.Faker('password'),
         )
         organization = OrganizationFactory(
             user=user,
@@ -42,3 +44,21 @@ class TestOrganization:
         )
         assert not organization_incorrect_phone.phone.is_valid()
         assert organization_correct_phone.phone.is_valid()
+
+    def test_registration_date(self):
+        now = timezone.now()
+        organization = OrganizationFactory(
+            organization_name=ORGANIZATION_NAME,
+        )
+        assert now <= organization.registration_date
+
+    def test_max_lenghts(self):
+        long_str = factory.Faker(
+            'pystr',
+            min_chars=256,
+            max_chars=256,
+        )
+        with pytest.raises(DataError):
+            organization = OrganizationFactory(
+                organization_name=long_str,
+            )
