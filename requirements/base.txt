@@ -5,7 +5,6 @@ django-environ==0.4.4
 django-phonenumber-field==2.0.0
 django-localflavor==2.0.0
 django-model-utils==3.1.2
-django-redis==4.9.0
 django-registration-redux==2.4
 django-rest-registration==0.3.12
 djangorestframework==3.8.2

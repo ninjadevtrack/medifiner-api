@@ -192,7 +192,6 @@ class Provider(models.Model):
 
 
 class Medication(models.Model):
-    # Model for medication created from the csv that users upload.
     name = models.CharField(
         _('medication name'),
         max_length=255,
@@ -244,7 +243,8 @@ class ProviderMedicationThrough(models.Model):
         return '{} - {}'.format(self.provider, self.medication)
 
     def save(self, *args, **kwargs):
-        # Using a simple map for now, according to the specs.
+        # Using a simple map for now, according to the specs
+        # TODO: We need to ask client if this can get more complicated.
         supply_to_level_map = {
             '<24': 1,
             '24': 2,
@@ -255,35 +255,9 @@ class ProviderMedicationThrough(models.Model):
         super().save(*args, **kwargs)
 
 
-class ExistingMedication(models.Model):
-    # Model for medication imported from the database.
-    description = models.TextField(
-        _('medication description'),
-        blank=True,
-    )
-    ndc = models.CharField(
-        _('national drug code'),
-        max_length=32,
-    )
-    import_date = models.DateTimeField(
-        _('import date'),
-        auto_now_add=True,
-        help_text=_(
-            'Date of import from the national database of this medication'
-        ),
-    )
-
-    class Meta:
-        verbose_name = _('existing medication')
-        verbose_name_plural = _('existing medications')
-
-    def __str__(self):
-        return self.ndc
-
-
 class TemporaryFile(models.Model):
     # Since we cannot pass files to celery, and also cannot pass temporary
     # files to celery since the temporary python files are closed after the
     # request is finished, we have to create an object in our database with
-    # the csv file and then make celery delete it.
+    # the csv file and them make celery delete it.
     file = models.FileField()

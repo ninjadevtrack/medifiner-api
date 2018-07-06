@@ -1,5 +1,5 @@
 import factory
-from .models import Organization, Provider
+from .models import Organization, Provider, Medication, ExistingMedication
 
 
 class OrganizationFactory(factory.DjangoModelFactory):
@@ -16,3 +16,19 @@ class ProviderFactory(factory.DjangoModelFactory):
     """
     class Meta:
         model = Provider
+
+
+class MedicationFactory(factory.DjangoModelFactory):
+    """
+        Define Medication Factory
+    """
+    class Meta:
+        model = Medication
+
+
+class ExistingMedicationFactory(factory.DjangoModelFactory):
+    """
+        Define ExistingMedication Factory
+    """
+    class Meta:
+        model = ExistingMedication

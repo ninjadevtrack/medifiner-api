@@ -5,7 +5,6 @@ from .models import (
     Provider,
     Medication,
     ProviderMedicationThrough,
-    ExistingMedication,
 )
 
 
@@ -17,14 +16,6 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
         'level',
         'date',
     )
-
-
-@admin.register(ExistingMedication)
-class ExistingMedicationAdmin(admin.ModelAdmin):
-    model = ExistingMedication
-    search_fields = ('ndc', 'description')
-    readonly_fields = ('import_date', )
-    list_display = ('ndc', 'import_date', 'description')
 
 
 admin.site.register(Organization)
