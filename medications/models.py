@@ -255,6 +255,32 @@ class ProviderMedicationThrough(models.Model):
         super().save(*args, **kwargs)
 
 
+class ExistingMedication(models.Model):
+    # Model for medication imported from the database.
+    description = models.TextField(
+        _('medication description'),
+        blank=True,
+    )
+    ndc = models.CharField(
+        _('national drug code'),
+        max_length=32,
+    )
+    import_date = models.DateTimeField(
+        _('import date'),
+        auto_now_add=True,
+        help_text=_(
+            'Date of import from the national database of this medication'
+        ),
+    )
+
+    class Meta:
+        verbose_name = _('existing medication')
+        verbose_name_plural = _('existing medications')
+
+    def __str__(self):
+        return self.ndc
+
+
 class TemporaryFile(models.Model):
     # Since we cannot pass files to celery, and also cannot pass temporary
     # files to celery since the temporary python files are closed after the
