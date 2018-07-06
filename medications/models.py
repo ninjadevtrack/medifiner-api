@@ -1,13 +1,14 @@
 from django.db import models
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from localflavor.us.models import USStateField, USZipCodeField
+
 from phonenumber_field.modelfields import PhoneNumberField
 
 from .utils import get_lat_lng
+from .validators import validate_state, validate_zip
 
 
 # In version 1.0 using hardcoded country, if future versions have
@@ -79,9 +80,11 @@ class Provider(models.Model):
     )
     state = USStateField(
         _('us state'),
+        validators=[validate_state],
     )
     zip = USZipCodeField(
         _('zip code'),
+        validators=[validate_zip],
     )
     phone = PhoneNumberField(
         _('provider phone'),
