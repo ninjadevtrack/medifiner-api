@@ -9,12 +9,20 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from localflavor.us.us_states import STATE_CHOICES
 
-from medications.factories import OrganizationFactory, ProviderFactory
+from medications.factories import (
+    OrganizationFactory,
+    ProviderFactory,
+    MedicationFactory,
+    ExistingMedicationFactory,
+)
 from medications.models import Organization
 
 pytestmark = pytest.mark.django_db()
 ORGANIZATION_NAME = 'Test organization'
-# Real address information to generate lat and lng
+TEST_NDC = '0002-1433-80'
+# Real address information to generate lat and lng, cannot trust in Faker
+# cause sometimes it generates addresses that googlemap api cannot convert
+# to real coordinates.
 REAL_STREET = '833  School Street'
 REAL_CITY = 'New Haven'
 REAL_STATE = 'CT'
@@ -127,9 +135,9 @@ class TestProvider:
 
     def test_coordinates_being_generated(self):
         provider = ProviderFactory(
-            address=factory.Faker('address'),
-            city=factory.Faker('city'),
-            state=factory.Faker('state_abbr')
+            address=REAL_STREET,
+            city=REAL_CITY,
+            state=REAL_STATE,
         )
         assert provider.lng and provider.lat
 
@@ -231,7 +239,7 @@ class TestProvider:
         organization = OrganizationFactory(
             organization_name=ORGANIZATION_NAME,
         )
-        with pytest.raises(ValidationError) as excinfo:
+        with pytest.raises(ValidationError):
             provider = ProviderFactory(
                 organization=organization,
                 name=factory.Faker('name'),
@@ -259,3 +267,50 @@ class TestProvider:
             email=factory.Faker('email'),
         )
         provider.full_clean()
+
+
+class TestMedication:
+
+    def test_str(self):
+        medication_name = factory.Faker('word').generate({})
+        medication = MedicationFactory(
+            name=medication_name,
+        )
+        assert medication.name == medication_name
+        assert str(medication) == medication_name
+
+    def test_name_max_lenght(self, long_str):
+        with pytest.raises(DataError):
+            MedicationFactory(
+                name=long_str,
+            )
+
+    def test_ndc_max_lenght(self, long_str):
+        with pytest.raises(DataError):
+            MedicationFactory(
+                ndc=long_str,
+            )
+
+    def test_name_exists(self):
+        medication = MedicationFactory(
+            ndc=TEST_NDC,
+        )
+        with pytest.raises(ValidationError):
+            medication.full_clean()
+
+    def test_ndc_exists(self):
+        medication = MedicationFactory(
+            name=factory.Faker('word'),
+        )
+        with pytest.raises(ValidationError):
+            medication.full_clean()
+
+    def test_ndc_unique(self):
+        with pytest.raises(IntegrityError):
+            for _ in range(2):
+                MedicationFactory(
+                    ndc=TEST_NDC,
+                )
+
+    def test_ndc_exists(self):
+        ExistingMedicationFactory()
