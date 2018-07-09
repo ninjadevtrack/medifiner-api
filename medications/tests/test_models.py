@@ -20,6 +20,7 @@ from medications.models import (
     Organization,
     ExistingMedication,
     ProviderMedicationThrough,
+    Provider,
 )
 
 pytestmark = pytest.mark.django_db()
@@ -193,6 +194,30 @@ class TestProvider:
                 operating_hours=long_str,
             )
 
+    def test_type_max_lenght(self, long_str):
+        with pytest.raises(DataError):
+            ProviderFactory(
+                type=long_str,
+            )
+
+    def test_wrong_type(self):
+        organization = OrganizationFactory(
+            organization_name=ORGANIZATION_NAME,
+        )
+        with pytest.raises(ValidationError):
+            provider = ProviderFactory(
+                organization=organization,
+                name=factory.Faker('name'),
+                address=factory.Faker('address'),
+                city=factory.Faker('city'),
+                state=REAL_STATE,
+                zip=randint(10000, 99999),
+                phone='202-555-0178',
+                email=factory.Faker('email'),
+                type='as',
+            )
+            provider.full_clean()
+
     def test_unique_provider_email(self):
         email = 'example@example.com'
         with pytest.raises(IntegrityError):
@@ -240,7 +265,6 @@ class TestProvider:
             fake_state = factory.Faker(
                 'pystr'
             ).generate({'min_chars': 2, 'max_chars': 2})
-        # with pytest.raises(ValidationError):
         organization = OrganizationFactory(
             organization_name=ORGANIZATION_NAME,
         )
@@ -254,6 +278,7 @@ class TestProvider:
                 zip=randint(10000, 99999),
                 phone='202-555-0178',
                 email=factory.Faker('email'),
+                type=Provider.TYPE_COMMUNITY_RETAIL,
             )
             provider.full_clean()
 
@@ -277,6 +302,7 @@ class TestProvider:
                 zip=f'{randrange(1, 10**4):04}',
                 phone='202-555-0178',
                 email=factory.Faker('email'),
+                type=Provider.TYPE_COMMUNITY_RETAIL,
             )
             provider.full_clean()
 
@@ -293,6 +319,7 @@ class TestProvider:
             zip=f'{randrange(1, 10**5):05}',
             phone='202-555-0178',
             email=factory.Faker('email'),
+            type=Provider.TYPE_COMMUNITY_RETAIL,
         )
         provider.full_clean()
 
