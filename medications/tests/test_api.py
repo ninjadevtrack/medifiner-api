@@ -3,6 +3,7 @@ import pytest
 import csv
 
 from django.contrib.auth import get_user_model
+from django.utils.translation import ugettext_lazy as _
 
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -43,7 +44,7 @@ def user_no_organization():
     user = User.objects.create_user(
         email,
         password,
-        is_test=True,
+        is_test=False,
     )
     return user
 
@@ -146,3 +147,120 @@ class TestTokenAuth:
     @classmethod
     def teardown_class(cls):
         os.remove('temporal.csv')
+
+
+class TestMedicationsPOSTView:
+    """Token authentication"""
+    token_model = Token
+    path = '/api/v1/medications/'
+    header_prefix = 'Token '
+
+    @pytest.fixture(autouse=True)
+    def setup_stuff(self, db, testuser):
+        self.factory = APIClient()
+        self.user = testuser
+
+        self.key = 'abcd1234'
+        self.token = self.token_model.objects.create(
+            key=self.key,
+            user=self.user,
+        )
+
+    def test_post_with_correct_data(self):
+        """
+        Ensure POSTing correct csv file returns status 200
+        """
+        with open('temporal.csv', 'w+', newline='') as csv_file:
+            filewriter = csv.writer(
+                csv_file,
+                delimiter=',',
+                quotechar='|',
+                quoting=csv.QUOTE_MINIMAL,
+            )
+            filewriter.writerow(field_rows)
+            csv_file.seek(0)
+            auth = self.header_prefix + self.key
+            response = self.factory.post(
+                self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
+            )
+            assert response.status_code == status.HTTP_200_OK
+
+    def test_post_with_user_without_organization(self, user_no_organization):
+        """
+        Ensure POSTing with user without organization is bad request
+        """
+        msg = _('This user has not organization related.')
+        key = 'atyd5678'
+        self.token_model.objects.create(
+            key=key,
+            user=user_no_organization,
+        )
+        with open('temporal.csv', 'w+', newline='') as csv_file:
+            filewriter = csv.writer(
+                csv_file,
+                delimiter=',',
+                quotechar='|',
+                quoting=csv.QUOTE_MINIMAL,
+            )
+            filewriter.writerow(field_rows)
+            csv_file.seek(0)
+            auth = self.header_prefix + key
+            response = self.factory.post(
+                self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
+            )
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert len(response.data['csv_file']) == 1
+            assert response.data['csv_file'][0] == msg
+
+    def test_post_wrong_file_extension(self):
+        """
+        Ensure POSTing with wrong file extension is bad request
+        """
+        msg = _('Unknown CSV format')
+        with open('temporal_2.txt', 'w+', newline='') as csv_file:
+            filewriter = csv.writer(
+                csv_file,
+                delimiter=',',
+                quotechar='|',
+                quoting=csv.QUOTE_MINIMAL,
+            )
+            filewriter.writerow(field_rows)
+            csv_file.seek(0)
+            auth = self.header_prefix + self.key
+            response = self.factory.post(
+                self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
+            )
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert len(response.data['csv_file']) == 1
+            assert response.data['csv_file'][0] == msg
+
+    def test_post_with_wrong_headers_csv(self):
+        """
+        Ensure POSTing csv with wrong headers is bad request
+        """
+        msg = _(
+            'Wrong headers in CSV file, headers must be: {}.'
+        ). format(
+            ', '.join(field_rows)
+        )
+        with open('temporal.csv', 'w+', newline='') as csv_file:
+            filewriter = csv.writer(
+                csv_file,
+                delimiter=',',
+                quotechar='|',
+                quoting=csv.QUOTE_MINIMAL,
+            )
+            filewriter.writerow(['Spam'] * 5 + ['Baked Beans'])
+            csv_file.seek(0)
+            auth = self.header_prefix + self.key
+            response = self.factory.post(
+                self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
+            )
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert len(response.data['csv_file']) == 1
+            assert response.data['csv_file'][0] == msg
+
+    @classmethod
+    def teardown_class(cls):
+        os.remove('temporal.csv')
+        os.remove('temporal_2.txt')

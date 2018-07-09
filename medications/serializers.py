@@ -37,7 +37,7 @@ class CSVUploadSerializer(serializers.Serializer):
                 {
                     'csv_file':
                     _(
-                        'Wrong headers in CSV file, headers must be: {}. '
+                        'Wrong headers in CSV file, headers must be: {}.'
                     ). format(', '.join(field_rows))}
             )
         data['csv_file'] = file
