@@ -30,6 +30,7 @@ services:
     command: celery -A medfinder beat -l info
     volumes:
       - .:/code
+      - media:/media
     depends_on:
       - postgres
       - redis

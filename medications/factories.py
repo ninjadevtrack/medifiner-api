@@ -1,5 +1,11 @@
 import factory
-from .models import Organization, Provider, Medication, ExistingMedication
+from .models import (
+    Organization,
+    Provider,
+    Medication,
+    ExistingMedication,
+    ProviderMedicationThrough,
+)
 
 
 class OrganizationFactory(factory.DjangoModelFactory):
@@ -32,3 +38,11 @@ class ExistingMedicationFactory(factory.DjangoModelFactory):
     """
     class Meta:
         model = ExistingMedication
+
+
+class ProviderMedicationThroughFactory(factory.DjangoModelFactory):
+    """
+        Define ProviderMedicationThrough Factory
+    """
+    class Meta:
+        model = ProviderMedicationThrough
