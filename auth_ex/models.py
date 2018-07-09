@@ -65,6 +65,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ),
     )
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
+    is_test = models.BooleanField(default=False)
 
     objects = UserManager()
 

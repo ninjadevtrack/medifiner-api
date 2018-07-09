@@ -15,7 +15,7 @@ from medications.factories import (
     MedicationFactory,
     ExistingMedicationFactory,
 )
-from medications.models import Organization
+from medications.models import Organization, Provider
 
 pytestmark = pytest.mark.django_db()
 ORGANIZATION_NAME = 'Test organization'
@@ -175,7 +175,7 @@ class TestProvider:
 
     def test_coordenates_change_in_new_address(self):
         #  Create the provider and get its coordinates
-        provider = ProviderFactory(
+        provider = Provider.objects.create(
             address=REAL_STREET,
             city=REAL_CITY,
             state=REAL_STATE,
@@ -186,7 +186,6 @@ class TestProvider:
         provider.change_coordinates = True
         provider.save()
         lat_2, lng_2 = provider.lat, provider.lng
-
         #  Now assert that coordinates are different and check that the flag
         # 'change_coordinates' is back to False (it should)
         assert lat != lat_2 and lng != lng_2
