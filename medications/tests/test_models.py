@@ -14,8 +14,13 @@ from medications.factories import (
     ProviderFactory,
     MedicationFactory,
     ExistingMedicationFactory,
+    ProviderMedicationThroughFactory,
 )
-from medications.models import Organization, ExistingMedication
+from medications.models import (
+    Organization,
+    ExistingMedication,
+    ProviderMedicationThrough,
+)
 
 pytestmark = pytest.mark.django_db()
 ORGANIZATION_NAME = 'Test organization'
@@ -34,6 +39,29 @@ def long_str():
         'pystr',
         min_chars=256,
         max_chars=256,
+    ).generate({})
+
+
+@pytest.fixture()
+def short_str():
+    return factory.Faker(
+        'pystr',
+        min_chars=30,
+        max_chars=30,
+    ).generate({})
+
+
+@pytest.fixture()
+def medication():
+    return MedicationFactory(
+        name=factory.Faker('word'),
+    )
+
+
+@pytest.fixture()
+def provider():
+    return ProviderFactory(
+        name=factory.Faker('word'),
     )
 
 
@@ -352,3 +380,95 @@ class TestExistingMedication:
             ndc=TEST_NDC,
         )
         assert now <= medication.import_date
+
+
+class TestProviderMedicationThrough:
+    """
+    Test ProviderMedicationThrough model.
+    While testing provider_medication_through == pmt for short.
+    """
+
+    def test_str(self):
+        medication_name = factory.Faker('word').generate({})
+        provider_name = factory.Faker('word').generate({})
+
+        medication = MedicationFactory(
+            name=medication_name,
+        )
+        provider = ProviderFactory(
+            name=provider_name,
+        )
+        pmt = ProviderMedicationThroughFactory(
+            provider=provider,
+            medication=medication,
+        )
+        provider_medication_str = '{} - store number: {} - {}'.format(
+            provider_name,
+            provider.store_number,
+            medication_name,
+        )
+        assert str(pmt) == provider_medication_str
+
+    def test_level_not_editable_after_save(self, medication, provider):
+        pmt = ProviderMedicationThrough.objects.create(
+            level=randint(1, 100),
+            medication=medication,
+            provider=provider,
+        )
+        assert pmt.level == 0
+
+    def test_supply_level_mapping(self, medication, provider):
+        supply_to_level_map = {
+            '<24': 1,
+            '24': 2,
+            '24-48': 3,
+            '>48': 4,
+        }
+        for supply, level in supply_to_level_map.items():
+            pmt = ProviderMedicationThrough.objects.create(
+                supply=supply,
+                medication=medication,
+                provider=provider,
+            )
+            assert pmt.level == level
+
+    def test_incorrect_supply_string_makes_level_0(
+        self,
+        medication,
+        provider,
+        short_str,
+    ):
+        pmt = ProviderMedicationThrough.objects.create(
+            supply=short_str,
+            medication=medication,
+            provider=provider,
+        )
+        assert pmt.level == 0
+
+    def test_supply_max_lenght(self, provider, medication, long_str):
+        with pytest.raises(DataError):
+            ProviderMedicationThroughFactory(
+                supply=long_str,
+                provider=provider,
+                medication=medication,
+            )
+
+    def test_date(self, provider, medication):
+        now = timezone.now()
+        pmt = ProviderMedicationThroughFactory(
+            provider=provider,
+            medication=medication,
+        )
+        assert now <= pmt.date
+
+    def test_provider_exists(self, medication):
+        with pytest.raises(IntegrityError):
+            ProviderMedicationThroughFactory(
+                medication=medication,
+            )
+
+    def test_medication_exists(self, provider):
+        with pytest.raises(IntegrityError):
+            ProviderMedicationThroughFactory(
+                provider=provider,
+            )
