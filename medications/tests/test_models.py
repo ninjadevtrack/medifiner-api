@@ -15,7 +15,7 @@ from medications.factories import (
     MedicationFactory,
     ExistingMedicationFactory,
 )
-from medications.models import Organization
+from medications.models import Organization, ExistingMedication
 
 pytestmark = pytest.mark.django_db()
 ORGANIZATION_NAME = 'Test organization'
@@ -270,6 +270,7 @@ class TestProvider:
 
 
 class TestMedication:
+    """ Test medication model """
 
     def test_str(self):
         medication_name = factory.Faker('word').generate({})
@@ -313,4 +314,41 @@ class TestMedication:
                 )
 
     def test_ndc_exists(self):
-        ExistingMedicationFactory()
+        ExistingMedicationFactory(ndc=TEST_NDC)
+        medication = MedicationFactory(
+            ndc=TEST_NDC,
+        )
+        existing_ndcs = ExistingMedication.objects.values_list(
+            'ndc',
+            flat=True,
+        )
+        assert medication.ndc in existing_ndcs
+
+
+class TestExistingMedication:
+    """ Test existing medication model """
+
+    def test_str(self):
+        medication = ExistingMedicationFactory(
+            ndc=TEST_NDC,
+        )
+        assert medication.ndc == TEST_NDC
+        assert str(medication) == TEST_NDC
+
+    def test_ndc_max_lenght(self, long_str):
+        with pytest.raises(DataError):
+            ExistingMedicationFactory(
+                ndc=long_str,
+            )
+
+    def test_ndc_exists(self):
+        medication = ExistingMedicationFactory()
+        with pytest.raises(ValidationError):
+            medication.full_clean()
+
+    def test_import_date(self):
+        now = timezone.now()
+        medication = ExistingMedicationFactory(
+            ndc=TEST_NDC,
+        )
+        assert now <= medication.import_date
