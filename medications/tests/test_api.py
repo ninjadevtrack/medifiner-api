@@ -55,9 +55,9 @@ class TestTokenAuth:
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
-    def setup_stuff(self, db, regularuser):
+    def setup_stuff(self, db, testuser):
         self.factory = APIClient()
-        self.user = regularuser
+        self.user = testuser
 
         self.key = 'abcd1234'
         self.token = self.token_model.objects.create(
