@@ -5,6 +5,7 @@ import csv
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext_lazy as _
 
+from celery.task.control import inspect
 from rest_framework.test import APIClient
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -150,7 +151,6 @@ class TestTokenAuth:
 
 
 class TestMedicationsPOSTView:
-    """Token authentication"""
     token_model = Token
     path = '/api/v1/medications/'
     header_prefix = 'Token '
@@ -264,3 +264,68 @@ class TestMedicationsPOSTView:
     def teardown_class(cls):
         os.remove('temporal.csv')
         os.remove('temporal_2.txt')
+
+
+class TestGenerateMedicationTaskTriggered:
+    token_model = Token
+    path = '/api/v1/medications/'
+    header_prefix = 'Token '
+
+    @pytest.fixture(autouse=True)
+    def setup_stuff(self, db, testuser):
+        self.factory = APIClient()
+        self.user = testuser
+
+        self.key = 'abcd1234'
+        self.token = self.token_model.objects.create(
+            key=self.key,
+            user=self.user,
+        )
+
+    def test_post_triggers_generate_medications_task(self):
+        """
+        Ensure POSTing correct csv file triggers generate_medications task.
+        This test has a workaround due to I was unable to find a easier way
+        to check if the pertinent task was triggerd. First I check in the
+        celery queue the task that it is supossed to be triggered and get
+        how many times it has been run. After making a request to a view
+        that triggers the task I search again for the total of runs of this
+        task. If every works as it should there should be 1 run more.
+        TODO: Search a better way to do this.
+        """
+        pre_celery_stats = inspect().stats()
+        pre_celery_key = [key for key in pre_celery_stats.keys()][0]
+        pre_task_count = pre_celery_stats.get(
+            pre_celery_key
+        ).get(
+            'total'
+        ).get(
+            'medications.tasks.generate_medications'
+        )
+        with open('temporal.csv', 'w+', newline='') as csv_file:
+            filewriter = csv.writer(
+                csv_file,
+                delimiter=',',
+                quotechar='|',
+                quoting=csv.QUOTE_MINIMAL,
+            )
+            filewriter.writerow(field_rows)
+            csv_file.seek(0)
+            auth = self.header_prefix + self.key
+            self.factory.post(
+                self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
+            )
+            post_celery_stats = inspect().stats()
+            post_celery_key = [key for key in post_celery_stats.keys()][0]
+            post_task_count = post_celery_stats.get(
+                post_celery_key
+            ).get(
+                'total'
+            ).get(
+                'medications.tasks.generate_medications'
+            )
+            assert pre_task_count + 1 == post_task_count
+
+    @classmethod
+    def teardown_class(cls):
+        os.remove('temporal.csv')
