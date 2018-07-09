@@ -56,6 +56,15 @@ class Organization(models.Model):
 
 
 class Provider(models.Model):
+    TYPE_COMMUNITY_RETAIL = 're'
+    TYPE_CLINIC = 'cl'
+    TYPE_COMPOUNDING = 'co'
+    TYPE_CHOICES = (
+        (TYPE_COMMUNITY_RETAIL, _('Community/Retail')),
+        (TYPE_CLINIC, _('Clinic')),
+        (TYPE_COMPOUNDING, _('Compounding')),
+    )
+
     organization = models.ForeignKey(
         Organization,
         related_name='providers',
@@ -69,6 +78,12 @@ class Provider(models.Model):
     name = models.CharField(
         _('provider name'),
         max_length=255,
+    )
+    type = models.CharField(
+        _('provider type'),
+        choices=TYPE_CHOICES,
+        default=TYPE_COMMUNITY_RETAIL,
+        max_length=2,
     )
     address = models.CharField(
         _('provider address'),
@@ -147,7 +162,6 @@ class Provider(models.Model):
         null=True,
         blank=True,
     )
-    # TODO: field 'type', is it choices? what's that?
     walkins_accepted = models.NullBooleanField(
         _('walkins accepted'),
     )
