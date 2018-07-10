@@ -61,7 +61,8 @@ class TestGenerateMedicationsTask:
         csv_file.close()
 
     def test_generate_medications_task(self):
-        generate_medications(self.temporary_file.id, self.organization.id)
+        file_id = self.temporary_file.id
+        generate_medications(file_id, self.organization.id)
         try:
             ProviderMedicationThrough.objects.get(
                 medication__name=self.fake_med,
@@ -72,6 +73,13 @@ class TestGenerateMedicationsTask:
             raise pytest.fail(
                 'Test Failed: ProviderMedicationThrough model not found'
             )
+
+        # Now we will test if the temporary file has been deleted by celery.
+        # Due to the setup_stuff method generates a second temporary file if
+        # we create a new test_* method, we have to test it here to be sure
+        # that we are using the correct file id.
+        with pytest.raises(TemporaryFile.DoesNotExist):
+            TemporaryFile.objects.get(id=file_id)
 
     @classmethod
     def teardown_class(cls):
