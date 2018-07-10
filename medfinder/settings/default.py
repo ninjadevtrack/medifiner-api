@@ -44,6 +44,7 @@ INSTALLED_APPS = (
 
 
     'activity_log',
+    'django_celery_beat',
     'localflavor',
     'phonenumber_field',
     'rest_registration',
@@ -110,6 +111,8 @@ TIME_ZONE = 'UTC'
 ACTIVITYLOG_METHODS = ('POST',)
 
 
+NDC_DATABASE_URL = env('NDC_DATABASE_URL', default='')
+
 # --- LANGUAGES ---
 USE_I18N = True
 USE_L10N = True
@@ -174,13 +177,13 @@ REGISTRATION_AUTO_LOGIN = False
 # --- CELERY ---
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/')
 
-CELERY_BEAT_SCHEDULE = {
-    'import_existing_medications': {
-        'task': 'medications.tasks.import_existing_medications',
-        'schedule': crontab(day_of_month=15),
-        'relative': True,
-    },
-}
+# CELERY_BEAT_SCHEDULE = {
+#     'import_existing_medications': {
+#         'task': 'medications.tasks.import_existing_medications',
+#         'schedule': crontab(day_of_month=15),
+#         'relative': True,
+#     },
+# }
 
 #DEBUG TOOLBAR
 ENABLE_DEBUG_TOOLBAR = env.bool(
