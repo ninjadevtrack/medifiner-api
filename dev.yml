@@ -10,19 +10,13 @@ services:
   postgres:
     image: postgres
     ports:
+<<<<<<< HEAD
       - "5442:5432"
   celery:
-    build:
-      context: .
-      dockerfile: ./compose/django/Dockerfile
-    command: celery -A medfinder worker -l debug -E
-    volumes:
-      - .:/code
-      - media:/media
-    depends_on:
-      - postgres
-      - redis
+=======
+      - "5432:5432"
   django:
+>>>>>>> e24130f6f08be34fdf93cbfe25fd7762b65526be
     build:
       context: .
       dockerfile: ./compose/django/Dockerfile
@@ -36,6 +30,23 @@ services:
       - postgres
       - redis
       - celery
+  celerybeat:
+    image: medfinder-api_django
+    command: celery -A medfinder beat -l info
+    volumes:
+      - .:/code
+    depends_on:
+      - postgres
+      - redis
+  celery:
+    image: medfinder-api_django
+    command: celery -A medfinder worker -l debug -E
+    volumes:
+      - .:/code
+      - media:/media
+    depends_on:
+      - postgres
+      - redis
 volumes:
   media:
     driver: local
