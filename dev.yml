@@ -32,7 +32,7 @@ services:
       - celery
   celerybeat:
     image: medfinder-api_django
-    command: celery -A medfinder beat -l info
+    command: celery -A medfinder beat --scheduler django_celery_beat.schedulers:DatabaseScheduler -l info
     volumes:
       - .:/code
       - media:/media

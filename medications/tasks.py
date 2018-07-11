@@ -49,20 +49,19 @@ def generate_medications(temporary_csv_file_id, organization_id):
         # unnecesary time in meaningless queries
         if ndc_code in existing_ndc_codes:
             if not provider or (
-                provider and provider.store_number != ndc_code
+                provider and provider.store_number != store_number
             ):
                 # Check if we already have a provider cached and if it is the
                 # same as the next in line to avoid too much queries to the DB.
-                if provider.store_number != store_number:
-                    provider, _ = Provider.objects.get_or_create(
-                        organization=organization,
-                        store_number=store_number,
-                        address=address,
-                        city=city,
-                        zip=zip_code,
-                        state=state,
-                        phone=phone,
-                    )
+                provider, _ = Provider.objects.get_or_create(
+                    organization=organization,
+                    store_number=store_number,
+                    address=address,
+                    city=city,
+                    zip=zip_code,
+                    state=state,
+                    phone=phone,
+                )
             if not medication or (medication.ndc != ndc_code):
                 # Will do the same check as in provider
                 # Second check in the medication_map to lookup if this
