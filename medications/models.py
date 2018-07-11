@@ -4,9 +4,11 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from localflavor.us.models import USStateField, USZipCodeField
+
 from phonenumber_field.modelfields import PhoneNumberField
 
 from .utils import get_lat_lng
+from .validators import validate_state, validate_zip
 
 
 # In version 1.0 using hardcoded country, if future versions have
@@ -29,6 +31,7 @@ class Organization(models.Model):
     organization_name = models.CharField(
         _('organization name'),
         max_length=255,
+        default=None,
     )
     phone = PhoneNumberField(
         _('organization phone'),
@@ -53,6 +56,15 @@ class Organization(models.Model):
 
 
 class Provider(models.Model):
+    TYPE_COMMUNITY_RETAIL = 're'
+    TYPE_CLINIC = 'cl'
+    TYPE_COMPOUNDING = 'co'
+    TYPE_CHOICES = (
+        (TYPE_COMMUNITY_RETAIL, _('Community/Retail')),
+        (TYPE_CLINIC, _('Clinic')),
+        (TYPE_COMPOUNDING, _('Compounding')),
+    )
+
     organization = models.ForeignKey(
         Organization,
         related_name='providers',
@@ -67,6 +79,12 @@ class Provider(models.Model):
         _('provider name'),
         max_length=255,
     )
+    type = models.CharField(
+        _('provider type'),
+        choices=TYPE_CHOICES,
+        default=TYPE_COMMUNITY_RETAIL,
+        max_length=2,
+    )
     address = models.CharField(
         _('provider address'),
         max_length=255,
@@ -77,9 +95,11 @@ class Provider(models.Model):
     )
     state = USStateField(
         _('us state'),
+        validators=[validate_state],
     )
     zip = USZipCodeField(
         _('zip code'),
+        validators=[validate_zip],
     )
     phone = PhoneNumberField(
         _('provider phone'),
@@ -142,7 +162,6 @@ class Provider(models.Model):
         null=True,
         blank=True,
     )
-    # TODO: field 'type', is it choices? what's that?
     walkins_accepted = models.NullBooleanField(
         _('walkins accepted'),
     )
@@ -187,7 +206,6 @@ class Provider(models.Model):
 
 
 class Medication(models.Model):
-    # Model for medication created from the csv that users upload.
     name = models.CharField(
         _('medication name'),
         max_length=255,
@@ -239,7 +257,8 @@ class ProviderMedicationThrough(models.Model):
         return '{} - {}'.format(self.provider, self.medication)
 
     def save(self, *args, **kwargs):
-        # Using a simple map for now, according to the specs.
+        # Using a simple map for now, according to the specs
+        # TODO: We need to ask client if this can get more complicated.
         supply_to_level_map = {
             '<24': 1,
             '24': 2,
@@ -280,5 +299,5 @@ class TemporaryFile(models.Model):
     # Since we cannot pass files to celery, and also cannot pass temporary
     # files to celery since the temporary python files are closed after the
     # request is finished, we have to create an object in our database with
-    # the csv file and then make celery delete it.
+    # the csv file and them make celery delete it.
     file = models.FileField()

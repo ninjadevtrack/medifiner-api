@@ -4,10 +4,11 @@ Django default settings for medfinder project.
 Crate a local.py in this same folder to set your local settings.
 
 """
-from os import path
 
-from celery.schedules import crontab
+from os import path
 from django.utils.translation import ugettext_lazy as _
+from celery.schedules import crontab
+
 import environ
 
 root = environ.Path(__file__) - 3
@@ -157,18 +158,6 @@ AUTH_PASSWORD_VALIDATORS = [
 # STATICFILES_FINDERS += ('compressor.finders.CompressorFinder',)
 
 # --- CACHE ---
-# {
-#     'default': {
-#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-#         'TIMEOUT': 300,
-#     }
-# }
-
-# --- DJANGO REGISTRATION REDUX ---
-ACCOUNT_ACTIVATION_DAYS = 7
-REGISTRATION_AUTO_LOGIN = False
-
-# --- CACHE ---
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -178,7 +167,9 @@ CACHES = {
         }
     }
 }
-
+# --- DJANGO REGISTRATION REDUX ---
+ACCOUNT_ACTIVATION_DAYS = 7
+REGISTRATION_AUTO_LOGIN = False
 
 # --- CELERY ---
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/')
@@ -268,8 +259,6 @@ if ENABLE_DEBUG_TOOLBAR:
 PHONENUMBER_DEFAULT_REGION = 'US'
 
 DECIMAL_SEPARATOR = '.'
-
-NDC_DATABASE_URL = env('NDC_DATABASE_URL', default='')
 
 # --- SENTRY ---
 RAVEN_DSN = env('RAVEN_DSN', default='')
