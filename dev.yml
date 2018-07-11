@@ -10,13 +10,8 @@ services:
   postgres:
     image: postgres
     ports:
-<<<<<<< HEAD
-      - "5442:5432"
-  celery:
-=======
       - "5432:5432"
   django:
->>>>>>> e24130f6f08be34fdf93cbfe25fd7762b65526be
     build:
       context: .
       dockerfile: ./compose/django/Dockerfile
