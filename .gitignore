@@ -47,6 +47,8 @@ medfinder/settings/local.py
 .env
 dev.override.yml
 
+!.circleci/repo/.env
+
 /logs/
 /media/
 /static/
