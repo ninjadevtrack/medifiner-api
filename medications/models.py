@@ -245,8 +245,8 @@ class ProviderMedicationThrough(models.Model):
     )
     date = models.DateTimeField(
         _('date'),
-        default=timezone.now,
-        help_text=_('Date of addition/update of this medication'),
+        auto_now_add=True,
+        help_text=_('Creation date'),
     )
 
     class Meta:
