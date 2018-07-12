@@ -17,6 +17,14 @@ jobs:
 
     working_directory: ~/repo
 
+    environment:
+      DEBUG: 'True'
+      SECRET_KEY: 'secretkey'
+      ALLOWED_HOSTS: '127.0.0.1,0.0.0.0,localhost'
+      EMAIL_BACKEND: 'django.core.mail.backends.console.EmailBackend'
+      SITE_ID: '1'
+      RAVEN_DSN: ''
+
     steps:
       - checkout
 
