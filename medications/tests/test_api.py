@@ -32,9 +32,9 @@ def testuser(organization):
     user = User.objects.create_user(
         email,
         password,
-        organization=organization,
-        is_test=True,
     )
+    organization.user = user
+    organization.save()
     return user
 
 
@@ -45,7 +45,6 @@ def user_no_organization():
     user = User.objects.create_user(
         email,
         password,
-        is_test=False,
     )
     return user
 

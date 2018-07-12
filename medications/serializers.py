@@ -21,7 +21,7 @@ class CSVUploadSerializer(serializers.Serializer):
             organization = user.organization
         else:
             organization = None
-        if not organization and not user.is_test:
+        if not organization:
             raise serializers.ValidationError(
                 {'csv_file': _('This user has not organization related.')}
             )
@@ -41,8 +41,6 @@ class CSVUploadSerializer(serializers.Serializer):
                     ). format(', '.join(field_rows))}
             )
         data['csv_file'] = file
-        if not user.is_test:
-            data['organization_id'] = organization.id
-        else:
-            data['organization_id'] = 0
+        data['organization_id'] = organization.id
+
         return data
