@@ -83,7 +83,7 @@ def generate_medications(temporary_csv_file_id, organization_id):
 
             if provider and medication:
                 # Create or update the relation object
-                ProviderMedicationThrough.objects.update_or_create(
+                ProviderMedicationThrough.objects.create(
                     provider=provider,
                     medication=medication,
                     supply=row.get('supply_level'),
