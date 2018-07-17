@@ -5,6 +5,8 @@ from .models import (
     Medication,
     ExistingMedication,
     ProviderMedicationThrough,
+    State,
+    ZipCode,
 )
 
 
@@ -46,3 +48,19 @@ class ProviderMedicationThroughFactory(factory.DjangoModelFactory):
     """
     class Meta:
         model = ProviderMedicationThrough
+
+
+class StateFactory(factory.DjangoModelFactory):
+    """
+        Define State Factory
+    """
+    class Meta:
+        model = State
+
+
+class ZipCodeFactory(factory.DjangoModelFactory):
+    """
+        Define ZipCode Factory
+    """
+    class Meta:
+        model = ZipCode

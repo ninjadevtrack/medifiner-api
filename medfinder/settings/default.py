@@ -7,7 +7,6 @@ Crate a local.py in this same folder to set your local settings.
 
 from os import path
 from django.utils.translation import ugettext_lazy as _
-from celery.schedules import crontab
 
 import environ
 
