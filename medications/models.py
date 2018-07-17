@@ -296,6 +296,10 @@ class ProviderMedicationThrough(models.Model):
         auto_now_add=True,
         help_text=_('Creation date'),
     )
+    latest = models.BooleanField(
+        _('latest'),
+        default=False,
+    )
 
     class Meta:
         verbose_name = _('provider medication relation')

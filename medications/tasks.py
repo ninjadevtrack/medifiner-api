@@ -30,6 +30,8 @@ def generate_medications(temporary_csv_file_id, organization_id):
     )
     provider = None
     medication = None
+    last_provider_id = None
+    last_medication_id = None
     medication_map = {}  # Use this map to save queries to the DB
     temporary_file_obj = TemporaryFile.objects.get(pk=temporary_csv_file_id)
     decoded_file = temporary_file_obj.file.read().decode('utf-8').splitlines()
@@ -80,14 +82,19 @@ def generate_medications(temporary_csv_file_id, organization_id):
                 # object that we can get. Python get from dict uses much
                 # less programmatic time than a SQL get.
                 medication_map[medication.ndc] = medication
-
             if provider and medication:
                 # Create or update the relation object
                 ProviderMedicationThrough.objects.create(
                     provider=provider,
                     medication=medication,
                     supply=row.get('supply_level'),
+                    latest=(
+                        last_provider_id == provider.id and
+                        last_medication_id == medication.id
+                    )
                 )
+                last_provider_id = provider.id
+                last_medication_id = medication.id
 
     # Make celery delete the django object that has our csv file
     temporary_file_obj.delete()
