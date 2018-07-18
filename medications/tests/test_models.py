@@ -341,14 +341,17 @@ class TestState:
     """ Test state model """
 
     def test_str(self):
-        states_list = [code[0] for code in STATE_CHOICES]
+        states_list = [code for code in STATE_CHOICES]
         real_state = choice(states_list)
-
+        state_name = real_state[1]
+        state_code = real_state[0]
         state = StateFactory(
-            state=real_state,
+            state_code=state_code,
+            state_name=state_name,
         )
-        assert state.state == real_state
-        assert str(state) == real_state
+        assert state.state_code == state_code
+        assert state.state_name == state_name
+        assert str(state) == '{} - {}'.format(state_code, state_name)
 
     def test_US_wrong_state(self):
         states_list = [code[0] for code in STATE_CHOICES]
@@ -360,25 +363,22 @@ class TestState:
                 'pystr'
             ).generate({'min_chars': 2, 'max_chars': 2})
         state = StateFactory(
-            state=fake_state,
+            state_code=fake_state,
         )
         with pytest.raises(ValidationError):
-            state = StateFactory(
-                state=state,
-            )
             state.full_clean()
 
     def test_state_lenght(self):
         with pytest.raises(DataError):
             StateFactory(
-                state=factory.Faker('pystr', min_chars=3),
+                state_code=factory.Faker('pystr', min_chars=3),
             )
 
     def test_geometry_invalid(self):
         states_list = [code[0] for code in STATE_CHOICES]
         real_state = choice(states_list)
         state = StateFactory(
-            state=real_state,
+            state_code=real_state,
             geometry=[],
         )
         with pytest.raises(ValidationError):
@@ -389,15 +389,20 @@ class TestZipCode:
     """ Test ZipCode model """
 
     def test_str(self):
-        states_list = [code[0] for code in STATE_CHOICES]
+        states_list = [code for code in STATE_CHOICES]
         real_state = choice(states_list)
-        zipcode_code = f'{randrange(1, 10**5):05}'
+        state_name = real_state[1]
+        state_code = real_state[0]
         state = StateFactory(
-            state=real_state,
+            state_code=state_code,
+            state_name=state_name,
         )
+        zipcode_code = f'{randrange(1, 10**5):05}'
         zipcode = ZipCodeFactory(state=state, zipcode=zipcode_code)
         assert zipcode.zipcode == zipcode_code
-        assert str(zipcode) == '{} - {}'.format(zipcode_code, real_state)
+        assert str(zipcode) == '{} - {} - {}'.format(
+            zipcode_code, state_code, state_name
+        )
 
     def test_zip_code_invalid(self):
         state = StateFactory()

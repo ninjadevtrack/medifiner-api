@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.translation import ugettext_lazy as _
 
 from .models import (
     Organization,
@@ -6,6 +7,7 @@ from .models import (
     Medication,
     ProviderMedicationThrough,
     ExistingMedication,
+    State,
 )
 
 
@@ -18,6 +20,28 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
         'level',
         'date',
     )
+
+
+@admin.register(State)
+class StateAdmin(admin.ModelAdmin):
+
+    model = State
+    list_display = ('state_name', 'display_state_code')
+    fields = (
+        'display_state_code',
+        'state_name',
+        'geometry',
+    )
+    readonly_fields = (
+        'display_state_code',
+        'state_name',
+        'geometry',
+    )
+
+    def display_state_code(self, obj):
+        return obj.state_code
+
+    display_state_code.short_description = _('state code')
 
 
 @admin.register(ExistingMedication)

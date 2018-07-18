@@ -57,9 +57,16 @@ class Organization(models.Model):
 
 
 class State(models.Model):
-    state = USStateField(
-        _('us state'),
+    state_code = USStateField(
+        _('us state code'),
         validators=[validate_state],
+        null=True,
+
+    )
+    state_name = models.CharField(
+        _('us state name'),
+        max_length=255,
+        blank=True,
     )
     geometry = JSONField(
         _('geometry'),
@@ -71,7 +78,7 @@ class State(models.Model):
         verbose_name_plural = _('states')
 
     def __str__(self):
-        return self.state
+        return '{} - {}'.format(self.state_code, self.state_name)
 
 
 class ZipCode(models.Model):
