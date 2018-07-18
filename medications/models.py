@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.postgres.fields import JSONField
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
@@ -55,6 +56,54 @@ class Organization(models.Model):
         return self.organization_name
 
 
+class State(models.Model):
+    state_code = USStateField(
+        _('us state code'),
+        validators=[validate_state],
+        null=True,
+
+    )
+    state_name = models.CharField(
+        _('us state name'),
+        max_length=255,
+        blank=True,
+    )
+    geometry = JSONField(
+        _('geometry'),
+        default=dict,
+    )
+
+    class Meta:
+        verbose_name = _('state')
+        verbose_name_plural = _('states')
+
+    def __str__(self):
+        return '{} - {}'.format(self.state_code, self.state_name)
+
+
+class ZipCode(models.Model):
+    zipcode = USZipCodeField(
+        _('zip code'),
+        validators=[validate_zip],
+    )
+    state = models.ForeignKey(
+        State,
+        related_name='zipcodes',
+        on_delete=models.CASCADE,
+    )
+    geometry = JSONField(
+        _('geometry'),
+        default=dict,
+    )
+
+    class Meta:
+        verbose_name = _('zip code')
+        verbose_name_plural = _('zip codes')
+
+    def __str__(self):
+        return '{} - {}'.format(self.zipcode, self.state)
+
+
 class Provider(models.Model):
     TYPE_COMMUNITY_RETAIL = 're'
     TYPE_CLINIC = 'cl'
@@ -101,6 +150,12 @@ class Provider(models.Model):
         _('zip code'),
         validators=[validate_zip],
     )
+    related_zipcode = models.ForeignKey(
+        ZipCode,
+        related_name='providers',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     phone = PhoneNumberField(
         _('provider phone'),
     )
@@ -132,15 +187,15 @@ class Provider(models.Model):
     )
     lat = models.DecimalField(
         _('latitude'),
-        max_digits=9,
-        decimal_places=6,
+        max_digits=20,
+        decimal_places=18,
         null=True,
         blank=True
     )
     lng = models.DecimalField(
         _('longitude'),
-        max_digits=9,
-        decimal_places=6,
+        max_digits=20,
+        decimal_places=18,
         null=True,
         blank=True,
     )
@@ -247,6 +302,10 @@ class ProviderMedicationThrough(models.Model):
         _('date'),
         auto_now_add=True,
         help_text=_('Creation date'),
+    )
+    latest = models.BooleanField(
+        _('latest'),
+        default=False,
     )
 
     class Meta:
