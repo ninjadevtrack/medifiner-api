@@ -13,6 +13,7 @@ from .models import (
 class ProviderMedicationThroughAdmin(admin.ModelAdmin):
 
     model = ProviderMedicationThrough
+    list_display = ('__str__', 'date', 'latest', 'level')
     readonly_fields = (
         'level',
         'date',
