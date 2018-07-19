@@ -7,7 +7,6 @@ Crate a local.py in this same folder to set your local settings.
 
 from os import path
 from django.utils.translation import ugettext_lazy as _
-from celery.schedules import crontab
 
 import environ
 
@@ -266,6 +265,18 @@ if ENABLE_DEBUG_TOOLBAR:
 PHONENUMBER_DEFAULT_REGION = 'US'
 
 DECIMAL_SEPARATOR = '.'
+
+# --- STATES & ZIPCODES ---
+US_STATES_DATABASE = env(
+    'US_STATES_DATABASE',
+    default='https://raw.githubusercontent.com/PublicaMundi/MappingAPI/'
+            'master/data/geojson/us-states.json',
+)
+
+US_ZIPCODES_DATABASE = env(
+    'US_ZIPCODES_DATABASE',
+    default='https://github.com/OpenDataDE/State-zip-code-GeoJSON',
+)
 
 # --- SENTRY ---
 RAVEN_DSN = env('RAVEN_DSN', default='')

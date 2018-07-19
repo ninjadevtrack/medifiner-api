@@ -5,7 +5,7 @@ from io import BytesIO
 from zipfile import ZipFile
 from urllib.request import urlopen
 from celery import shared_task
-from django.db import transaction
+from celery.decorators import task
 from django.core.cache import cache
 from django.conf import settings
 
@@ -20,7 +20,8 @@ from .models import (
 
 
 @shared_task
-@transaction.atomic
+# This task can't be atomic because we need to run a post_save signal for
+# every ProviderMedicationThrough object created
 def generate_medications(temporary_csv_file_id, organization_id):
     # Already checked in serializer validation that this organization exists.
     organization = Organization.objects.get(pk=organization_id)
@@ -80,17 +81,33 @@ def generate_medications(temporary_csv_file_id, organization_id):
                 # object that we can get. Python get from dict uses much
                 # less programmatic time than a SQL get.
                 medication_map[medication.ndc] = medication
-
             if provider and medication:
                 # Create or update the relation object
                 ProviderMedicationThrough.objects.create(
                     provider=provider,
                     medication=medication,
                     supply=row.get('supply_level'),
+                    latest=True
                 )
-
     # Make celery delete the django object that has our csv file
     temporary_file_obj.delete()
+
+
+# Task that handles the post_save signal asynchronously
+@task(name="handle_provider_medication_through_post_save_signal")
+def handle_provider_medication_through_post_save_signal(
+    instance_pk,
+    provider_pk,
+    medication_pk
+):
+    ProviderMedicationThrough.objects.filter(
+        provider__pk=provider_pk,
+        medication__pk=medication_pk,
+    ).exclude(
+        pk=instance_pk,
+    ).update(
+        latest=False,
+    )
 
 
 @shared_task

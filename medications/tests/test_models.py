@@ -1,7 +1,7 @@
 import pytest
 import factory
 
-from random import randint, randrange
+from random import randint, randrange, choice
 
 from django.utils import timezone
 from django.db.utils import DataError, IntegrityError
@@ -15,6 +15,8 @@ from medications.factories import (
     MedicationFactory,
     ExistingMedicationFactory,
     ProviderMedicationThroughFactory,
+    StateFactory,
+    ZipCodeFactory,
 )
 from medications.models import (
     Organization,
@@ -204,6 +206,8 @@ class TestProvider:
         organization = OrganizationFactory(
             organization_name=ORGANIZATION_NAME,
         )
+        state = StateFactory()
+        zipcode = ZipCodeFactory(state=state)
         with pytest.raises(ValidationError):
             provider = ProviderFactory(
                 organization=organization,
@@ -214,6 +218,7 @@ class TestProvider:
                 zip=randint(10000, 99999),
                 phone='202-555-0178',
                 email=factory.Faker('email'),
+                related_zipcode=zipcode,
                 type='as',
             )
             provider.full_clean()
@@ -267,6 +272,8 @@ class TestProvider:
         organization = OrganizationFactory(
             organization_name=ORGANIZATION_NAME,
         )
+        state = StateFactory()
+        zipcode = ZipCodeFactory(state=state)
         with pytest.raises(ValidationError):
             provider = ProviderFactory(
                 organization=organization,
@@ -277,6 +284,7 @@ class TestProvider:
                 zip=randint(10000, 99999),
                 phone='202-555-0178',
                 email=factory.Faker('email'),
+                related_zipcode=zipcode,
                 type=Provider.TYPE_COMMUNITY_RETAIL,
             )
             provider.full_clean()
@@ -291,6 +299,8 @@ class TestProvider:
         organization = OrganizationFactory(
             organization_name=ORGANIZATION_NAME,
         )
+        state = StateFactory()
+        zipcode = ZipCodeFactory(state=state)
         with pytest.raises(ValidationError):
             provider = ProviderFactory(
                 organization=organization,
@@ -302,6 +312,7 @@ class TestProvider:
                 phone='202-555-0178',
                 email=factory.Faker('email'),
                 type=Provider.TYPE_COMMUNITY_RETAIL,
+                related_zipcode=zipcode,
             )
             provider.full_clean()
 
@@ -309,6 +320,8 @@ class TestProvider:
         organization = OrganizationFactory(
             organization_name=ORGANIZATION_NAME,
         )
+        state = StateFactory()
+        zipcode = ZipCodeFactory(state=state)
         provider = ProviderFactory(
             organization=organization,
             name=factory.Faker('name'),
@@ -319,8 +332,106 @@ class TestProvider:
             phone='202-555-0178',
             email=factory.Faker('email'),
             type=Provider.TYPE_COMMUNITY_RETAIL,
+            related_zipcode=zipcode,
         )
         provider.full_clean()
+
+
+class TestState:
+    """ Test state model """
+
+    def test_str(self):
+        states_list = [code for code in STATE_CHOICES]
+        real_state = choice(states_list)
+        state_name = real_state[1]
+        state_code = real_state[0]
+        state = StateFactory(
+            state_code=state_code,
+            state_name=state_name,
+        )
+        assert state.state_code == state_code
+        assert state.state_name == state_name
+        assert str(state) == '{} - {}'.format(state_code, state_name)
+
+    def test_US_wrong_state(self):
+        states_list = [code[0] for code in STATE_CHOICES]
+        fake_state = factory.Faker(
+            'pystr'
+        ).generate({'min_chars': 2, 'max_chars': 2})
+        while fake_state in states_list:
+            fake_state = factory.Faker(
+                'pystr'
+            ).generate({'min_chars': 2, 'max_chars': 2})
+        state = StateFactory(
+            state_code=fake_state,
+        )
+        with pytest.raises(ValidationError):
+            state.full_clean()
+
+    def test_state_lenght(self):
+        with pytest.raises(DataError):
+            StateFactory(
+                state_code=factory.Faker('pystr', min_chars=3),
+            )
+
+    def test_geometry_invalid(self):
+        states_list = [code[0] for code in STATE_CHOICES]
+        real_state = choice(states_list)
+        state = StateFactory(
+            state_code=real_state,
+            geometry=[],
+        )
+        with pytest.raises(ValidationError):
+            state.full_clean()
+
+
+class TestZipCode:
+    """ Test ZipCode model """
+
+    def test_str(self):
+        states_list = [code for code in STATE_CHOICES]
+        real_state = choice(states_list)
+        state_name = real_state[1]
+        state_code = real_state[0]
+        state = StateFactory(
+            state_code=state_code,
+            state_name=state_name,
+        )
+        zipcode_code = f'{randrange(1, 10**5):05}'
+        zipcode = ZipCodeFactory(state=state, zipcode=zipcode_code)
+        assert zipcode.zipcode == zipcode_code
+        assert str(zipcode) == '{} - {} - {}'.format(
+            zipcode_code, state_code, state_name
+        )
+
+    def test_zip_code_invalid(self):
+        state = StateFactory()
+        zipcode = ZipCodeFactory(
+            state=state,
+            zipcode=f'{randrange(1, 10**4):04}',
+        )
+        with pytest.raises(ValidationError):
+            zipcode.full_clean()
+
+    def test_zip_code_valid(self):
+        state = StateFactory()
+        zipcode = ZipCodeFactory(
+            state=state,
+            zipcode=f'{randrange(1, 10**5):05}',
+            geometry=[],
+        )
+        with pytest.raises(ValidationError):
+            zipcode.full_clean()
+
+    def test_geometry_invalid(self):
+        state = StateFactory()
+        zipcode = ZipCodeFactory(
+            state=state,
+            zipcode=f'{randrange(1, 10**5):05}',
+            geometry=[],
+        )
+        with pytest.raises(ValidationError):
+            zipcode.full_clean()
 
 
 class TestMedication:
