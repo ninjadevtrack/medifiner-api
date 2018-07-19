@@ -42,8 +42,8 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
 
-
     'activity_log',
+    'corsheaders',
     'django_celery_beat',
     'localflavor',
     'phonenumber_field',
@@ -89,6 +89,7 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE = (
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -105,6 +106,9 @@ WSGI_APPLICATION = 'medfinder.wsgi.application'
 
 USE_TZ = True
 TIME_ZONE = 'UTC'
+
+# --- CORS RULES ---
+CORS_ORIGIN_ALLOW_ALL = True
 
 # --- ACTIVITY LOG ---
 
@@ -185,7 +189,7 @@ CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/')
 #     },
 # }
 
-#DEBUG TOOLBAR
+# DEBUG TOOLBAR
 ENABLE_DEBUG_TOOLBAR = env.bool(
     'DEBUG',
     default=False,
