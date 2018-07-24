@@ -273,9 +273,11 @@ US_STATES_DATABASE = env(
             'master/data/geojson/us-states.json',
 )
 
+# Use the {}_{} to format with the correspondent state code and name
 US_ZIPCODES_DATABASE = env(
     'US_ZIPCODES_DATABASE',
-    default='https://github.com/OpenDataDE/State-zip-code-GeoJSON',
+    default='https://raw.githubusercontent.com/OpenDataDE/'
+            'State-zip-code-GeoJSON/master/{}_{}_zip_codes_geo.min.json',
 )
 
 # --- SENTRY ---

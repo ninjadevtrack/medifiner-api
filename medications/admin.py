@@ -8,6 +8,7 @@ from .models import (
     ProviderMedicationThrough,
     ExistingMedication,
     State,
+    ZipCode,
 )
 
 
@@ -37,11 +38,27 @@ class StateAdmin(admin.ModelAdmin):
         'state_name',
         'geometry',
     )
+    search_fields = ('state_name', 'state_code')
 
     def display_state_code(self, obj):
         return obj.state_code
 
     display_state_code.short_description = _('state code')
+
+
+@admin.register(ZipCode)
+class ZipCodeAdmin(admin.ModelAdmin):
+    model = ZipCode
+    readonly_fields = (
+        'zipcode',
+        'state',
+        'geometry',
+    )
+    search_fields = (
+        'zipcode',
+        'state__state_name',
+        'state__state_code',
+    )
 
 
 @admin.register(ExistingMedication)
