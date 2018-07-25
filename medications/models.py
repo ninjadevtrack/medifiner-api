@@ -72,6 +72,11 @@ class State(models.Model):
         _('geometry'),
         default=dict,
     )
+    state_us_id = models.PositiveIntegerField(
+        _('state us id'),
+        null=True,
+        unique=True,
+    )
 
     class Meta:
         verbose_name = _('state')
@@ -102,6 +107,30 @@ class ZipCode(models.Model):
 
     def __str__(self):
         return '{} - {}'.format(self.zipcode, self.state)
+
+
+class County(models.Model):
+    county_name = models.CharField(
+        _('us county name'),
+        max_length=255,
+        blank=True,
+    )
+    geometry = JSONField(
+        _('geometry'),
+        default=dict,
+    )
+    state = models.ForeignKey(
+        State,
+        related_name='counties',
+        on_delete=models.CASCADE,
+    )
+
+    class Meta:
+        verbose_name = _('county')
+        verbose_name_plural = _('counties')
+
+    def __str__(self):
+        return self.county_name
 
 
 class Provider(models.Model):

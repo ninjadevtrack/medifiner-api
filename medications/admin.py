@@ -7,6 +7,7 @@ from .models import (
     Medication,
     ProviderMedicationThrough,
     ExistingMedication,
+    County,
     State,
     ZipCode,
 )
@@ -27,16 +28,18 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
 class StateAdmin(admin.ModelAdmin):
 
     model = State
-    list_display = ('state_name', 'display_state_code')
+    list_display = ('state_name', 'display_state_code', 'state_us_id')
     fields = (
         'display_state_code',
         'state_name',
+        'state_us_id',
         'geometry',
     )
     readonly_fields = (
         'display_state_code',
         'state_name',
         'geometry',
+        'state_us_id'
     )
     search_fields = ('state_name', 'state_code')
 
@@ -59,6 +62,24 @@ class ZipCodeAdmin(admin.ModelAdmin):
         'state__state_name',
         'state__state_code',
     )
+
+
+@admin.register(County)
+class CountyAdmin(admin.ModelAdmin):
+
+    model = County
+    list_display = ('county_name', 'state',)
+    fields = (
+        'county_name',
+        'state',
+        'geometry',
+    )
+    readonly_fields = (
+        'county_name',
+        'state',
+        'geometry',
+    )
+    search_fields = ('county_name', 'state__state_name', 'state__state_code')
 
 
 @admin.register(ExistingMedication)
