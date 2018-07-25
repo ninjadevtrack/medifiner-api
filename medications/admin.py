@@ -2,12 +2,12 @@ from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
 from .models import (
+    County,
+    ExistingMedication,
+    Medication,
     Organization,
     Provider,
-    Medication,
     ProviderMedicationThrough,
-    ExistingMedication,
-    County,
     State,
     ZipCode,
 )
@@ -16,8 +16,15 @@ from .models import (
 @admin.register(ProviderMedicationThrough)
 class ProviderMedicationThroughAdmin(admin.ModelAdmin):
 
-    model = ProviderMedicationThrough
-    list_display = ('__str__', 'date', 'latest', 'level')
+    list_display = (
+        '__str__',
+        'date',
+        'latest',
+        'level',
+    )
+    list_filter = (
+        'level',
+    )
     readonly_fields = (
         'level',
         'date',
@@ -27,8 +34,11 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
 @admin.register(State)
 class StateAdmin(admin.ModelAdmin):
 
-    model = State
-    list_display = ('state_name', 'display_state_code', 'state_us_id')
+    list_display = (
+        'state_name',
+        'display_state_code',
+        'state_us_id',
+    )
     fields = (
         'display_state_code',
         'state_name',
@@ -41,7 +51,10 @@ class StateAdmin(admin.ModelAdmin):
         'geometry',
         'state_us_id'
     )
-    search_fields = ('state_name', 'state_code')
+    search_fields = (
+        'state_name',
+        'state_code',
+    )
 
     def display_state_code(self, obj):
         return obj.state_code
@@ -51,11 +64,14 @@ class StateAdmin(admin.ModelAdmin):
 
 @admin.register(ZipCode)
 class ZipCodeAdmin(admin.ModelAdmin):
-    model = ZipCode
+
     readonly_fields = (
         'zipcode',
         'state',
         'geometry',
+    )
+    list_filter = (
+        'state',
     )
     search_fields = (
         'zipcode',
@@ -67,8 +83,13 @@ class ZipCodeAdmin(admin.ModelAdmin):
 @admin.register(County)
 class CountyAdmin(admin.ModelAdmin):
 
-    model = County
-    list_display = ('county_name', 'state',)
+    list_display = (
+        'county_name',
+        'state',
+    )
+    list_filter = (
+        'state',
+    )
     fields = (
         'county_name',
         'state',
@@ -79,17 +100,90 @@ class CountyAdmin(admin.ModelAdmin):
         'state',
         'geometry',
     )
-    search_fields = ('county_name', 'state__state_name', 'state__state_code')
+    search_fields = (
+        'county_name',
+        'state__state_name',
+        'state__state_code',
+    )
 
 
 @admin.register(ExistingMedication)
 class ExistingMedicationAdmin(admin.ModelAdmin):
-    model = ExistingMedication
-    search_fields = ('ndc', 'description')
-    readonly_fields = ('import_date', )
-    list_display = ('ndc', 'import_date', 'description')
+
+    list_display = (
+        'ndc',
+        'import_date',
+        'description',
+    )
+    readonly_fields = (
+        'import_date',
+    )
+    search_fields = (
+        'ndc',
+        'description',
+    )
 
 
-admin.site.register(Organization)
-admin.site.register(Provider)
-admin.site.register(Medication)
+@admin.register(Medication)
+class MedicationAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'ndc',
+    )
+    readonly_fields = (
+        'ndc',
+    )
+
+    search_fields = (
+        'ndc',
+        'name',
+    )
+
+
+@admin.register(Organization)
+class OrganizationAdmin(admin.ModelAdmin):
+    list_display = (
+        'organization_name',
+        'phone',
+        'user',
+        'registration_date'
+    )
+
+    search_fields = (
+        'organization_name',
+        'contact_name',
+        'user',
+    )
+
+
+@admin.register(Provider)
+class ProviderAdmin(admin.ModelAdmin):
+    list_display = (
+        '_name',
+        'store_number',
+        'organization',
+        'type',
+        'phone',
+        'related_zipcode',
+        'state',
+        'full_address',
+    )
+    list_display_links = (
+        'store_number',
+        '_name',
+    )
+    list_filter = (
+        'type',
+        'related_zipcode__state',
+    )
+    search_fields = (
+        'name',
+        'store_number',
+        'organization',
+        'full_address',
+    )
+
+    def _name(self, obj):
+        if obj.name:
+            return obj.name
+        return obj

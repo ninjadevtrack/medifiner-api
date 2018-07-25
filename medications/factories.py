@@ -1,9 +1,9 @@
 import factory
 from .models import (
+    ExistingMedication,
+    Medication,
     Organization,
     Provider,
-    Medication,
-    ExistingMedication,
     ProviderMedicationThrough,
     State,
     ZipCode,

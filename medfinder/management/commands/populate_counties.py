@@ -3,7 +3,7 @@ import requests
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 
-from medications.models import State, County
+from medications.models import County, State
 
 
 class Command(BaseCommand):
