@@ -72,6 +72,11 @@ class State(models.Model):
         _('geometry'),
         default=dict,
     )
+    state_us_id = models.PositiveIntegerField(
+        _('state us id'),
+        null=True,
+        unique=True,
+    )
 
     class Meta:
         verbose_name = _('state')
@@ -125,7 +130,7 @@ class County(models.Model):
         verbose_name_plural = _('counties')
 
     def __str__(self):
-        return '{} - {}'.format(self.county_name, self.state)
+        return self.county_name
 
 
 class Provider(models.Model):

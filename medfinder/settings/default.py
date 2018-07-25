@@ -266,7 +266,7 @@ PHONENUMBER_DEFAULT_REGION = 'US'
 
 DECIMAL_SEPARATOR = '.'
 
-# --- STATES & ZIPCODES ---
+# --- STATES, COUNTIES & ZIPCODES ---
 US_STATES_DATABASE = env(
     'US_STATES_DATABASE',
     default='https://raw.githubusercontent.com/PublicaMundi/MappingAPI/'
@@ -276,6 +276,12 @@ US_STATES_DATABASE = env(
 US_ZIPCODES_DATABASE = env(
     'US_ZIPCODES_DATABASE',
     default='https://github.com/OpenDataDE/State-zip-code-GeoJSON',
+)
+
+US_COUNTIES_DATABASE = env(
+    'US_COUNTIES_DATABASE',
+    default='http://eric.clst.org/assets/wiki/uploads/'
+            'Stuff/gz_2010_us_050_00_500k.json',
 )
 
 # --- SENTRY ---

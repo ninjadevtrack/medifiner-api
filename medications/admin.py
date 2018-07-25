@@ -27,22 +27,42 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
 class StateAdmin(admin.ModelAdmin):
 
     model = State
-    list_display = ('state_name', 'display_state_code')
+    list_display = ('state_name', 'display_state_code', 'state_us_id')
     fields = (
         'display_state_code',
         'state_name',
+        'state_us_id',
         'geometry',
     )
     readonly_fields = (
         'display_state_code',
         'state_name',
         'geometry',
+        'state_us_id'
     )
 
     def display_state_code(self, obj):
         return obj.state_code
 
     display_state_code.short_description = _('state code')
+
+
+@admin.register(County)
+class CountyAdmin(admin.ModelAdmin):
+
+    model = County
+    list_display = ('county_name', 'state',)
+    fields = (
+        'county_name',
+        'state',
+        'geometry',
+    )
+    readonly_fields = (
+        'county_name',
+        'state',
+        'geometry',
+    )
+    search_fields = ('county_name', 'state__state_name', 'state__state_code')
 
 
 @admin.register(ExistingMedication)
@@ -56,4 +76,3 @@ class ExistingMedicationAdmin(admin.ModelAdmin):
 admin.site.register(Organization)
 admin.site.register(Provider)
 admin.site.register(Medication)
-admin.site.register(County)

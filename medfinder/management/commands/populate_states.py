@@ -19,6 +19,7 @@ class Command(BaseCommand):
         response = requests.get(database_json)
         json = response.json()
         for feature in json['features']:
+            state_us_id = feature['id']
             state_name = feature['properties']['name']
             state_geometry = feature['geometry']
             state_code = dict_states.get(state_name)
@@ -26,4 +27,5 @@ class Command(BaseCommand):
                 state_code=state_code,
                 state_name=state_name,
                 geometry=state_geometry,
+                state_us_id=state_us_id,
             )
