@@ -7,6 +7,7 @@ from .models import (
     Medication,
     ProviderMedicationThrough,
     ExistingMedication,
+    County,
     State,
 )
 
@@ -55,3 +56,4 @@ class ExistingMedicationAdmin(admin.ModelAdmin):
 admin.site.register(Organization)
 admin.site.register(Provider)
 admin.site.register(Medication)
+admin.site.register(County)
