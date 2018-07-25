@@ -164,7 +164,7 @@ class ProviderAdmin(admin.ModelAdmin):
         'organization',
         'type',
         'phone',
-        'related_zipcode',
+        'zip',
         'state',
         'full_address',
     )

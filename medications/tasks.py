@@ -1,13 +1,14 @@
 import re
 import csv
 
-from io import BytesIO
-from zipfile import ZipFile
-from urllib.request import urlopen
 from celery import shared_task
 from celery.decorators import task
-from django.core.cache import cache
 from django.conf import settings
+from django.core.cache import cache
+from django.core.exceptions import MultipleObjectsReturned
+from io import BytesIO
+from urllib.request import urlopen
+from zipfile import ZipFile
 
 from .models import (
     ExistingMedication,
@@ -16,6 +17,7 @@ from .models import (
     Provider,
     ProviderMedicationThrough,
     TemporaryFile,
+    ZipCode,
 )
 
 
@@ -53,7 +55,14 @@ def generate_medications(temporary_csv_file_id, organization_id):
                 provider and provider.store_number != store_number
             ):
                 # Check if we already have a provider cached and if it is the
-                # same as the next in line to avoid too much queries to the DB.
+                # same as the next in line to avoid too much queries to the DB
+                # and try to get the zipcode object to relate it to provider.
+                try:
+                    zipcode_obj = ZipCode.objects.get(zipcode=zip_code)
+                except MultipleObjectsReturned:
+                    zipcode_obj = ZipCode.objects.filter(zipcode=zip_code)[0]
+                except ZipCode.DoesNotExist:
+                    zipcode_obj = None
                 provider, _ = Provider.objects.get_or_create(
                     organization=organization,
                     store_number=store_number,
@@ -62,6 +71,7 @@ def generate_medications(temporary_csv_file_id, organization_id):
                     zip=zip_code,
                     state=state,
                     phone=phone,
+                    related_zipcode=zipcode_obj,
                 )
             if not medication or (medication.ndc != ndc_code):
                 # Will do the same check as in provider
