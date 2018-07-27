@@ -150,33 +150,16 @@ class GeoStateWithMedicationsSerializer(serializers.ModelSerializer):
         properties = OrderedDict()
         properties['name'] = instance.state_name
         # TODO get_supply to make the calculation
-        properties['supply'] = {'low': 0, 'medium': 0, 'high': 0}
+        # supply_levels = self.get_supplies(instance.medication_levels)
+        properties['supplies'] = {'low': 0, 'medium': 0, 'high': 0}
+        properties['supply'] = 'high' # TODO get supply
 
         return properties
 
-    def to_internal_value(self, data):
-        """
-        Override the parent method to first remove the GeoJSON formatting
-        """
-        if 'properties' in data:
-            data = self.unformat_geojson(data)
-        return super().to_internal_value(data)
 
-    def unformat_geojson(self, feature):
-        """
-        This function should return a dictionary containing keys which maps
-        to serializer fields.
-        Remember that GeoJSON contains a key "properties" which contains the
-        feature metadata. This should be flattened to make sure this
-        metadata is stored in the right serializer fields.
-        :param feature: The dictionary containing the feature data directly
-                        from the GeoJSON data.
-        :return: A new dictionary which maps the GeoJSON values to
-                 serializer fields
-        """
-        attrs = feature["properties"]
-
-        if 'geometry' in feature:
-            attrs[self.Meta.geo_field] = feature['geometry']
-
-        return attrs
+    # def get_supplies(self, supply_levels):
+    #     low = 0
+    #     medium = 0
+    #     high = 0
+    #     for level in supply_levels:
+    #         pass

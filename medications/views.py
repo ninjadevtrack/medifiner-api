@@ -1,3 +1,5 @@
+from django.db.models import Prefetch, Subquery, OuterRef, Q
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status, viewsets
@@ -12,7 +14,12 @@ from .serializers import (
     StateSerializer,
     GeoStateWithMedicationsSerializer,
 )
-from .models import TemporaryFile, MedicationName, State
+from .models import (
+    TemporaryFile,
+    MedicationName,
+    State,
+    ProviderMedicationThrough,
+)
 
 
 class CSVUploadView(GenericAPIView):
@@ -60,4 +67,15 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
         med_id = self.request.query_params.get('med_id')
         if not med_id:
             return State.objects.none()
-        return State.objects.all() # Prefetch the ProviderMedication neccesaries
+        # Annotate the list of the medication levels for every state
+        # to be used to calculate the low/medium/high after in the serializer
+        qs = State.objects.all().annotate(
+            medication_levels=ArrayAgg(
+                'zipcodes__providers__provider_medication__level',
+                filter=Q(
+                        zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
+                        zipcodes__providers__provider_medication__latest=True,
+                )
+            )
+        )
+        return qs
