@@ -289,6 +289,20 @@ class Provider(models.Model):
         super().save(*args, **kwargs)
 
 
+class MedicationName(models.Model):
+    name = models.CharField(
+        _('name'),
+        max_length=255,
+    )
+
+    class Meta:
+        verbose_name = _('medication name')
+        verbose_name_plural = _('medication names')
+
+    def __str__(self):
+        return self.name
+
+
 class Medication(models.Model):
     name = models.CharField(
         _('medication name'),
@@ -298,6 +312,12 @@ class Medication(models.Model):
         _('national drug code'),
         max_length=32,
         unique=True,
+    )
+    medication_name = models.ForeignKey(
+        MedicationName,
+        related_name='medications',
+        on_delete=models.CASCADE,
+        null=True,
     )
 
     class Meta:

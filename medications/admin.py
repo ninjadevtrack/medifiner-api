@@ -5,6 +5,7 @@ from .models import (
     County,
     ExistingMedication,
     Medication,
+    MedicationName,
     Organization,
     Provider,
     ProviderMedicationThrough,
@@ -129,6 +130,7 @@ class MedicationAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'ndc',
+        'medication_name',
     )
     readonly_fields = (
         'ndc',
@@ -136,6 +138,19 @@ class MedicationAdmin(admin.ModelAdmin):
 
     search_fields = (
         'ndc',
+        'name',
+    )
+    list_filter = (
+        'medication_name',
+    )
+
+
+@admin.register(MedicationName)
+class MedicationName(admin.ModelAdmin):
+    list_display = (
+        'name',
+    )
+    search_fields = (
         'name',
     )
 

@@ -1,13 +1,13 @@
 from django.utils.translation import ugettext_lazy as _
 
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from medications.tasks import generate_medications
-from .serializers import CSVUploadSerializer
-from .models import TemporaryFile
+from .serializers import CSVUploadSerializer, MedicationNameSerializer
+from .models import TemporaryFile, MedicationName
 
 
 class CSVUploadView(GenericAPIView):
@@ -28,3 +28,12 @@ class CSVUploadView(GenericAPIView):
             {'status': _('The medications creation proccess has been queued')},
             status=status.HTTP_200_OK,
         )
+
+
+class MedicationNameViewSet(viewsets.ModelViewSet):
+    serializer_class = MedicationNameSerializer
+    permission_classes = (IsAuthenticated,)
+    allowed_methods = ['GET']
+
+    def get_queryset(self):
+        return MedicationName.objects.prefetch_related('medications')

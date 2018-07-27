@@ -5,6 +5,7 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 from .constants import field_rows
+from .models import ProviderMedicationThrough, MedicationName, Medication
 
 
 class CSVUploadSerializer(serializers.Serializer):
@@ -44,3 +45,34 @@ class CSVUploadSerializer(serializers.Serializer):
         data['organization_id'] = organization.id
 
         return data
+
+
+class MedicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Medication
+        fields = (
+            'id',
+            'name',
+            'ndc',
+        )
+
+
+class MedicationNameSerializer(serializers.ModelSerializer):
+    medications = MedicationSerializer(many=True)
+
+    class Meta:
+        model = MedicationName
+        fields = (
+            'id',
+            'name',
+            'medications',
+        )
+
+
+# class LocationSerializer(GeoFeatureModelSerializer):
+
+#     class Meta:
+#         model = ProviderMedicationThrough
+#         geo_field = "provider"
+#         id_field = False
+#         fields = ('id', 'address', 'city', 'state')
