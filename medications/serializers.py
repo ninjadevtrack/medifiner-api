@@ -6,7 +6,12 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 from .constants import field_rows
-from .models import ProviderMedicationThrough, MedicationName, Medication, State
+from .models import (
+    MedicationName,
+    Medication,
+    State,
+)
+from .utils import get_supplies
 
 
 class CSVUploadSerializer(serializers.Serializer):
@@ -149,17 +154,7 @@ class GeoStateWithMedicationsSerializer(serializers.ModelSerializer):
         """
         properties = OrderedDict()
         properties['name'] = instance.state_name
-        # TODO get_supply to make the calculation
-        # supply_levels = self.get_supplies(instance.medication_levels)
-        properties['supplies'] = {'low': 0, 'medium': 0, 'high': 0}
-        properties['supply'] = 'high' # TODO get supply
-
+        supplies, supply = get_supplies(instance.medication_levels)
+        properties['supplies'] = supplies
+        properties['supply'] = supply
         return properties
-
-
-    # def get_supplies(self, supply_levels):
-    #     low = 0
-    #     medium = 0
-    #     high = 0
-    #     for level in supply_levels:
-    #         pass

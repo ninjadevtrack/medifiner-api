@@ -366,7 +366,6 @@ class ProviderMedicationThrough(models.Model):
 
     def save(self, *args, **kwargs):
         # Using a simple map for now, according to the specs
-        # TODO: We need to ask client if this can get more complicated.
         supply_to_level_map = {
             '<24': 1,
             '24': 2,
