@@ -1,11 +1,12 @@
 import csv
+from collections import OrderedDict
 
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import serializers
 
 from .constants import field_rows
-from .models import ProviderMedicationThrough, MedicationName, Medication
+from .models import ProviderMedicationThrough, MedicationName, Medication, State
 
 
 class CSVUploadSerializer(serializers.Serializer):
@@ -47,6 +48,15 @@ class CSVUploadSerializer(serializers.Serializer):
         return data
 
 
+class StateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = State
+        fields = (
+            'id',
+            'state_name',
+            'state_code',
+        )
+
 class MedicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Medication
@@ -69,10 +79,104 @@ class MedicationNameSerializer(serializers.ModelSerializer):
         )
 
 
-# class LocationSerializer(GeoFeatureModelSerializer):
+class GeoStateWithMedicationsListSerializer(serializers.ListSerializer):
 
-#     class Meta:
-#         model = ProviderMedicationThrough
-#         geo_field = "provider"
-#         id_field = False
-#         fields = ('id', 'address', 'city', 'state')
+    @property
+    def data(self):
+        return super(serializers.ListSerializer, self).data
+
+    def to_representation(self, data):
+        """
+        Add GeoJSON compatible formatting to a serialized queryset list
+        """
+        return OrderedDict((
+            ("type", "FeatureCollection"),
+            ("zoom", 2),
+            ("center", ""),# TODO
+            ("features", super().to_representation(data))
+        ))
+
+class GeoStateWithMedicationsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = State
+        fields = '__all__'
+
+    @classmethod
+    def many_init(cls, *args, **kwargs):
+        child_serializer = cls(*args, **kwargs)
+        list_kwargs = {'child': child_serializer}
+        list_kwargs.update(dict([
+            (key, value) for key, value in kwargs.items()
+            if key in serializers.LIST_SERIALIZER_KWARGS
+        ]))
+        meta = getattr(cls, 'Meta', None)
+        list_serializer_class = getattr(
+            meta,
+            'list_serializer_class',
+            GeoStateWithMedicationsListSerializer,
+        )
+        return list_serializer_class(*args, **list_kwargs)
+
+    def to_representation(self, instance):
+        """
+        Serialize objects -> primitives.
+        """
+        # prepare OrderedDict geojson structure
+        feature = OrderedDict()
+
+        # required type attribute
+        # must be "Feature" according to GeoJSON spec
+        feature["type"] = "Feature"
+
+        # required geometry attribute
+        # MUST be present in output according to GeoJSON spec
+        feature["geometry"] = instance.geometry
+
+        # GeoJSON properties
+        feature["properties"] = self.get_properties(instance)
+
+        return feature
+
+    def get_properties(self, instance):
+        """
+        Get the feature metadata which will be used for the GeoJSON
+        "properties" key.
+
+        By default it returns all serializer fields excluding those used for
+        the geometry and the bounding box.
+
+        """
+        properties = OrderedDict()
+        properties['name'] = instance.state_name
+        # TODO get_supply to make the calculation
+        properties['supply'] = {'low': 0, 'medium': 0, 'high': 0}
+
+        return properties
+
+    def to_internal_value(self, data):
+        """
+        Override the parent method to first remove the GeoJSON formatting
+        """
+        if 'properties' in data:
+            data = self.unformat_geojson(data)
+        return super().to_internal_value(data)
+
+    def unformat_geojson(self, feature):
+        """
+        This function should return a dictionary containing keys which maps
+        to serializer fields.
+        Remember that GeoJSON contains a key "properties" which contains the
+        feature metadata. This should be flattened to make sure this
+        metadata is stored in the right serializer fields.
+        :param feature: The dictionary containing the feature data directly
+                        from the GeoJSON data.
+        :return: A new dictionary which maps the GeoJSON values to
+                 serializer fields
+        """
+        attrs = feature["properties"]
+
+        if 'geometry' in feature:
+            attrs[self.Meta.geo_field] = feature['geometry']
+
+        return attrs

@@ -1,13 +1,18 @@
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status, viewsets
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from medications.tasks import generate_medications
-from .serializers import CSVUploadSerializer, MedicationNameSerializer
-from .models import TemporaryFile, MedicationName
+from .serializers import (
+    CSVUploadSerializer,
+    MedicationNameSerializer,
+    StateSerializer,
+    GeoStateWithMedicationsSerializer,
+)
+from .models import TemporaryFile, MedicationName, State
 
 
 class CSVUploadView(GenericAPIView):
@@ -37,3 +42,22 @@ class MedicationNameViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return MedicationName.objects.prefetch_related('medications')
+
+
+class StateViewSet(viewsets.ModelViewSet):
+    serializer_class = StateSerializer
+    permission_classes = (IsAuthenticated,)
+    allowed_methods = ['GET']
+    queryset = State.objects.all()
+
+
+class GeoStatsStatesWithMedicationsView(ListAPIView):
+    serializer_class = GeoStateWithMedicationsSerializer
+    permission_classes = (IsAuthenticated,)
+    allowed_methods = ['GET']
+
+    def get_queryset(self):
+        med_id = self.request.query_params.get('med_id')
+        if not med_id:
+            return State.objects.none()
+        return State.objects.all() # Prefetch the ProviderMedication neccesaries
