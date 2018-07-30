@@ -14,6 +14,7 @@ from .models import (
     Medication,
     State,
     County,
+    ZipCode,
 )
 from .utils import get_supplies
 
@@ -131,7 +132,7 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         ))
 
 
-def get_properties(instance, geographic_type):
+def get_properties(instance, geographic_type=None):
     """
     Get the feature metadata which will be used for the GeoJSON
     "properties" key.
@@ -142,7 +143,6 @@ def get_properties(instance, geographic_type):
         properties['name'] = instance.state_name
     elif geographic_type == 'county':
         properties['name'] = instance.county_name
-    # ZIPCODE?
     supplies, supply = get_supplies(instance.medication_levels)
     properties['supplies'] = supplies
     properties['supply'] = supply
@@ -209,3 +209,37 @@ class GeoCountyWithMedicationsSerializer(GeoJSONWithMedicationsSerializer):
         fields = '__all__'
         list_serializer_class = GeoCountyWithMedicationsListSerializer
         geographic_type = 'county'
+
+
+class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
+    zoom = serializers.SerializerMethodField()
+    center = serializers.SerializerMethodField()
+    properties = serializers.SerializerMethodField()
+    geometry = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ZipCode
+        fields = (
+            'type',
+            'zoom',
+            'center',
+            'properties',
+            'geometry',
+        )
+
+    def get_type(self, obj):
+        return 'Feature'
+
+    def get_zoom(self, data):
+        return 25
+
+    def get_center(self, obj):
+        return json.loads(obj.centroid)
+
+    def get_properties(self, obj):
+        properties = get_properties(obj)
+        return properties
+
+    def get_geometry(self, obj):
+        return json.loads(obj.geometry.geojson)

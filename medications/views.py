@@ -1,11 +1,12 @@
 from django.db.models import Q
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
+from django.shortcuts import get_object_or_404
 
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status, viewsets
-from rest_framework.generics import GenericAPIView, ListAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -16,12 +17,14 @@ from .serializers import (
     StateSerializer,
     GeoStateWithMedicationsSerializer,
     GeoCountyWithMedicationsSerializer,
+    GeoZipCodeWithMedicationsSerializer,
 )
 from .models import (
     County,
     TemporaryFile,
     MedicationName,
     State,
+    ZipCode,
 )
 
 
@@ -76,10 +79,10 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
         # to be used to calculate the low/medium/high after in the serializer
         qs = State.objects.all().annotate(
             medication_levels=ArrayAgg(
-                'zipcodes__providers__provider_medication__level',
+                'state_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                        zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
-                        zipcodes__providers__provider_medication__latest=True,
+                        state_zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
+                        state_zipcodes__providers__provider_medication__latest=True, #noqa
                 )
             ),
         )
@@ -114,4 +117,30 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
         )
         return qs
 
-#TODO view for zipcode selected
+
+class GeoZipCodeWithMedicationsView(RetrieveAPIView):
+    serializer_class = GeoZipCodeWithMedicationsSerializer
+    permission_classes = (IsAuthenticated,)
+    lookup_field = 'zipcode'
+
+    def get_queryset(self):
+        med_id = self.request.query_params.get('med_id')
+        if not med_id:
+            return ZipCode.objects.none()
+        zipcode_qs = ZipCode.objects.annotate(
+            medication_levels=ArrayAgg(
+                'providers__provider_medication__level',
+                filter=Q(
+                        providers__provider_medication__medication__medication_name__id=med_id, #noqa
+                        providers__provider_medication__latest=True,
+                )
+            ),
+            centroid=AsGeoJSON(Centroid('geometry')),
+        )
+        return zipcode_qs
+
+    def get_object(self):
+        zipcode = self.kwargs.get('zipcode')
+        qs = self.get_queryset()
+        obj = get_object_or_404(qs, zipcode=zipcode)
+        return obj
