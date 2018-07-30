@@ -1,7 +1,10 @@
 import csv
+import json
+
 from collections import OrderedDict
 
 from django.utils.translation import ugettext_lazy as _
+from django.conf import settings
 
 from rest_framework import serializers
 
@@ -11,7 +14,7 @@ from .models import (
     Medication,
     State,
 )
-from .utils import get_supplies, get_center_point
+from .utils import get_supplies
 
 
 class CSVUploadSerializer(serializers.Serializer):
@@ -97,9 +100,10 @@ class GeoStateWithMedicationsListSerializer(serializers.ListSerializer):
         return OrderedDict((
             ("type", "FeatureCollection"),
             ("zoom", 2),
-            ("center", get_center_point(super().to_representation(data))),# TODO
+            ("center", settings.GEOJSON_GEOGRAPHIC_CONTINENTAL_CENTER_US),
             ("features", super().to_representation(data))
         ))
+
 
 class GeoStateWithMedicationsSerializer(serializers.ModelSerializer):
 
@@ -136,7 +140,7 @@ class GeoStateWithMedicationsSerializer(serializers.ModelSerializer):
 
         # required geometry attribute
         # MUST be present in output according to GeoJSON spec
-        feature["geometry"] = instance.geometry.geojson
+        feature["geometry"] = json.loads(instance.geometry.geojson)
 
         # GeoJSON properties
         feature["properties"] = self.get_properties(instance)

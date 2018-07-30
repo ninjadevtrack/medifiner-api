@@ -1,5 +1,7 @@
-from django.db.models import Prefetch, Subquery, OuterRef, Q
+from django.db.models import Prefetch, Q
 from django.contrib.postgres.aggregates import ArrayAgg
+from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
+
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status, viewsets
@@ -18,7 +20,6 @@ from .models import (
     TemporaryFile,
     MedicationName,
     State,
-    ProviderMedicationThrough,
 )
 
 
@@ -76,7 +77,8 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
                         zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
                         zipcodes__providers__provider_medication__latest=True,
                 )
-            )
+            ),
+            centroid=AsGeoJSON(Centroid('geometry')), # TODO: add only to conties prefetch state
         )
         return qs
 

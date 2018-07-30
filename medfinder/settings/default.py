@@ -292,6 +292,11 @@ US_COUNTIES_DATABASE = env(
             'Stuff/gz_2010_us_050_00_500k.json',
 )
 
+GEOJSON_GEOGRAPHIC_CONTINENTAL_CENTER_US = {
+    "type": "Point",
+    "coordinates": [-98.579561, 39.828194],
+}
+
 # --- SENTRY ---
 RAVEN_DSN = env('RAVEN_DSN', default='')
 if RAVEN_DSN:
