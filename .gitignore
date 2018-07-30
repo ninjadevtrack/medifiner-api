@@ -56,3 +56,4 @@ celerybeat.pid
 celerybeat-schedule
 locale/
 .pytest_cache
+.DS_Store
