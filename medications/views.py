@@ -1,4 +1,4 @@
-from django.db.models import Prefetch, Q
+from django.db.models import Q
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
 
@@ -15,8 +15,10 @@ from .serializers import (
     MedicationNameSerializer,
     StateSerializer,
     GeoStateWithMedicationsSerializer,
+    GeoCountyWithMedicationsSerializer,
 )
 from .models import (
+    County,
     TemporaryFile,
     MedicationName,
     State,
@@ -78,11 +80,36 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
                         zipcodes__providers__provider_medication__latest=True,
                 )
             ),
-            centroid=AsGeoJSON(Centroid('geometry')), # TODO: add only to conties prefetch state
         )
         return qs
 
 
-#TODO: same view that state but for counties
+class GeoStatsCountiesWithMedicationsView(ListAPIView):
+    serializer_class = GeoCountyWithMedicationsSerializer
+    permission_classes = (IsAuthenticated,)
+    allowed_methods = ['GET']
+
+    def get_queryset(self):
+        med_id = self.request.query_params.get('med_id')
+        state = self.kwargs.pop('id')
+        if not med_id or not state:
+            return County.objects.none()
+        # Annotate the list of the medication levels for every county
+        # to be used to calculate the low/medium/high after in the serializer
+        qs = County.objects.filter(
+            state__id=state,
+        ).select_related(
+            'state',
+        ).annotate(
+            medication_levels=ArrayAgg( # TODO: relation without state once county/zipcode relation is made
+                'state__zipcodes__providers__provider_medication__level',
+                filter=Q(
+                        state__zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
+                        state__zipcodes__providers__provider_medication__latest=True, #noqa
+                )
+            ),
+            centroid=AsGeoJSON(Centroid('state__geometry')),
+        )
+        return qs
 
 #TODO view for zipcode selected

@@ -13,6 +13,7 @@ from .models import (
     MedicationName,
     Medication,
     State,
+    County,
 )
 from .utils import get_supplies
 
@@ -105,11 +106,43 @@ class GeoStateWithMedicationsListSerializer(serializers.ListSerializer):
         ))
 
 
-class GeoStateWithMedicationsSerializer(serializers.ModelSerializer):
+class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
 
-    class Meta:
-        model = State
-        fields = '__all__'
+    @property
+    def data(self):
+        return super(serializers.ListSerializer, self).data
+
+    def to_representation(self, data):
+        """
+        Add GeoJSON compatible formatting to a serialized queryset list
+        """
+        return OrderedDict((
+            ("type", "FeatureCollection"),
+            ("zoom", 10),
+            ("center", json.loads(data[0].centroid)),
+            ("features", super().to_representation(data))
+        ))
+
+
+def get_properties(instance, geographic_type):
+    """
+    Get the feature metadata which will be used for the GeoJSON
+    "properties" key.
+
+    """
+    properties = OrderedDict()
+    if geographic_type == 'state':
+        properties['name'] = instance.state_name
+    elif geographic_type == 'county':
+        properties['name'] = instance.county_name
+    # ZIPCODE?
+    supplies, supply = get_supplies(instance.medication_levels)
+    properties['supplies'] = supplies
+    properties['supply'] = supply
+    return properties
+
+
+class GeoJSONWithMedicationsSerializer(serializers.ModelSerializer):
 
     @classmethod
     def many_init(cls, *args, **kwargs):
@@ -123,8 +156,8 @@ class GeoStateWithMedicationsSerializer(serializers.ModelSerializer):
         list_serializer_class = getattr(
             meta,
             'list_serializer_class',
-            GeoStateWithMedicationsListSerializer,
         )
+        # cls.geographic_type = getattr(meta, 'geographic_type', 'state')
         return list_serializer_class(*args, **list_kwargs)
 
     def to_representation(self, instance):
@@ -143,22 +176,29 @@ class GeoStateWithMedicationsSerializer(serializers.ModelSerializer):
         feature["geometry"] = json.loads(instance.geometry.geojson)
 
         # GeoJSON properties
-        feature["properties"] = self.get_properties(instance)
+        geographic_type = getattr(
+            self.Meta,
+            'geographic_type',
+        )
+        feature["properties"] = get_properties(
+            instance, geographic_type)
 
         return feature
 
-    def get_properties(self, instance):
-        """
-        Get the feature metadata which will be used for the GeoJSON
-        "properties" key.
 
-        By default it returns all serializer fields excluding those used for
-        the geometry and the bounding box.
+class GeoStateWithMedicationsSerializer(GeoJSONWithMedicationsSerializer):
 
-        """
-        properties = OrderedDict()
-        properties['name'] = instance.state_name
-        supplies, supply = get_supplies(instance.medication_levels)
-        properties['supplies'] = supplies
-        properties['supply'] = supply
-        return properties
+    class Meta:
+        model = State
+        fields = '__all__'
+        list_serializer_class = GeoStateWithMedicationsListSerializer
+        geographic_type = 'state'
+
+
+class GeoCountyWithMedicationsSerializer(GeoJSONWithMedicationsSerializer):
+
+    class Meta:
+        model = County
+        fields = '__all__'
+        list_serializer_class = GeoCountyWithMedicationsListSerializer
+        geographic_type = 'county'
