@@ -58,7 +58,9 @@ class StateViewSet(viewsets.ModelViewSet):
     serializer_class = StateSerializer
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
-    queryset = State.objects.all()
+    queryset = State.objects.all().annotate(
+        county_list=ArrayAgg('counties__county_name'),
+    )
 
 
 class GeoStatsStatesWithMedicationsView(ListAPIView):

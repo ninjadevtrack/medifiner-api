@@ -98,8 +98,14 @@ class ZipCode(models.Model):
     )
     state = models.ForeignKey(
         State,
-        related_name='zipcodes',
+        related_name='state_zipcodes',
         on_delete=models.CASCADE,
+    )
+    county = models.ForeignKey(
+        State,
+        related_name='county_zipcodes',
+        on_delete=models.SET_NULL,
+        null=True,
     )
 
     class Meta:
