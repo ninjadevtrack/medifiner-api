@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.contrib.gis.db.models import GeometryField
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
@@ -68,9 +69,9 @@ class State(models.Model):
         max_length=255,
         blank=True,
     )
-    geometry = JSONField(
+    geometry = GeometryField(
         _('geometry'),
-        default=dict,
+        null=True,
     )
     state_us_id = models.PositiveIntegerField(
         _('state us id'),
@@ -91,14 +92,14 @@ class ZipCode(models.Model):
         _('zip code'),
         validators=[validate_zip],
     )
+    geometry = GeometryField(
+        _('geometry'),
+        null=True,
+    )
     state = models.ForeignKey(
         State,
         related_name='zipcodes',
         on_delete=models.CASCADE,
-    )
-    geometry = JSONField(
-        _('geometry'),
-        default=dict,
     )
 
     class Meta:
@@ -115,14 +116,14 @@ class County(models.Model):
         max_length=255,
         blank=True,
     )
-    geometry = JSONField(
-        _('geometry'),
-        default=dict,
-    )
     state = models.ForeignKey(
         State,
         related_name='counties',
         on_delete=models.CASCADE,
+    )
+    geometry = GeometryField(
+        _('geometry'),
+        null=True,
     )
 
     class Meta:

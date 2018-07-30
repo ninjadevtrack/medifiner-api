@@ -53,3 +53,8 @@ def get_supplies(supply_levels):
         low + medium + high,
     )
     return {'low': low, 'medium': medium, 'high': high}, dominant
+
+def get_center_point(data):
+    points = []
+    for feature in data:
+        feature['geometry']

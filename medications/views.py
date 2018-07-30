@@ -79,3 +79,8 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
             )
         )
         return qs
+
+
+#TODO: same view that state but for counties
+
+#TODO view for zipcode selected
