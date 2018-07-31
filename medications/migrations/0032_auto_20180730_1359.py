@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='zipcode',
             name='county',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='county_zipcodes', to='medications.State'),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='county_zipcodes', to='medications.County'),
         ),
         migrations.AlterField(
             model_name='zipcode',

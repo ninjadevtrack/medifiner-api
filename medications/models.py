@@ -87,38 +87,14 @@ class State(models.Model):
         return '{} - {}'.format(self.state_code, self.state_name)
 
 
-class ZipCode(models.Model):
-    zipcode = USZipCodeField(
-        _('zip code'),
-        validators=[validate_zip],
-    )
-    geometry = GeometryField(
-        _('geometry'),
-        null=True,
-    )
-    state = models.ForeignKey(
-        State,
-        related_name='state_zipcodes',
-        on_delete=models.CASCADE,
-    )
-    county = models.ForeignKey(
-        State,
-        related_name='county_zipcodes',
-        on_delete=models.SET_NULL,
-        null=True,
-    )
-
-    class Meta:
-        verbose_name = _('zip code')
-        verbose_name_plural = _('zip codes')
-
-    def __str__(self):
-        return '{} - {}'.format(self.zipcode, self.state)
-
-
 class County(models.Model):
     county_name = models.CharField(
         _('us county name'),
+        max_length=255,
+        blank=True,
+    )
+    county_name_slug = models.SlugField(
+        _('us county name slug'),
         max_length=255,
         blank=True,
     )
@@ -138,6 +114,35 @@ class County(models.Model):
 
     def __str__(self):
         return self.county_name
+
+
+class ZipCode(models.Model):
+    zipcode = USZipCodeField(
+        _('zip code'),
+        validators=[validate_zip],
+    )
+    geometry = GeometryField(
+        _('geometry'),
+        null=True,
+    )
+    state = models.ForeignKey(
+        State,
+        related_name='state_zipcodes',
+        on_delete=models.CASCADE,
+    )
+    county = models.ForeignKey(
+        County,
+        related_name='county_zipcodes',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = _('zip code')
+        verbose_name_plural = _('zip codes')
+
+    def __str__(self):
+        return '{} - {}'.format(self.zipcode, self.state)
 
 
 class Provider(models.Model):

@@ -69,6 +69,7 @@ class ZipCodeAdmin(admin.ModelAdmin):
     readonly_fields = (
         'zipcode',
         'state',
+        'county',
         'geometry',
     )
     list_filter = (
@@ -78,6 +79,7 @@ class ZipCodeAdmin(admin.ModelAdmin):
         'zipcode',
         'state__state_name',
         'state__state_code',
+        'county__county_name',
     )
 
 
@@ -94,6 +96,7 @@ class CountyAdmin(admin.ModelAdmin):
     fields = (
         'county_name',
         'state',
+        'county_name_slug',
         'geometry',
     )
     readonly_fields = (

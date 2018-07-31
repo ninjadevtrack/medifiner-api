@@ -19,3 +19,4 @@ To start project:
 	- `docker-compose -f dev.yml run django python manage.py populate_zipcodes`
 	- `docker-compose -f dev.yml run django python manage.py populate_medications`
 8. Api urls is /api/v1/
+9. Run `docker-compose -f dev.yml run django py.test` to run tests

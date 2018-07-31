@@ -106,11 +106,11 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
         ).select_related(
             'state',
         ).annotate(
-            medication_levels=ArrayAgg( # TODO: relation without state once county/zipcode relation is made
-                'state__zipcodes__providers__provider_medication__level',
+            medication_levels=ArrayAgg(
+                'county_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                        state__zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
-                        state__zipcodes__providers__provider_medication__latest=True, #noqa
+                        county_zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
+                        county_zipcodes__providers__provider_medication__latest=True, #noqa
                 )
             ),
             centroid=AsGeoJSON(Centroid('state__geometry')),
