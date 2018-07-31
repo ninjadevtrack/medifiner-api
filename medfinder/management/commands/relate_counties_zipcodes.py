@@ -1,10 +1,8 @@
-import json
+import csv
 import requests
 
-from django.db.models import Q
 from django.core.exceptions import MultipleObjectsReturned
 from django.core.management.base import BaseCommand, CommandError
-from django.utils.text import slugify
 
 from medications.models import County, State, ZipCode
 
@@ -23,66 +21,65 @@ class Command(BaseCommand):
         if not ZipCode.objects.exists():
             raise CommandError('You must generate zipcodes first.')
 
-        # county_check = []
-        # # The url accepts the status code, so we just have to change it while
-        # # iterating per state codes
-        # base_url = 'http://gomashup.com/json.php?fds=geo/usa/zipcode/state/{}'
+        not_related = []
 
-        # for state in State.objects.only('state_code', 'state_name'):
-        #     url = base_url.format(state.state_code)
-        #     print('Relate zipcodes to counties in {}'.format(state.state_name))
-        #     response = requests.get(url)
-        #     # Since the json that we get has ( and ) at the beggining and end
-        #     # we have to replace then by '' in order to load the json properly
-        #     content = response.text
-        #     content = content.replace('(', '')
-        #     content = content.replace(')', '')
-        #     response_json = json.loads(content)
-        #     for result in response_json['result']:
-        #         zipcode = result.get('Zipcode')
-        #         county_name = result.get('County')
-        #         county_name_slug = slugify(
-        #             result.get('County').replace('SAINT', 'st.')
-        #         )
-        #         county_name_no_space = result.get(
-        #             'County').replace('SAINT', 'st.').replace(' ', '')
-        #         if county_name_slug in county_check or county_name in county_check:
-        #             continue
-        #         try:
-        #             county = County.objects.get(
-        #                 county_name_slug__iexact=county_name_slug,
-        #                 state__state_code=state.state_code,
-        #             )
+        base_url = 'https://www2.census.gov/geo/docs/maps-data/data/rel/zcta_county_rel_10.txt'
+        response = requests.get(base_url)
+        reader = csv.DictReader(response.text.split('\n'))
+        for row in reader:
+            county = None
+            zip_obj = None
+            county_id = row.get('COUNTY')
+            geo_id = row.get('GEOID')
+            state = row.get('STATE')
+            if state == '72':
+                # Skip Puerto Rico since we dont have zipcodes for it
+                continue
+            try:
+                county = County.objects.get(
+                    county_id=county_id,
+                    geo_id=geo_id,
+                    state__state_us_id=state,
+                )
+            except County.DoesNotExist:
+                print(
+                    'Could not find county for id {} and geo id {}'.format(
+                        county_id,
+                        geo_id,
+                    )
+                )
+            except MultipleObjectsReturned:
+                # In very few cases the counties database gave us a duplicated
+                # counties for the same state, so in that case we just take the
+                # first since they are the same county.
+                county = County.objects.filter(
+                    county_id=county_id,
+                    geo_id=geo_id,
+                    state__state_us_id=state,
+                ).first()
 
-        #         except County.DoesNotExist:
-        #             try:
-        #                 county = County.objects.get(
-        #                     county_name__iexact=county_name_no_space.lower(),
-        #                     state__state_code=state.state_code,
-        #                 )
-        #             except County.DoesNotExist:
-        #                 county = County.objects.get(
-        #                     county_name__icontains=county_name.lower(),
-        #                     state__state_code=state.state_code,
-        #                 )
-        #         except MultipleObjectsReturned:
-        #             print('2 objects for {}'.format(county_name))
+            zipcode = row.get('ZCTA5')
+            try:
+                zip_obj = ZipCode.objects.get(
+                    zipcode=zipcode,
+                    state__state_us_id=state,
+                )
+            except ZipCode.DoesNotExist:
+                print(
+                    'Could not find zipcode {}'.format(
+                        zipcode,
+                    )
+                )
+            except MultipleObjectsReturned:
+                print(zipcode)
 
-        #         county_check = [county_name, county_name_slug]
+            if county and zip_obj:
+                zip_obj.counties.add(county)
+            else:
+                not_related.append((county, zip_obj))
+        print(
+            'List of (county, zipcode) that were not related: {}'.format(
+                not_related,
+            )
+        )
 
-        #         try:
-        #             zipcode_obj = ZipCode.objects.get(
-        #                 zipcode=zipcode,
-        #                 state__state_code=state.state_code,
-        #             )
-        #         except ZipCode.DoesNotExist:
-        #             # print('Zipcode {} not found, ommitting'.format(zipcode))
-        #             pass
-        #         except MultipleObjectsReturned:
-        #             print(zipcode)
-        #             raise CommandError(
-        #                 'ERROR, zipcodes should be unique for state',
-        #             )
-        #         if county and zipcode_obj:
-        #             zipcode_obj.county = county
-        #             zipcode_obj.save()

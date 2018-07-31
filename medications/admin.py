@@ -55,6 +55,7 @@ class StateAdmin(admin.ModelAdmin):
     search_fields = (
         'state_name',
         'state_code',
+        'state_us_id',
     )
 
     def display_state_code(self, obj):
@@ -69,7 +70,7 @@ class ZipCodeAdmin(admin.ModelAdmin):
     readonly_fields = (
         'zipcode',
         'state',
-        'county',
+        'counties',
         'geometry',
     )
     list_filter = (
@@ -79,7 +80,8 @@ class ZipCodeAdmin(admin.ModelAdmin):
         'zipcode',
         'state__state_name',
         'state__state_code',
-        'county__county_name',
+        'counties__county_name',
+        'state__state_us_id',
     )
 
 
@@ -89,6 +91,7 @@ class CountyAdmin(admin.ModelAdmin):
     list_display = (
         'county_name',
         'state',
+        'county_id',
     )
     list_filter = (
         'state',
@@ -97,17 +100,23 @@ class CountyAdmin(admin.ModelAdmin):
         'county_name',
         'state',
         'county_name_slug',
+        'county_id',
+        'geo_id',
         'geometry',
     )
     readonly_fields = (
         'county_name',
         'state',
+        'county_id',
+        'geo_id',
         'geometry',
     )
     search_fields = (
         'county_name',
         'state__state_name',
         'state__state_code',
+        'county_id',
+        'geo_id',
     )
 
 

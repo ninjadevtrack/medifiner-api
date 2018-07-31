@@ -107,6 +107,14 @@ class County(models.Model):
         _('geometry'),
         null=True,
     )
+    county_id = models.PositiveIntegerField(
+        _('county us id'),
+        null=True,
+    )
+    geo_id = models.PositiveIntegerField(
+        _('geo id'),
+        null=True,
+    )
 
     class Meta:
         verbose_name = _('county')
@@ -130,10 +138,9 @@ class ZipCode(models.Model):
         related_name='state_zipcodes',
         on_delete=models.CASCADE,
     )
-    county = models.ForeignKey(
+    counties = models.ManyToManyField(
         County,
         related_name='county_zipcodes',
-        on_delete=models.SET_NULL,
         null=True,
     )
 
