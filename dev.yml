@@ -8,9 +8,11 @@ services:
     ports:
       - "6379:6379"
   postgres:
-    image: postgres
-    ports:
-      - "5432:5432"
+    image: mdillon/postgis:10
+    environment:
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - data:/var/lib/postgresql/data/
   django:
     build:
       context: .
@@ -44,6 +46,8 @@ services:
       - postgres
       - redis
 volumes:
+  data:
+    driver: local
   media:
     driver: local
   redis:

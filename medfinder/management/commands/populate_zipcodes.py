@@ -2,7 +2,8 @@ import requests
 
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
-from json import JSONDecodeError
+from django.contrib.gis.geos import GEOSGeometry
+from json import JSONDecodeError, dumps
 
 from medications.models import State, ZipCode
 
@@ -29,7 +30,7 @@ class Command(BaseCommand):
                 state_response_json = requests.get(state_url).json()
                 for zipcode_json in state_response_json['features']:
                     zipcode = zipcode_json['properties']['ZCTA5CE10']
-                    geometry = zipcode_json['geometry']
+                    geometry = GEOSGeometry(dumps(zipcode_json['geometry']))
                     ZipCode.objects.create(
                         geometry=geometry,
                         zipcode=zipcode,

@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.contrib.gis.db.models import GeometryField
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
@@ -68,9 +69,9 @@ class State(models.Model):
         max_length=255,
         blank=True,
     )
-    geometry = JSONField(
+    geometry = GeometryField(
         _('geometry'),
-        default=dict,
+        null=True,
     )
     state_us_id = models.PositiveIntegerField(
         _('state us id'),
@@ -86,43 +87,33 @@ class State(models.Model):
         return '{} - {}'.format(self.state_code, self.state_name)
 
 
-class ZipCode(models.Model):
-    zipcode = USZipCodeField(
-        _('zip code'),
-        validators=[validate_zip],
-    )
-    state = models.ForeignKey(
-        State,
-        related_name='zipcodes',
-        on_delete=models.CASCADE,
-    )
-    geometry = JSONField(
-        _('geometry'),
-        default=dict,
-    )
-
-    class Meta:
-        verbose_name = _('zip code')
-        verbose_name_plural = _('zip codes')
-
-    def __str__(self):
-        return '{} - {}'.format(self.zipcode, self.state)
-
-
 class County(models.Model):
     county_name = models.CharField(
         _('us county name'),
         max_length=255,
         blank=True,
     )
-    geometry = JSONField(
-        _('geometry'),
-        default=dict,
+    county_name_slug = models.SlugField(
+        _('us county name slug'),
+        max_length=255,
+        blank=True,
     )
     state = models.ForeignKey(
         State,
         related_name='counties',
         on_delete=models.CASCADE,
+    )
+    geometry = GeometryField(
+        _('geometry'),
+        null=True,
+    )
+    county_id = models.PositiveIntegerField(
+        _('county us id'),
+        null=True,
+    )
+    geo_id = models.PositiveIntegerField(
+        _('geo id'),
+        null=True,
     )
 
     class Meta:
@@ -131,6 +122,34 @@ class County(models.Model):
 
     def __str__(self):
         return self.county_name
+
+
+class ZipCode(models.Model):
+    zipcode = USZipCodeField(
+        _('zip code'),
+        validators=[validate_zip],
+    )
+    geometry = GeometryField(
+        _('geometry'),
+        null=True,
+    )
+    state = models.ForeignKey(
+        State,
+        related_name='state_zipcodes',
+        on_delete=models.CASCADE,
+    )
+    counties = models.ManyToManyField(
+        County,
+        related_name='county_zipcodes',
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = _('zip code')
+        verbose_name_plural = _('zip codes')
+
+    def __str__(self):
+        return '{} - {}'.format(self.zipcode, self.state)
 
 
 class Provider(models.Model):
@@ -289,6 +308,20 @@ class Provider(models.Model):
         super().save(*args, **kwargs)
 
 
+class MedicationName(models.Model):
+    name = models.CharField(
+        _('name'),
+        max_length=255,
+    )
+
+    class Meta:
+        verbose_name = _('medication name')
+        verbose_name_plural = _('medication names')
+
+    def __str__(self):
+        return self.name
+
+
 class Medication(models.Model):
     name = models.CharField(
         _('medication name'),
@@ -298,6 +331,12 @@ class Medication(models.Model):
         _('national drug code'),
         max_length=32,
         unique=True,
+    )
+    medication_name = models.ForeignKey(
+        MedicationName,
+        related_name='medications',
+        on_delete=models.CASCADE,
+        null=True,
     )
 
     class Meta:
@@ -346,7 +385,6 @@ class ProviderMedicationThrough(models.Model):
 
     def save(self, *args, **kwargs):
         # Using a simple map for now, according to the specs
-        # TODO: We need to ask client if this can get more complicated.
         supply_to_level_map = {
             '<24': 1,
             '24': 2,

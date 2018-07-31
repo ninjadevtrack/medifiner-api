@@ -1,6 +1,8 @@
+import json
 import requests
 
 from django.core.management.base import BaseCommand
+from django.contrib.gis.geos import GEOSGeometry
 from django.conf import settings
 from localflavor.us.us_states import USPS_CHOICES
 
@@ -17,11 +19,11 @@ class Command(BaseCommand):
         database_json = settings.US_STATES_DATABASE
         dict_states = dict((v, k) for k, v in dict(USPS_CHOICES).items())
         response = requests.get(database_json)
-        json = response.json()
-        for feature in json['features']:
+        json_response = response.json()
+        for feature in json_response['features']:
             state_us_id = feature['id']
             state_name = feature['properties']['name']
-            state_geometry = feature['geometry']
+            state_geometry = GEOSGeometry(json.dumps(feature['geometry']))
             state_code = dict_states.get(state_name)
             State.objects.get_or_create(
                 state_code=state_code,

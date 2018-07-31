@@ -36,6 +36,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
+    'django.contrib.gis',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.sites',
@@ -136,10 +137,15 @@ FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
 # --- DATABASE ---
 # --- POSTGRESQL
 DATABASES = {
-    'default': env.db(
-        default='postgres://postgres:postgres@postgres:5432/postgres'),
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'postgres',
+        'PORT': '5432',
+    }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
@@ -285,6 +291,11 @@ US_COUNTIES_DATABASE = env(
     default='http://eric.clst.org/assets/wiki/uploads/'
             'Stuff/gz_2010_us_050_00_500k.json',
 )
+
+GEOJSON_GEOGRAPHIC_CONTINENTAL_CENTER_US = {
+    "type": "Point",
+    "coordinates": [-98.579561, 39.828194],
+}
 
 # --- SENTRY ---
 RAVEN_DSN = env('RAVEN_DSN', default='')
