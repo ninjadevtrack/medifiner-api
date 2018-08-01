@@ -73,7 +73,15 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
 
     def get_queryset(self):
         med_id = self.request.query_params.get('med_id')
-        if not med_id:
+        try:
+            if not med_id or int(
+                med_id
+            ) not in MedicationName.objects.values_list(
+                'id',
+                flat=True,
+            ):
+                return State.objects.none()
+        except ValueError:
             return State.objects.none()
         # Annotate the list of the medication levels for every state
         # to be used to calculate the low/medium/high after in the serializer
@@ -97,7 +105,15 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
     def get_queryset(self):
         med_id = self.request.query_params.get('med_id')
         state = self.kwargs.pop('id')
-        if not med_id or not state:
+        try:
+            if not med_id or int(
+                med_id
+            ) not in MedicationName.objects.values_list(
+                'id',
+                flat=True,
+            ):
+                return County.objects.none()
+        except ValueError:
             return County.objects.none()
         # Annotate the list of the medication levels for every county
         # to be used to calculate the low/medium/high after in the serializer
@@ -125,7 +141,15 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
 
     def get_queryset(self):
         med_id = self.request.query_params.get('med_id')
-        if not med_id:
+        try:
+            if not med_id or int(
+                med_id
+            ) not in MedicationName.objects.values_list(
+                'id',
+                flat=True,
+            ):
+                return ZipCode.objects.none()
+        except ValueError:
             return ZipCode.objects.none()
         zipcode_qs = ZipCode.objects.annotate(
             medication_levels=ArrayAgg(

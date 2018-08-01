@@ -108,7 +108,7 @@ class GeoStateWithMedicationsListSerializer(serializers.ListSerializer):
         """
         return OrderedDict((
             ("type", "FeatureCollection"),
-            ("zoom", 2),
+            ("zoom", settings.ZOOM_US),
             ("center", settings.GEOJSON_GEOGRAPHIC_CONTINENTAL_CENTER_US),
             ("features", super().to_representation(data))
         ))
@@ -126,8 +126,8 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         """
         return OrderedDict((
             ("type", "FeatureCollection"),
-            ("zoom", 10),
-            ("center", json.loads(data[0].centroid)),
+            ("zoom", settings.ZOOM_STATE),
+            ("center", json.loads(data[0].centroid) if data else ''),
             ("features", super().to_representation(data))
         ))
 
@@ -180,7 +180,11 @@ class GeoJSONWithMedicationsSerializer(serializers.ModelSerializer):
 
         # required geometry attribute
         # MUST be present in output according to GeoJSON spec
-        feature["geometry"] = json.loads(instance.geometry.geojson)
+
+        feature["geometry"] = \
+            json.loads(
+                instance.geometry.geojson
+        ) if instance.geometry else None
 
         # GeoJSON properties
         geographic_type = getattr(
@@ -232,7 +236,7 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
         return 'Feature'
 
     def get_zoom(self, data):
-        return 25
+        return settings.ZOOM_ZIPCODE
 
     def get_center(self, obj):
         return json.loads(obj.centroid)

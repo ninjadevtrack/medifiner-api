@@ -1,8 +1,13 @@
 import os
 import pytest
 import csv
+import json
+
+from random import randint, randrange
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.contrib.gis.geos import GEOSGeometry
 from django.utils.translation import ugettext_lazy as _
 
 from celery.task.control import inspect
@@ -10,9 +15,19 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
-from medications.models import Organization
+from medications.models import Organization, MedicationName, State
 from medications.constants import field_rows
-
+from medications.factories import (
+    OrganizationFactory,
+    ProviderFactory,
+    MedicationFactory,
+    ExistingMedicationFactory,
+    ProviderMedicationThroughFactory,
+    StateFactory,
+    ZipCodeFactory,
+    CountyFactory,
+    MedicationNameFactory,
+)
 
 pytestmark = pytest.mark.django_db()
 User = get_user_model()
@@ -49,10 +64,19 @@ def user_no_organization():
     return user
 
 
+@pytest.fixture()
+def geographic_object():
+    return GEOSGeometry(
+        json.dumps(
+            settings.GEOJSON_GEOGRAPHIC_CONTINENTAL_CENTER_US
+        )
+    )
+
+
 class TestTokenAuth:
     """Token authentication"""
     token_model = Token
-    path = '/api/v1/medications/'
+    path = '/api/v1/medications/csv_import'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
@@ -151,7 +175,7 @@ class TestTokenAuth:
 
 class TestMedicationsPOSTView:
     token_model = Token
-    path = '/api/v1/medications/'
+    path = '/api/v1/medications/csv_import'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
@@ -265,9 +289,87 @@ class TestMedicationsPOSTView:
         os.remove('temporal_2.txt')
 
 
+class TestMedicationNamesGETView:
+    token_model = Token
+    path = '/api/v1/medications/names/'
+    header_prefix = 'Token '
+
+    @pytest.fixture(autouse=True)
+    def setup_stuff(self, db, testuser):
+        self.factory = APIClient()
+        self.user = testuser
+
+        self.key = 'abcd1234'
+        self.token = self.token_model.objects.create(
+            key=self.key,
+            user=self.user,
+        )
+
+    def test_get_medications_with_token_success(self):
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            self.path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_get_medications_without_token_unsuccess(self):
+        response = self.factory.get(
+            self.path
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_correct_number_medications(self):
+        MedicationName.objects.create()
+        medication_names_number = MedicationName.objects.all().count()
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            self.path, HTTP_AUTHORIZATION=auth
+        )
+        assert medication_names_number == len(response.json())
+
+
+class TestStatesGETView:
+    token_model = Token
+    path = '/api/v1/medications/states/'
+    header_prefix = 'Token '
+
+    @pytest.fixture(autouse=True)
+    def setup_stuff(self, db, testuser):
+        self.factory = APIClient()
+        self.user = testuser
+
+        self.key = 'abcd1234'
+        self.token = self.token_model.objects.create(
+            key=self.key,
+            user=self.user,
+        )
+
+    def test_get_states_with_token_success(self):
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            self.path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_get_states_without_token_unsuccess(self):
+        response = self.factory.get(
+            self.path
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_correct_number_states(self):
+        State.objects.create()
+        states_number = State.objects.all().count()
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            self.path, HTTP_AUTHORIZATION=auth
+        )
+        assert states_number == len(response.json())
+
+
 class TestGenerateMedicationTaskTriggered:
     token_model = Token
-    path = '/api/v1/medications/'
+    path = '/api/v1/medications/csv_import'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
@@ -328,3 +430,301 @@ class TestGenerateMedicationTaskTriggered:
     @classmethod
     def teardown_class(cls):
         os.remove('temporal.csv')
+
+
+class TestGeoStatsStateGETView:
+    token_model = Token
+    path = '/api/v1/medications/geo_stats'
+    header_prefix = 'Token '
+
+    @pytest.fixture(autouse=True)
+    def setup_stuff(self, db, testuser):
+        self.factory = APIClient()
+        self.user = testuser
+
+        self.key = 'abcd1234'
+        self.token = self.token_model.objects.create(
+            key=self.key,
+            user=self.user,
+        )
+
+    def test_get_states_with_token_success(self):
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            self.path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_get_states_without_token_unsuccess(self):
+        response = self.factory.get(
+            self.path
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_center_coordinates_USA_and_correct_zoom_in_response(self):
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            self.path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.json().get('center').get('coordinates')
+        assert response.json().get('zoom') == settings.ZOOM_US
+
+    def test_response_with_medication_and_state_should_return_1_position(
+        self,
+        geographic_object,
+    ):
+        medication_name = MedicationNameFactory()
+        StateFactory(geometry=geographic_object)
+        number_states = State.objects.all().count()
+        auth = self.header_prefix + self.key
+        path_with_medication = '?med_id={}'.format(medication_name.id)
+        response = self.factory.get(
+            self.path + path_with_medication, HTTP_AUTHORIZATION=auth
+        )
+        assert len(response.json().get('features')) == number_states
+
+    def test_response_without_med_id_returns_0_positions(
+        self,
+        geographic_object,
+    ):
+        StateFactory(geometry=geographic_object)
+        auth = self.header_prefix + self.key
+        path_with_medication = '?med_id='
+        response = self.factory.get(
+            self.path + path_with_medication, HTTP_AUTHORIZATION=auth
+        )
+        assert len(response.json().get('features')) == 0
+
+    def test_response_with_non_existing_med_id_returns_0_positions(
+        self,
+        geographic_object,
+    ):
+        medication_name = MedicationNameFactory()
+        StateFactory(geometry=geographic_object)
+        auth = self.header_prefix + self.key
+        path_with_medication = '?med_id={}'.format(
+            randint(medication_name.id + 1, medication_name.id + 19)
+        )
+        response = self.factory.get(
+            self.path + path_with_medication, HTTP_AUTHORIZATION=auth
+        )
+        assert len(response.json().get('features')) == 0
+
+
+class TestGeoStatsCountyGETView:
+    token_model = Token
+    path = '/api/v1/medications/geo_stats/state/{}'
+    header_prefix = 'Token '
+
+    @pytest.fixture(autouse=True)
+    def setup_stuff(self, db, testuser):
+        self.factory = APIClient()
+        self.user = testuser
+
+        self.key = 'abcd1234'
+        self.token = self.token_model.objects.create(
+            key=self.key,
+            user=self.user,
+        )
+
+    def test_get_counties_with_token_success(self, geographic_object):
+        state = StateFactory(geometry=geographic_object)
+        path = self.path.format(state.id)
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_get_counties_without_token_unsuccess(self, geographic_object):
+        state = StateFactory(geometry=geographic_object)
+        path = self.path.format(state.id)
+        response = self.factory.get(
+            path
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_404_if_not_state_id_in_url(self):
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            self.path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_empty_list_features_wrong_non_existing_state_id(
+        self,
+        geographic_object,
+    ):
+        state = StateFactory(geometry=geographic_object)
+        path = self.path.format(state.id + 1)
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert len(response.json().get('features')) == 0
+
+    def test_1_feature_when_state_has_county(self, geographic_object):
+        medication_name = MedicationNameFactory()
+        state = StateFactory(geometry=geographic_object)
+        CountyFactory(state=state, geometry=geographic_object)
+        path = self.path.format(state.id) + '?med_id={}'.format(
+            medication_name.id
+        )
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert len(response.json().get(
+            'features')
+        ) == state.counties.all().count()
+
+    def test_center_and_zoom_are_correct(self, geographic_object):
+        medication_name = MedicationNameFactory()
+        state = StateFactory(geometry=geographic_object)
+        CountyFactory(state=state, geometry=geographic_object)
+        path = self.path.format(state.id) + '?med_id={}'.format(
+            medication_name.id
+        )
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.json().get('zoom') == settings.ZOOM_STATE
+        assert response.json().get(
+            'center'
+        ) == json.loads(geographic_object.json)
+
+    def test_response_without_med_id_returns_0_positions(
+        self,
+        geographic_object,
+    ):
+        state = StateFactory(geometry=geographic_object)
+        CountyFactory(state=state, geometry=geographic_object)
+        auth = self.header_prefix + self.key
+        path = self.path.format(state.id) + '?med_id='
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert len(response.json().get('features')) == 0
+
+
+class TestGeoStatsZipCodeGETView:
+    token_model = Token
+    path = '/api/v1/medications/geo_stats/zipcode/{}'
+    header_prefix = 'Token '
+
+    @pytest.fixture(autouse=True)
+    def setup_stuff(self, db, testuser):
+        self.factory = APIClient()
+        self.user = testuser
+
+        self.key = 'abcd1234'
+        self.token = self.token_model.objects.create(
+            key=self.key,
+            user=self.user,
+        )
+
+    def test_get_zipcode_with_token_success(self, geographic_object):
+        zip_code = f'{randrange(1, 10**5):05}'
+        medication_name = MedicationNameFactory()
+        state = StateFactory(geometry=geographic_object)
+        zipcode = ZipCodeFactory(
+            state=state,
+            geometry=geographic_object,
+            zipcode=zip_code,
+        )
+        path = self.path.format(zipcode.zipcode) + '?med_id={}'.format(
+            medication_name.id
+        )
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_get_zipcode_without_token_unsuccess(self, geographic_object):
+        zip_code = f'{randrange(1, 10**5):05}'
+        medication_name = MedicationNameFactory()
+        state = StateFactory(geometry=geographic_object)
+        zipcode = ZipCodeFactory(
+            state=state,
+            geometry=geographic_object,
+            zipcode=zip_code,
+        )
+        path = self.path.format(zipcode.zipcode) + '?med_id={}'.format(
+            medication_name.id
+        )
+        response = self.factory.get(
+            path
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_404_if_not_zipcode_in_url(self):
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            self.path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_information_returned_is_correct(self, geographic_object):
+        zip_code = f'{randrange(1, 10**5):05}'
+        medication_name = MedicationNameFactory()
+        state = StateFactory(geometry=geographic_object)
+        zipcode = ZipCodeFactory(
+            state=state,
+            geometry=geographic_object,
+            zipcode=zip_code,
+        )
+        path = self.path.format(zipcode.zipcode) + '?med_id={}'.format(
+            medication_name.id
+        )
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.json().get('zoom') == settings.ZOOM_ZIPCODE
+        assert response.json().get(
+            'geometry'
+        ) == json.loads(geographic_object.json)
+        assert response.json().get(
+            'center'
+        ) == json.loads(geographic_object.json)
+
+    def test_response_without_med_id_returns_404(
+        self,
+        geographic_object,
+    ):
+        zip_code = f'{randrange(1, 10**5):05}'
+        state = StateFactory(geometry=geographic_object)
+        zipcode = ZipCodeFactory(
+            state=state,
+            geometry=geographic_object,
+            zipcode=zip_code,
+        )
+        path = self.path.format(zipcode.zipcode) + '?med_id='
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_response_with_wrong_med_id_returns_404(
+        self,
+        geographic_object,
+    ):
+        medication_name = MedicationNameFactory()
+        zip_code = f'{randrange(1, 10**5):05}'
+        state = StateFactory(geometry=geographic_object)
+        zipcode = ZipCodeFactory(
+            state=state,
+            geometry=geographic_object,
+            zipcode=zip_code,
+        )
+        path = self.path.format(zipcode.zipcode) + '?med_id={}'.format(
+            medication_name.id + 1
+        )
+        auth = self.header_prefix + self.key
+        response = self.factory.get(
+            path, HTTP_AUTHORIZATION=auth
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
