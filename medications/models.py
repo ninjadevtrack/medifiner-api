@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.gis.db.models import GeometryField
+from django.core.exceptions import MultipleObjectsReturned
 from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import ugettext_lazy as _
@@ -209,6 +210,15 @@ class Provider(models.Model):
         on_delete=models.SET_NULL,
         null=True,
     )
+    relate_related_zipcode = models.BooleanField(
+        _('relate zipcode'),
+        default=False,
+        help_text=_(
+            'Check if you need the system to relate a new zipcode object'
+            ' to this provider. Generally you should use this only if you'
+            ' are an admin changing the direction of this provider'
+        ),
+    )
     phone = PhoneNumberField(
         _('provider phone'),
     )
@@ -308,6 +318,22 @@ class Provider(models.Model):
             )
             self.lat, self.lng = get_lat_lng(location)
             self.change_coordinates = False
+        if self.relate_related_zipcode and self.zip:
+            try:
+                zipcode = ZipCode.objects.get(
+                    zipcode=self.zip,
+                    state__state_code=self.state,
+                )
+            except ZipCode.DoesNotExist:
+                pass
+            except MultipleObjectsReturned:
+                zipcode = ZipCode.objects.filter(
+                    zipcode=self.zip,
+                    state__state_code=self.state,
+                ).first()
+            if zipcode:
+                self.related_zipcode = zipcode
+            self.relate_related_zipcode = False
         super().save(*args, **kwargs)
 
 
