@@ -28,7 +28,7 @@ medications_api_urlpatterns = [
         GeoStatsCountiesWithMedicationsView.as_view(),
     ),
     path(
-        'geo_stats/zipcode/<int:zipcode>',
+        'geo_stats/zipcode/<str:zipcode>',
         GeoZipCodeWithMedicationsView.as_view(),
     ),
 ]

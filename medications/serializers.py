@@ -143,6 +143,12 @@ def get_properties(instance, geographic_type=None):
         properties['name'] = instance.state_name
     elif geographic_type == 'county':
         properties['name'] = instance.county_name
+    elif geographic_type == 'zipcode':
+        properties['zipcode'] = instance.zipcode
+        properties['state'] = {
+            'name': instance.state.state_name,
+            'id': instance.state.id,
+        }
     supplies, supply = get_supplies(instance.medication_levels)
     properties['supplies'] = supplies
     properties['supply'] = supply
@@ -242,7 +248,7 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
         return json.loads(obj.centroid)
 
     def get_properties(self, obj):
-        properties = get_properties(obj)
+        properties = get_properties(obj, 'zipcode')
         return properties
 
     def get_geometry(self, obj):
