@@ -167,6 +167,7 @@ class Provider(models.Model):
         (TYPE_CLINIC, _('Clinic')),
         (TYPE_COMPOUNDING, _('Compounding')),
     )
+    # TODO update list with all the types
 
     organization = models.ForeignKey(
         Organization,

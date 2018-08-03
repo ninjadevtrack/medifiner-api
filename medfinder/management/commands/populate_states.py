@@ -25,6 +25,8 @@ class Command(BaseCommand):
             state_name = feature['properties']['name']
             state_geometry = GEOSGeometry(json.dumps(feature['geometry']))
             state_code = dict_states.get(state_name)
+            if state_name.lower() == 'district of columbia':
+                state_name = 'Washington D.C.'
             State.objects.get_or_create(
                 state_code=state_code,
                 state_name=state_name,

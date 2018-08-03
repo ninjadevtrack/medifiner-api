@@ -124,10 +124,20 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         """
         Add GeoJSON compatible formatting to a serialized queryset list
         """
+        medication_levels_list = data.values_list(
+            'medication_levels',
+            flat=True,
+        )
+        flatten_medications_levels = [
+            item for sublist in medication_levels_list for item in sublist
+        ]
+        supplies, supply = get_supplies(flatten_medications_levels)
         return OrderedDict((
             ("type", "FeatureCollection"),
             ("zoom", settings.ZOOM_STATE),
             ("center", json.loads(data[0].centroid) if data else ''),
+            ("state_supplies", supplies),
+            ("state_supply", supply),
             ("features", super().to_representation(data))
         ))
 
@@ -141,8 +151,14 @@ def get_properties(instance, geographic_type=None):
     properties = OrderedDict()
     if geographic_type == 'state':
         properties['name'] = instance.state_name
+        properties['code'] = instance.state_code
     elif geographic_type == 'county':
         properties['name'] = instance.county_name
+        properties['state'] = {
+            'name': instance.state.state_name,
+            'id': instance.state.id,
+            'code': instance.state.state_code,
+        }
     elif geographic_type == 'zipcode':
         properties['zipcode'] = instance.zipcode
         properties['state'] = {

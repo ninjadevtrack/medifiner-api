@@ -14,6 +14,12 @@ class ProviderAdminForm(forms.ModelForm):
     def clean(self):
         state = self.cleaned_data.get('state')
         zipcode = self.cleaned_data.get('zip')
+        if not self.instance.pk and Provider.objects.filter(
+            email=self.cleaned_data.get('email')
+        ).exists():
+            raise ValidationError(
+                {'email': _('This email is already related to a provider')}
+            )
         if not State.objects.filter(state_code=state).exists():
             raise ValidationError(
                 {'state': _('You have selected an invalid state')}
