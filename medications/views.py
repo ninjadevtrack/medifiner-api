@@ -147,8 +147,39 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
                 return County.objects.none()
         except ValueError:
             return County.objects.none()
+
+        # First we take list of provider medication for this med, we will
+        # use it for future filters
+        provider_medication_qs = ProviderMedicationThrough.objects.filter(
+            latest=True,
+            medication__medication_name__id=med_id,
+        )
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
+
         # Annotate the list of the medication levels for every county
         # to be used to calculate the low/medium/high after in the serializer
+        # We create a list of the ids of the provider medication objects that
+        # we have after filtering.
+        provider_medication_ids = provider_medication_qs.values_list(
+            'id',
+            flat=True,
+        )
         qs = County.objects.filter(
             state__id=state,
         ).select_related(
@@ -157,8 +188,7 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
             medication_levels=ArrayAgg(
                 'county_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                        county_zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
-                        county_zipcodes__providers__provider_medication__latest=True, #noqa
+                        county_zipcodes__providers__provider_medication__id__in=provider_medication_ids # noqa
                 )
             ),
             centroid=AsGeoJSON(Centroid('state__geometry')),
@@ -173,6 +203,7 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
 
     def get_queryset(self):
         med_id = self.request.query_params.get('med_id')
+        zipcode = self.kwargs.get('zipcode')
         try:
             if not med_id or int(
                 med_id
@@ -183,20 +214,43 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
                 return ZipCode.objects.none()
         except ValueError:
             return ZipCode.objects.none()
-        zipcode_qs = ZipCode.objects.annotate(
+
+        # First we take list of provider medication for this med, we will
+        # use it for future filters
+        provider_medication_qs = ProviderMedicationThrough.objects.filter(
+            latest=True,
+            medication__medication_name__id=med_id,
+        )
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
+        # We create a list of the ids of the provider medication objects that
+        # we have after filtering.
+        provider_medication_ids = provider_medication_qs.values_list(
+            'id',
+            flat=True,
+        )
+        zipcode_qs = ZipCode.objects.filter(zipcode=zipcode).annotate(
             medication_levels=ArrayAgg(
                 'providers__provider_medication__level',
                 filter=Q(
-                        providers__provider_medication__medication__medication_name__id=med_id, #noqa
-                        providers__provider_medication__latest=True,
+                        providers__provider_medication__id__in=provider_medication_ids # noqa
                 )
             ),
             centroid=AsGeoJSON(Centroid('geometry')),
         )
         return zipcode_qs
-
-    def get_object(self):
-        zipcode = self.kwargs.get('zipcode')
-        qs = self.get_queryset()
-        obj = get_object_or_404(qs, zipcode=zipcode)
-        return obj
