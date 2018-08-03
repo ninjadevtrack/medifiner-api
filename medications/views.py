@@ -23,6 +23,8 @@ from .models import (
     County,
     TemporaryFile,
     MedicationName,
+    ProviderMedicationThrough,
+    Medication,
     State,
     ZipCode,
 )
@@ -83,14 +85,44 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
                 return State.objects.none()
         except ValueError:
             return State.objects.none()
+
+        # First we take list of provider medication for this med, we will
+        # use it for future filters
+        provider_medication_qs = ProviderMedicationThrough.objects.filter(
+            latest=True,
+            medication__medication_name__id=med_id,
+        )
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
+
         # Annotate the list of the medication levels for every state
-        # to be used to calculate the low/medium/high after in the serializer
+        # to be used to calculate the low/medium/high after in the serializer.
+        # We create a list of the ids of the provider medication objects that
+        # we have after filtering.
+        provider_medication_ids = provider_medication_qs.values_list(
+            'id',
+            flat=True,
+        )
         qs = State.objects.all().annotate(
             medication_levels=ArrayAgg(
                 'state_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                        state_zipcodes__providers__provider_medication__medication__medication_name__id=med_id, #noqa
-                        state_zipcodes__providers__provider_medication__latest=True, #noqa
+                        state_zipcodes__providers__provider_medication__id__in=provider_medication_ids # noqa
                 )
             ),
         )
