@@ -110,6 +110,17 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
                 medication__id__in=formulation_ids,
             )
 
+        # Now we check if there is a list of type of providers to filter
+        provider_type_list = self.request.query_params.get(
+            'provider_type',
+            [],
+        )
+        if provider_type_list:
+            provider_type_list = provider_type_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                provider__type__in=provider_type_list,
+            )
+
         # Annotate the list of the medication levels for every state
         # to be used to calculate the low/medium/high after in the serializer.
         # We create a list of the ids of the provider medication objects that
@@ -170,6 +181,17 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
         if formulation_ids:
             provider_medication_qs = provider_medication_qs.filter(
                 medication__id__in=formulation_ids,
+            )
+
+        # Now we check if there is a list of type of providers to filter
+        provider_type_list = self.request.query_params.get(
+            'provider_type',
+            [],
+        )
+        if provider_type_list:
+            provider_type_list = provider_type_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                provider__type__in=provider_type_list,
             )
 
         # Annotate the list of the medication levels for every county
@@ -238,6 +260,18 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
             provider_medication_qs = provider_medication_qs.filter(
                 medication__id__in=formulation_ids,
             )
+
+        # Now we check if there is a list of type of providers to filter
+        provider_type_list = self.request.query_params.get(
+            'provider_type',
+            [],
+        )
+        if provider_type_list:
+            provider_type_list = provider_type_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                provider__type__in=provider_type_list,
+            )
+
         # We create a list of the ids of the provider medication objects that
         # we have after filtering.
         provider_medication_ids = provider_medication_qs.values_list(
