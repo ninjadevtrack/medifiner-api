@@ -15,6 +15,7 @@ from .models import (
     State,
     County,
     ZipCode,
+    Provider,
 )
 from .utils import get_supplies
 
@@ -269,3 +270,16 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
 
     def get_geometry(self, obj):
         return json.loads(obj.geometry.geojson)
+
+
+class ProviderTypesSerializer(serializers.Serializer):
+    def to_representation(self, data):
+        provider_type = OrderedDict()
+        provider_type['name'] = dict(
+            Provider.TYPE_CHOICES
+        ).get(data.get('type'))
+        provider_type['code'] = data.get('type')
+        provider_type['count'] = data.get('type__count')
+        return provider_type
+
+
