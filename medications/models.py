@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
-from django.contrib.gis.db.models import GeometryField
+from django.contrib.gis.db.models import GeometryField, PointField
+from django.contrib.gis.geos import Point
 from django.core.exceptions import MultipleObjectsReturned
 from django.utils import timezone
 from django.utils.text import slugify
@@ -261,6 +262,10 @@ class Provider(models.Model):
         null=True,
         max_length=250,
     )
+    geo_localization = PointField(
+        _('localization'),
+        null=True,
+    )
     change_coordinates = models.BooleanField(
         _('change coordinates'),
         default=False,
@@ -318,6 +323,11 @@ class Provider(models.Model):
                 )
             )
             self.lat, self.lng = get_lat_lng(location)
+            if self.lat and self.lng:
+                self.geo_localization = Point(
+                    float(self.lat),
+                    float(self.lng),
+                )
             self.change_coordinates = False
         if self.relate_related_zipcode and self.zip:
             try:
@@ -391,6 +401,10 @@ class ProviderMedicationThrough(models.Model):
     supply = models.CharField(
         _('medication supply'),
         max_length=32,
+        help_text=_(
+            'Use one of the following strings to add a valide supply: '
+            '<24, 24, 24-48, >48'
+        ),
     )
     level = models.PositiveIntegerField(
         _('medication level'),
