@@ -26,6 +26,10 @@ class Command(BaseCommand):
         base_url = 'https://www2.census.gov/geo/docs/maps-data/data/rel/zcta_county_rel_10.txt'
         response = requests.get(base_url)
         reader = csv.DictReader(response.text.split('\n'))
+        print(
+            'Relating all US zipcodes to their related counties,'
+            ' this may take a while...'
+        )
         for row in reader:
             county = None
             zip_obj = None

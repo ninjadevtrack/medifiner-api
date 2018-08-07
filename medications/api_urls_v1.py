@@ -8,6 +8,7 @@ from .views import (
     GeoStatsStatesWithMedicationsView,
     GeoStatsCountiesWithMedicationsView,
     GeoZipCodeWithMedicationsView,
+    ProviderTypesView,
 )
 
 router = DefaultRouter()
@@ -15,15 +16,25 @@ router.register(r'names', MedicationNameViewSet, base_name='name')
 router.register(r'states', StateViewSet, base_name='state')
 
 medications_api_urlpatterns = [
-    path('csv_import', CSVUploadView.as_view()),
-    path('geo_stats', GeoStatsStatesWithMedicationsView.as_view()),
+    path(
+        'csv_import',
+        CSVUploadView.as_view(),
+    ),
+    path(
+        'geo_stats',
+        GeoStatsStatesWithMedicationsView.as_view(),
+    ),
     path(
         'geo_stats/state/<int:id>',
         GeoStatsCountiesWithMedicationsView.as_view(),
     ),
     path(
-        'geo_stats/zipcode/<int:zipcode>',
+        'geo_stats/zipcode/<str:zipcode>',
         GeoZipCodeWithMedicationsView.as_view(),
+    ),
+    path(
+        'provider_types',
+        ProviderTypesView.as_view(),
     ),
 ]
 

@@ -15,6 +15,7 @@ from .models import (
     State,
     County,
     ZipCode,
+    Provider,
 )
 from .utils import get_supplies
 
@@ -108,7 +109,7 @@ class GeoStateWithMedicationsListSerializer(serializers.ListSerializer):
         """
         return OrderedDict((
             ("type", "FeatureCollection"),
-            ("zoom", 2),
+            ("zoom", settings.ZOOM_US),
             ("center", settings.GEOJSON_GEOGRAPHIC_CONTINENTAL_CENTER_US),
             ("features", super().to_representation(data))
         ))
@@ -124,10 +125,20 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         """
         Add GeoJSON compatible formatting to a serialized queryset list
         """
+        medication_levels_list = data.values_list(
+            'medication_levels',
+            flat=True,
+        )
+        flatten_medications_levels = [
+            item for sublist in medication_levels_list for item in sublist
+        ]
+        supplies, supply = get_supplies(flatten_medications_levels)
         return OrderedDict((
             ("type", "FeatureCollection"),
-            ("zoom", 10),
-            ("center", json.loads(data[0].centroid)),
+            ("zoom", settings.ZOOM_STATE),
+            ("center", json.loads(data[0].centroid) if data else ''),
+            ("state_supplies", supplies),
+            ("state_supply", supply),
             ("features", super().to_representation(data))
         ))
 
@@ -141,8 +152,20 @@ def get_properties(instance, geographic_type=None):
     properties = OrderedDict()
     if geographic_type == 'state':
         properties['name'] = instance.state_name
+        properties['code'] = instance.state_code
     elif geographic_type == 'county':
         properties['name'] = instance.county_name
+        properties['state'] = {
+            'name': instance.state.state_name,
+            'id': instance.state.id,
+            'code': instance.state.state_code,
+        }
+    elif geographic_type == 'zipcode':
+        properties['zipcode'] = instance.zipcode
+        properties['state'] = {
+            'name': instance.state.state_name,
+            'id': instance.state.id,
+        }
     supplies, supply = get_supplies(instance.medication_levels)
     properties['supplies'] = supplies
     properties['supply'] = supply
@@ -180,7 +203,11 @@ class GeoJSONWithMedicationsSerializer(serializers.ModelSerializer):
 
         # required geometry attribute
         # MUST be present in output according to GeoJSON spec
-        feature["geometry"] = json.loads(instance.geometry.geojson)
+
+        feature["geometry"] = \
+            json.loads(
+                instance.geometry.geojson
+        ) if instance.geometry else None
 
         # GeoJSON properties
         geographic_type = getattr(
@@ -232,14 +259,27 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
         return 'Feature'
 
     def get_zoom(self, data):
-        return 25
+        return settings.ZOOM_ZIPCODE
 
     def get_center(self, obj):
         return json.loads(obj.centroid)
 
     def get_properties(self, obj):
-        properties = get_properties(obj)
+        properties = get_properties(obj, 'zipcode')
         return properties
 
     def get_geometry(self, obj):
         return json.loads(obj.geometry.geojson)
+
+
+class ProviderTypesSerializer(serializers.Serializer):
+    def to_representation(self, data):
+        provider_type = OrderedDict()
+        provider_type['name'] = dict(
+            Provider.TYPE_CHOICES
+        ).get(data.get('type'))
+        provider_type['code'] = data.get('type')
+        provider_type['count'] = data.get('type__count')
+        return provider_type
+
+

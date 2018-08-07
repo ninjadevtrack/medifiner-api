@@ -1,12 +1,16 @@
 import pytest
+import json
 import factory
 
 from random import randint, randrange, choice
 
 from django.utils import timezone
+from django.utils.text import slugify
+from django.contrib.gis.geos import GEOSGeometry
 from django.db.utils import DataError, IntegrityError
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from localflavor.us.us_states import STATE_CHOICES
 
 from medications.factories import (
@@ -17,6 +21,8 @@ from medications.factories import (
     ProviderMedicationThroughFactory,
     StateFactory,
     ZipCodeFactory,
+    CountyFactory,
+    MedicationNameFactory,
 )
 from medications.models import (
     Organization,
@@ -31,9 +37,9 @@ TEST_NDC = '0002-1433-80'
 # Real address information to generate lat and lng, cannot trust in Faker
 # cause sometimes it generates addresses that googlemap api cannot convert
 # to real coordinates.
-REAL_STREET = '833  School Street'
-REAL_CITY = 'New Haven'
-REAL_STATE = 'CT'
+REAL_STREET = '2601 Mission St'
+REAL_CITY = 'San Francisco'
+REAL_STATE = 'CA'
 
 
 @pytest.fixture()
@@ -65,6 +71,15 @@ def medication():
 def provider():
     return ProviderFactory(
         name=factory.Faker('word'),
+    )
+
+
+@pytest.fixture()
+def geographic_object():
+    return GEOSGeometry(
+        json.dumps(
+            settings.GEOJSON_GEOGRAPHIC_CONTINENTAL_CENTER_US
+        )
     )
 
 
@@ -165,11 +180,13 @@ class TestProvider:
         assert str(provider) == obj_str
 
     def test_coordinates_being_generated(self):
-        provider = ProviderFactory(
+        provider = Provider(
             address=REAL_STREET,
             city=REAL_CITY,
             state=REAL_STATE,
         )
+        provider.change_coordinates = True
+        provider.save()
         assert provider.lng and provider.lat
 
     def test_name_max_lenght(self, long_str):
@@ -202,7 +219,7 @@ class TestProvider:
                 type=long_str,
             )
 
-    def test_wrong_type(self):
+    def test_wrong_type(self, short_str):
         organization = OrganizationFactory(
             organization_name=ORGANIZATION_NAME,
         )
@@ -211,9 +228,9 @@ class TestProvider:
         with pytest.raises(ValidationError):
             provider = ProviderFactory(
                 organization=organization,
-                name=factory.Faker('name'),
-                address=factory.Faker('address'),
-                city=factory.Faker('city'),
+                name=short_str,
+                address=REAL_STREET,
+                city=REAL_CITY,
                 state=REAL_STATE,
                 zip=randint(10000, 99999),
                 phone='202-555-0178',
@@ -233,11 +250,13 @@ class TestProvider:
 
     def test_coordenates_change_in_new_address(self):
         #  Create the provider and get its coordinates
-        provider = Provider.objects.create(
+        provider = Provider(
             address=REAL_STREET,
             city=REAL_CITY,
             state=REAL_STATE,
         )
+        provider.change_coordinates = True
+        provider.save()
         lat, lng = provider.lat, provider.lng
         #  Change the provider address and check the change coordinates bool
         provider.address = '2802  West Fork Street'
@@ -375,14 +394,21 @@ class TestState:
             )
 
     def test_geometry_invalid(self):
+        with pytest.raises(TypeError):
+            states_list = [code[0] for code in STATE_CHOICES]
+            real_state = choice(states_list)
+            state = StateFactory(
+                state_code=real_state,
+                geometry=[],
+            )
+
+    def test_geometry_valid(self, geographic_object):
         states_list = [code[0] for code in STATE_CHOICES]
         real_state = choice(states_list)
         state = StateFactory(
             state_code=real_state,
-            geometry=[],
+            geometry=geographic_object,
         )
-        with pytest.raises(ValidationError):
-            state.full_clean()
 
 
 class TestZipCode:
@@ -413,25 +439,114 @@ class TestZipCode:
         with pytest.raises(ValidationError):
             zipcode.full_clean()
 
-    def test_zip_code_valid(self):
+    def test_zip_code_valid(self, geographic_object):
         state = StateFactory()
         zipcode = ZipCodeFactory(
             state=state,
             zipcode=f'{randrange(1, 10**5):05}',
-            geometry=[],
+            geometry=geographic_object,
         )
-        with pytest.raises(ValidationError):
-            zipcode.full_clean()
 
     def test_geometry_invalid(self):
+        with pytest.raises(TypeError):
+            state = StateFactory()
+            zipcode = ZipCodeFactory(
+                state=state,
+                zipcode=f'{randrange(1, 10**5):05}',
+                geometry=[],
+            )
+
+    def test_counties_zipcodes_relation(self, geographic_object):
         state = StateFactory()
+        county = CountyFactory(state=state)
         zipcode = ZipCodeFactory(
             state=state,
             zipcode=f'{randrange(1, 10**5):05}',
-            geometry=[],
+            geometry=geographic_object,
         )
+        zipcode.counties.add(county)
+        assert zipcode in county.county_zipcodes.all()
+
+
+class TestCounty:
+    """ Test County model """
+
+    def test_str(self, short_str):
+        state = StateFactory()
+        county = CountyFactory(
+            county_name=short_str,
+            state=state,
+        )
+        assert county.county_name == short_str
+        assert str(county) == short_str
+
+    def test_state(self):
+        with pytest.raises(IntegrityError):
+            county = CountyFactory()
+
+    def test_slug(self, short_str):
+        state = StateFactory()
+        slug = slugify(short_str)
+        county = CountyFactory(
+            county_name=short_str,
+            state=state,
+        )
+        assert county.county_name_slug == slug
+
+    def test_county_id(self, short_str):
+        with pytest.raises(IntegrityError):
+            state = StateFactory()
+            county = CountyFactory(
+                county_name=short_str,
+                state=state,
+                county_id=-1,
+            )
+
+    def test_geo_id(self, short_str):
+        with pytest.raises(IntegrityError):
+            state = StateFactory()
+            county = CountyFactory(
+                county_name=short_str,
+                state=state,
+                geo_id=-1,
+            )
+
+    def test_geometry_invalid(self, short_str):
+        with pytest.raises(TypeError):
+            state = StateFactory()
+            county = CountyFactory(
+                county_name=short_str,
+                state=state,
+                geometry=[],
+            )
+
+    def test_geometry_valid(self, short_str, geographic_object):
+        state = StateFactory()
+        county = CountyFactory(
+            county_name=short_str,
+            state=state,
+            geometry=geographic_object,
+        )
+
+
+class TestMedicationName:
+    """ Test medication name model """
+
+    def test_str(self, short_str):
+        medication_name = MedicationNameFactory(
+            name=short_str,
+        )
+        assert medication_name.name == short_str
+        assert str(medication_name) == short_str
+
+    def test_no_name(self):
+        medication_name = MedicationNameFactory()
         with pytest.raises(ValidationError):
-            zipcode.full_clean()
+            medication_name.full_clean()
+
+    def test_too_long_name(self, long_str):
+        with pytest.raises(DataError):
+            MedicationNameFactory(name=long_str)
 
 
 class TestMedication:

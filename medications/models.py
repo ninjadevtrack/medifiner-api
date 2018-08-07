@@ -1,8 +1,9 @@
 from django.db import models
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
 from django.contrib.gis.db.models import GeometryField
+from django.core.exceptions import MultipleObjectsReturned
 from django.utils import timezone
+from django.utils.text import slugify
 from django.utils.translation import ugettext_lazy as _
 
 from localflavor.us.models import USStateField, USZipCodeField
@@ -123,6 +124,11 @@ class County(models.Model):
     def __str__(self):
         return self.county_name
 
+    def save(self, *args, **kwargs):
+        if not self.county_name_slug and self.county_name:
+            self.county_name_slug = slugify(self.county_name)
+        super().save(*args, **kwargs)
+
 
 class ZipCode(models.Model):
     zipcode = USZipCodeField(
@@ -161,6 +167,7 @@ class Provider(models.Model):
         (TYPE_CLINIC, _('Clinic')),
         (TYPE_COMPOUNDING, _('Compounding')),
     )
+    # TODO update list with all the types
 
     organization = models.ForeignKey(
         Organization,
@@ -204,6 +211,15 @@ class Provider(models.Model):
         on_delete=models.SET_NULL,
         null=True,
     )
+    relate_related_zipcode = models.BooleanField(
+        _('relate zipcode'),
+        default=False,
+        help_text=_(
+            'Check if you need the system to relate a new zipcode object'
+            ' to this provider. Generally you should use this only if you'
+            ' are an admin changing the direction of this provider'
+        ),
+    )
     phone = PhoneNumberField(
         _('provider phone'),
     )
@@ -233,19 +249,17 @@ class Provider(models.Model):
         _('insurance accepted'),
         default=False,
     )
-    lat = models.DecimalField(
+    lat = models.CharField(
         _('latitude'),
-        max_digits=20,
-        decimal_places=18,
-        null=True,
-        blank=True
-    )
-    lng = models.DecimalField(
-        _('longitude'),
-        max_digits=20,
-        decimal_places=18,
-        null=True,
         blank=True,
+        null=True,
+        max_length=250,
+    )
+    lng = models.CharField(
+        _('longitude'),
+        blank=True,
+        null=True,
+        max_length=250,
     )
     change_coordinates = models.BooleanField(
         _('change coordinates'),
@@ -305,6 +319,22 @@ class Provider(models.Model):
             )
             self.lat, self.lng = get_lat_lng(location)
             self.change_coordinates = False
+        if self.relate_related_zipcode and self.zip:
+            try:
+                zipcode = ZipCode.objects.get(
+                    zipcode=self.zip,
+                    state__state_code=self.state,
+                )
+            except ZipCode.DoesNotExist:
+                pass
+            except MultipleObjectsReturned:
+                zipcode = ZipCode.objects.filter(
+                    zipcode=self.zip,
+                    state__state_code=self.state,
+                ).first()
+            if zipcode:
+                self.related_zipcode = zipcode
+            self.relate_related_zipcode = False
         super().save(*args, **kwargs)
 
 

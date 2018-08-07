@@ -1,7 +1,9 @@
 import factory
 from .models import (
+    County,
     ExistingMedication,
     Medication,
+    MedicationName,
     Organization,
     Provider,
     ProviderMedicationThrough,
@@ -64,3 +66,19 @@ class ZipCodeFactory(factory.DjangoModelFactory):
     """
     class Meta:
         model = ZipCode
+
+
+class CountyFactory(factory.DjangoModelFactory):
+    """
+        Define County Factory
+    """
+    class Meta:
+        model = County
+
+
+class MedicationNameFactory(factory.DjangoModelFactory):
+    """
+        Define MedicationName Factory
+    """
+    class Meta:
+        model = MedicationName

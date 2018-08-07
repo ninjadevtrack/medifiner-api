@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
+from .forms import ProviderAdminForm
 from .models import (
     County,
     ExistingMedication,
@@ -185,6 +186,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(Provider)
 class ProviderAdmin(admin.ModelAdmin):
+    form = ProviderAdminForm
     list_display = (
         '_name',
         'store_number',
@@ -195,6 +197,7 @@ class ProviderAdmin(admin.ModelAdmin):
         'state',
         'full_address',
     )
+    readonly_fields = ('related_zipcode', 'full_address',)
     list_display_links = (
         'store_number',
         '_name',
@@ -208,6 +211,55 @@ class ProviderAdmin(admin.ModelAdmin):
         'store_number',
         'organization',
         'full_address',
+    )
+    fieldsets = (
+        (
+            None,
+            {'fields': (
+                'organization',
+                'store_number',
+                'name',
+                'type',
+            )
+            }
+        ),
+        (
+            _('Addres info'),
+            {'fields': (
+                'address',
+                'city',
+                'state',
+                'zip',
+                'related_zipcode',
+                'relate_related_zipcode',
+                'full_address',
+                'phone',
+                'website',
+                'email',
+            )
+            }
+        ),
+        (
+            _('Localization info'),
+            {'fields': (
+                'lat',
+                'lng',
+                'change_coordinates',
+            )
+            }
+        ),
+        (
+            _('Additional info'),
+            {'fields': (
+                'operating_hours',
+                'notes',
+                'insurance_accepted',
+                'start_date',
+                'end_date',
+                'walkins_accepted',
+            )
+            }
+        ),
     )
 
     def _name(self, obj):
