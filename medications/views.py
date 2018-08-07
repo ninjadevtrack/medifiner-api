@@ -59,7 +59,7 @@ class MedicationNameViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         medications_qs = MedicationName.objects.all()
         ordering = self.request.query_params.get('ordering')
-        if ordering and 'name' in ordering:
+        if ordering and ('name' == ordering.replace('-', '')):
             if ordering.startswith('-'):
                 medications_qs = medications_qs.order_by('-name')
             else:
@@ -76,7 +76,7 @@ class StateViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         states_qs = State.objects.all()
         ordering = self.request.query_params.get('ordering')
-        if ordering and 'name' in ordering:
+        if ordering and ('name' == ordering.replace('-', '')):
             if ordering.startswith('-'):
                 states_qs = states_qs.order_by('-state_name')
             else:
