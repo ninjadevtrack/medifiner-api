@@ -57,16 +57,33 @@ class MedicationNameViewSet(viewsets.ModelViewSet):
     allowed_methods = ['GET']
 
     def get_queryset(self):
-        return MedicationName.objects.prefetch_related('medications')
+        medications_qs = MedicationName.objects.all()
+        ordering = self.request.query_params.get('ordering')
+        if ordering and 'name' in ordering:
+            if ordering.startswith('-'):
+                medications_qs = medications_qs.order_by('-name')
+            else:
+                medications_qs = medications_qs.order_by('name')
+
+        return medications_qs.prefetch_related('medications')
 
 
 class StateViewSet(viewsets.ModelViewSet):
     serializer_class = StateSerializer
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
-    queryset = State.objects.all().annotate(
-        county_list=ArrayAgg('counties__county_name'),
-    )
+
+    def get_queryset(self):
+        states_qs = State.objects.all()
+        ordering = self.request.query_params.get('ordering')
+        if ordering and 'name' in ordering:
+            if ordering.startswith('-'):
+                states_qs = states_qs.order_by('-state_name')
+            else:
+                states_qs = states_qs.order_by('state_name')
+        return states_qs.annotate(
+            county_list=ArrayAgg('counties__county_name'),
+        )
 
 
 class GeoStatsStatesWithMedicationsView(ListAPIView):
