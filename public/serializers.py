@@ -1,3 +1,5 @@
+import json
+
 from rest_framework import serializers
 
 from medications.models import ProviderMedicationThrough, Provider
@@ -19,6 +21,7 @@ class ProviderMedicationSimpleSerializer(serializers.ModelSerializer):
 class FindProviderSerializer(serializers.ModelSerializer):
     distance = serializers.SerializerMethodField()
     supply = serializers.SerializerMethodField()
+    localization = serializers.SerializerMethodField()
     all_other_medications_provider = serializers.SerializerMethodField()
 
     class Meta:
@@ -26,9 +29,16 @@ class FindProviderSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'name',
-            'all_other_medications_provider',
+            'full_address',
+            'phone',
+            'website',
+            'email',
+            'operating_hours',
+            'insurance_accepted',
+            'localization',
             'supply',
             'distance',
+            'all_other_medications_provider',
         )
 
     def get_distance(self, obj):
@@ -44,3 +54,8 @@ class FindProviderSerializer(serializers.ModelSerializer):
             obj.provider_medication.all(),
             many=True,
         ).data
+
+    def get_localization(self, obj):
+        if hasattr(obj, 'geo_localization'):
+            return json.loads(obj.geo_localization.json)
+        return None
