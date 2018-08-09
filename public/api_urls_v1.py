@@ -6,7 +6,7 @@ from .views import (
 
 public_api_urlpatterns = [
     path(
-        'find_providers',
+        'find_providers/',
         FindProviderMedicationView.as_view(),
     )
 ]
