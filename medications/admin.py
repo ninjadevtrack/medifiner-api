@@ -10,6 +10,7 @@ from .models import (
     Organization,
     Provider,
     ProviderMedicationThrough,
+    ProviderType,
     State,
     ZipCode,
 )
@@ -266,3 +267,7 @@ class ProviderAdmin(admin.ModelAdmin):
         if obj.name:
             return obj.name
         return obj
+
+
+admin.site.register(ProviderType)
+

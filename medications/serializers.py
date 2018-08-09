@@ -16,6 +16,7 @@ from .models import (
     County,
     ZipCode,
     Provider,
+    ProviderType,
 )
 from .utils import get_supplies
 
@@ -139,6 +140,7 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
             ("center", json.loads(data[0].centroid) if data else ''),
             ("state_supplies", supplies),
             ("state_supply", supply),
+            ("state_id", data[0].state.id),
             ("features", super().to_representation(data))
         ))
 
@@ -153,6 +155,7 @@ def get_properties(instance, geographic_type=None):
     if geographic_type == 'state':
         properties['name'] = instance.state_name
         properties['code'] = instance.state_code
+        properties['id'] = instance.id
     elif geographic_type == 'county':
         properties['name'] = instance.county_name
         properties['state'] = {
@@ -187,7 +190,6 @@ class GeoJSONWithMedicationsSerializer(serializers.ModelSerializer):
             meta,
             'list_serializer_class',
         )
-        # cls.geographic_type = getattr(meta, 'geographic_type', 'state')
         return list_serializer_class(*args, **list_kwargs)
 
     def to_representation(self, instance):
@@ -272,14 +274,12 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
         return json.loads(obj.geometry.geojson)
 
 
-class ProviderTypesSerializer(serializers.Serializer):
-    def to_representation(self, data):
-        provider_type = OrderedDict()
-        provider_type['name'] = dict(
-            Provider.TYPE_CHOICES
-        ).get(data.get('type'))
-        provider_type['code'] = data.get('type')
-        provider_type['count'] = data.get('type__count')
-        return provider_type
+class ProviderTypesSerializer(serializers.ModelSerializer):
+    providers_count = serializers.SerializerMethodField()
 
+    class Meta:
+        model = ProviderType
+        fields = ('id', 'code', 'name', 'providers_count')
 
+    def get_providers_count(self, obj):
+        return obj.providers_count
