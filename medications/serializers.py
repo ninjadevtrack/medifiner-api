@@ -135,13 +135,18 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
             item for sublist in medication_levels_list for item in sublist
         ]
         supplies, supply = get_supplies(flatten_medications_levels)
+        state = {
+            'name': data[0].state.state_name,
+            'id': data[0].state.id,
+            'code': data[0].state.state_code,
+            'supplies': supplies,
+            'supply': supply,
+        }
         return OrderedDict((
             ("type", "FeatureCollection"),
             ("zoom", settings.ZOOM_STATE),
             ("center", json.loads(data[0].centroid) if data else ''),
-            ("state_supplies", supplies),
-            ("state_supply", supply),
-            ("state_id", data[0].state.id),
+            ("state", state),
             ("features", super().to_representation(data))
         ))
 
@@ -159,11 +164,6 @@ def get_properties(instance, geographic_type=None):
         properties['id'] = instance.id
     elif geographic_type == 'county':
         properties['name'] = instance.county_name
-        properties['state'] = {
-            'name': instance.state.state_name,
-            'id': instance.state.id,
-            'code': instance.state.state_code,
-        }
     elif geographic_type == 'zipcode':
         properties['zipcode'] = instance.zipcode
         properties['state'] = {
