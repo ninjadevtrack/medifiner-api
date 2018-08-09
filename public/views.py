@@ -1,5 +1,5 @@
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from django.contrib.gis.geos import Point
 from django.db.models import Q, Prefetch
 from django.contrib.gis.db.models.functions import Distance
@@ -11,7 +11,7 @@ from .serializers import FindProviderSerializer
 
 class FindProviderMedicationView(ListAPIView):
     serializer_class = FindProviderSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (AllowAny,)
     allowed_methods = ['GET']
 
     def get_queryset(self):
