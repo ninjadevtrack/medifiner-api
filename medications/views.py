@@ -1,6 +1,7 @@
 from django.db.models import Q, Count
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
+from django.db.models import IntegerField,Case, When, Sum, Value as V
 
 from django.utils.translation import ugettext_lazy as _
 
@@ -25,6 +26,7 @@ from .models import (
     MedicationName,
     ProviderMedicationThrough,
     Provider,
+    ProviderType,
     Medication,
     State,
     ZipCode,
@@ -368,6 +370,16 @@ class ProviderTypesView(ListAPIView):
             'id',
             flat=True,
         )
-        return Provider.objects.filter(
-            provider_medication__id__in=provider_medication_ids
-        ).values('type').annotate(Count('type'))
+        types_qs = ProviderType.objects.all().annotate(
+            providers_count=Sum(
+                Case(
+                    When(
+                        providers__provider_medication__id__in=provider_medication_ids,
+                        then=V(1),
+                    ),
+                    output_field=IntegerField(),
+                    default=V(0)
+                ),
+            ),
+        )
+        return types_qs

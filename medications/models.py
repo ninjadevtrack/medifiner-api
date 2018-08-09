@@ -158,17 +158,27 @@ class ZipCode(models.Model):
         return '{} - {}'.format(self.zipcode, self.state)
 
 
-class Provider(models.Model):
-    TYPE_COMMUNITY_RETAIL = 're'
-    TYPE_CLINIC = 'cl'
-    TYPE_COMPOUNDING = 'co'
-    TYPE_CHOICES = (
-        (TYPE_COMMUNITY_RETAIL, _('Community/Retail')),
-        (TYPE_CLINIC, _('Clinic')),
-        (TYPE_COMPOUNDING, _('Compounding')),
+class ProviderType(models.Model):
+    code = models.CharField(
+        _('provider type code'),
+        max_length=2,
+        default='00',
+        help_text=_(
+            'code used by the NCPDP to identify the type of provider.'
+            'This code is a charfield cause it should be 01, 02, 03... and '
+            'no more than 2 digits'
+        ),
     )
-    # TODO update list with all the types
+    name = models.CharField(
+        _('provider name'),
+        max_length=255,
+    )
 
+    def __str__(self):
+        return '{} - {}'.format(self.code, self.name)
+
+
+class Provider(models.Model):
     organization = models.ForeignKey(
         Organization,
         related_name='providers',
@@ -183,11 +193,11 @@ class Provider(models.Model):
         _('provider name'),
         max_length=255,
     )
-    type = models.CharField(
-        _('provider type'),
-        choices=TYPE_CHOICES,
-        default=TYPE_COMMUNITY_RETAIL,
-        max_length=2,
+    type = models.ForeignKey(
+        ProviderType,
+        related_name='providers',
+        on_delete=models.SET_NULL,
+        null=True,
     )
     address = models.CharField(
         _('provider address'),
