@@ -63,6 +63,7 @@ def generate_medications(temporary_csv_file_id, organization_id):
                     zipcode_obj = ZipCode.objects.filter(zipcode=zip_code)[0]
                 except ZipCode.DoesNotExist:
                     zipcode_obj = None
+                # TODO: type and category?
                 provider, _ = Provider.objects.get_or_create(
                     organization=organization,
                     store_number=store_number,

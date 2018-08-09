@@ -11,6 +11,7 @@ from .models import (
     Provider,
     ProviderMedicationThrough,
     ProviderType,
+    ProviderCategory,
     State,
     ZipCode,
 )
@@ -193,6 +194,7 @@ class ProviderAdmin(admin.ModelAdmin):
         'store_number',
         'organization',
         'type',
+        'category',
         'phone',
         'zip',
         'state',
@@ -205,6 +207,7 @@ class ProviderAdmin(admin.ModelAdmin):
     )
     list_filter = (
         'type',
+        'category',
         'related_zipcode__state',
     )
     search_fields = (
@@ -221,6 +224,7 @@ class ProviderAdmin(admin.ModelAdmin):
                 'store_number',
                 'name',
                 'type',
+                'category',
             )
             }
         ),
@@ -270,4 +274,4 @@ class ProviderAdmin(admin.ModelAdmin):
 
 
 admin.site.register(ProviderType)
-
+admin.site.register(ProviderCategory)

@@ -6,7 +6,11 @@ from django.db.models import IntegerField,Case, When, Sum, Value as V
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status, viewsets
-from rest_framework.generics import GenericAPIView, ListAPIView, RetrieveAPIView
+from rest_framework.generics import (
+    GenericAPIView,
+    ListAPIView,
+    RetrieveAPIView,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -18,6 +22,7 @@ from .serializers import (
     GeoStateWithMedicationsSerializer,
     GeoCountyWithMedicationsSerializer,
     GeoZipCodeWithMedicationsSerializer,
+    ProviderCategoriesSerializer,
     ProviderTypesSerializer,
 )
 from .models import (
@@ -27,6 +32,7 @@ from .models import (
     ProviderMedicationThrough,
     Provider,
     ProviderType,
+    ProviderCategory,
     Medication,
     State,
     ZipCode,
@@ -383,3 +389,78 @@ class ProviderTypesView(ListAPIView):
             ),
         )
         return types_qs
+
+
+class ProviderCategoriesView(ListAPIView):
+    serializer_class = ProviderTypesSerializer
+    permission_classes = (IsAuthenticated,)
+    allowed_methods = ['GET']
+
+    def get_queryset(self):
+        med_id = self.request.query_params.get('med_id')
+        state_id = self.request.query_params.get('state_id')
+        zipcode = self.request.query_params.get('zipcode')
+        try:
+            if not med_id or int(
+                med_id
+            ) not in MedicationName.objects.values_list(
+                'id',
+                flat=True,
+            ):
+                return None
+        except ValueError:
+            return None
+
+        provider_medication_qs = ProviderMedicationThrough.objects.filter(
+            latest=True,
+            medication__medication_name__id=med_id,
+        )
+
+        if state_id and not zipcode:
+            # If we have zipcode we dont take into account the state
+            try:
+                provider_medication_qs = provider_medication_qs.filter(
+                    provider__related_zipcode__state__id=int(state_id),
+                )
+            except ValueError:
+                pass
+
+        if zipcode:
+            provider_medication_qs = provider_medication_qs.filter(
+                provider__zip=zipcode,
+            )
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
+
+        provider_medication_ids = provider_medication_qs.values_list(
+            'id',
+            flat=True,
+        )
+        categories_qs = ProviderCategory.objects.all().annotate(
+            providers_count=Sum(
+                Case(
+                    When(
+                        providers__provider_medication__id__in=provider_medication_ids,
+                        then=V(1),
+                    ),
+                    output_field=IntegerField(),
+                    default=V(0)
+                ),
+            ),
+        )
+        return categories_qs

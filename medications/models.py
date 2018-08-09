@@ -170,9 +170,34 @@ class ProviderType(models.Model):
         ),
     )
     name = models.CharField(
-        _('provider name'),
+        _('type name'),
         max_length=255,
     )
+
+
+    def __str__(self):
+        return '{} - {}'.format(self.code, self.name)
+
+
+class ProviderCategory(models.Model):
+    code = models.CharField(
+        _('provider category code'),
+        max_length=2,
+        default='00',
+        help_text=_(
+            'code used by the NCPDP to identify the category of provider.'
+            'This code is a charfield cause it should be 01, 02, 03... and '
+            'no more than 2 digits'
+        ),
+    )
+    name = models.CharField(
+        _('category name'),
+        max_length=255,
+    )
+
+    class Meta:
+        verbose_name = _('provider category')
+        verbose_name_plural = _('provider categories')
 
     def __str__(self):
         return '{} - {}'.format(self.code, self.name)
@@ -195,6 +220,12 @@ class Provider(models.Model):
     )
     type = models.ForeignKey(
         ProviderType,
+        related_name='providers',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    category = models.ForeignKey(
+        ProviderCategory,
         related_name='providers',
         on_delete=models.SET_NULL,
         null=True,

@@ -17,6 +17,7 @@ from .models import (
     ZipCode,
     Provider,
     ProviderType,
+    ProviderCategory,
 )
 from .utils import get_supplies
 
@@ -275,6 +276,17 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
 
 
 class ProviderTypesSerializer(serializers.ModelSerializer):
+    providers_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProviderType
+        fields = ('id', 'code', 'name', 'providers_count')
+
+    def get_providers_count(self, obj):
+        return obj.providers_count
+
+
+class ProviderCategoriesSerializer(serializers.ModelSerializer):
     providers_count = serializers.SerializerMethodField()
 
     class Meta:

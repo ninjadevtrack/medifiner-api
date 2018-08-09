@@ -9,6 +9,7 @@ from .views import (
     GeoStatsCountiesWithMedicationsView,
     GeoZipCodeWithMedicationsView,
     ProviderTypesView,
+    ProviderCategoriesView,
 )
 
 router = DefaultRouter()
@@ -35,6 +36,10 @@ medications_api_urlpatterns = [
     path(
         'provider_types',
         ProviderTypesView.as_view(),
+    ),
+    path(
+        'provider_categories',
+        ProviderCategoriesView.as_view(),
     ),
 ]
 
