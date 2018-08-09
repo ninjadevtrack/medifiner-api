@@ -50,6 +50,7 @@ INSTALLED_APPS = (
     'rest_registration',
     'rest_framework',
     'rest_framework.authtoken',
+    'rest_framework_swagger',
 ) + LOCAL_APPS
 
 AUTH_USER_MODEL = 'auth_ex.User'

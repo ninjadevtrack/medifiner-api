@@ -2,8 +2,11 @@ from django.conf import settings
 from django.urls import include, path
 from django.contrib import admin
 from django.conf.urls.static import static
+from rest_framework_swagger.views import get_swagger_view
 
 from medications.api_urls_v1 import medications_api_urlpatterns
+
+schema_view = get_swagger_view(title='MedFinder API')
 
 api_urlpatterns = [
 
@@ -13,7 +16,8 @@ api_urlpatterns = [
 
 
 urlpatterns = [
-    path(r'admin/', admin.site.urls),
+    path('admin/', admin.site.urls),
+    path('api/swagger', schema_view),
     path('api/v1/', include(api_urlpatterns)),
 ]
 
