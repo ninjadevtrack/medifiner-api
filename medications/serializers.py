@@ -139,6 +139,7 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
             ("center", json.loads(data[0].centroid) if data else ''),
             ("state_supplies", supplies),
             ("state_supply", supply),
+            ("state_id", data[0].state.id),
             ("features", super().to_representation(data))
         ))
 
@@ -153,6 +154,7 @@ def get_properties(instance, geographic_type=None):
     if geographic_type == 'state':
         properties['name'] = instance.state_name
         properties['code'] = instance.state_code
+        properties['id'] = instance.id
     elif geographic_type == 'county':
         properties['name'] = instance.county_name
         properties['state'] = {
