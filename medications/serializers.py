@@ -277,7 +277,7 @@ class ProviderTypesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProviderType
-        fields = ('name', 'providers_count')
+        fields = ('id', 'code', 'name', 'providers_count')
 
     def get_providers_count(self, obj):
         return obj.providers_count
