@@ -18,27 +18,27 @@ router.register(r'states', StateViewSet, base_name='state')
 
 medications_api_urlpatterns = [
     path(
-        'csv_import',
+        'csv_import/',
         CSVUploadView.as_view(),
     ),
     path(
-        'geo_stats',
+        'geo_stats/',
         GeoStatsStatesWithMedicationsView.as_view(),
     ),
     path(
-        'geo_stats/state/<int:id>',
+        'geo_stats/state/<int:id>/',
         GeoStatsCountiesWithMedicationsView.as_view(),
     ),
     path(
-        'geo_stats/zipcode/<str:zipcode>',
+        'geo_stats/zipcode/<str:zipcode>/',
         GeoZipCodeWithMedicationsView.as_view(),
     ),
     path(
-        'provider_types',
+        'provider_types/',
         ProviderTypesView.as_view(),
     ),
     path(
-        'provider_categories',
+        'provider_categories/',
         ProviderCategoriesView.as_view(),
     ),
 ]

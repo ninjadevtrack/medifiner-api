@@ -17,7 +17,7 @@ api_urlpatterns = [
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/swagger', schema_view),
+    path('api/swagger/', schema_view),
     path('api/v1/', include(api_urlpatterns)),
 ]
 
