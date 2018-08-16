@@ -309,6 +309,7 @@ if RAVEN_DSN:
     RAVEN_CONFIG = {
         'dsn': RAVEN_DSN,
     }
+    CELERYD_HIJACK_ROOT_LOGGER = False
     LOGGING = {
         'version': 1,
         'disable_existing_loggers': True,
@@ -348,6 +349,11 @@ if RAVEN_DSN:
             'sentry.errors': {
                 'level': 'DEBUG',
                 'handlers': ['console'],
+                'propagate': False,
+            },
+            'celery': {
+                'level': 'WARNING',
+                'handlers': ['sentry', 'console'],
                 'propagate': False,
             },
         },

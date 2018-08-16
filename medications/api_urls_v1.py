@@ -26,7 +26,7 @@ medications_api_urlpatterns = [
         GeoStatsStatesWithMedicationsView.as_view(),
     ),
     path(
-        'geo_stats/state/<int:id>/',
+        'geo_stats/state/<int:state_id>/',
         GeoStatsCountiesWithMedicationsView.as_view(),
     ),
     path(

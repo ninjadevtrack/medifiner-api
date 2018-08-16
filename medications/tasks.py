@@ -5,7 +5,7 @@ from celery import shared_task
 from celery.decorators import task
 from django.conf import settings
 from django.core.cache import cache
-from django.core.exceptions import MultipleObjectsReturned
+from django.core.exceptions import MultipleObjectsReturned, ValidationError
 from io import BytesIO
 from urllib.request import urlopen
 from zipfile import ZipFile
@@ -16,16 +16,17 @@ from .models import (
     Organization,
     Provider,
     ProviderMedicationThrough,
-    TemporaryFile,
     ZipCode,
 )
+
 
 
 @shared_task
 # This task can't be atomic because we need to run a post_save signal for
 # every ProviderMedicationThrough object created
-def generate_medications(temporary_csv_file_id, organization_id):
+def generate_medications(cache_key, organization_id):
     # Already checked in serializer validation that this organization exists.
+    lost_ndcs = []
     organization = Organization.objects.get(pk=organization_id)
     existing_ndc_codes = ExistingMedication.objects.values_list(
         'ndc',
@@ -34,8 +35,9 @@ def generate_medications(temporary_csv_file_id, organization_id):
     provider = None
     medication = None
     medication_map = {}  # Use this map to save queries to the DB
-    temporary_file_obj = TemporaryFile.objects.get(pk=temporary_csv_file_id)
-    decoded_file = temporary_file_obj.file.read().decode('utf-8').splitlines()
+    csv_file = cache.get(cache_key)
+    temporary_file_obj = csv_file.open()
+    decoded_file = temporary_file_obj.read().decode('utf-8').splitlines()
     reader = csv.DictReader(decoded_file)
     for row in reader:
         # Iterate through the rows to get the neccessary information
@@ -100,8 +102,18 @@ def generate_medications(temporary_csv_file_id, organization_id):
                     supply=row.get('supply_level'),
                     latest=True
                 )
-    # Make celery delete the django object that has our csv file
-    temporary_file_obj.delete()
+        else:
+            lost_ndcs.append(ndc_code)
+    # Make celery delete the csv file in cache
+    if temporary_file_obj:
+        cache.delete(cache_key)
+
+    # Send to sentry not found ndcs
+    if lost_ndcs:
+        raise ValidationError(
+            'Following ndcs does not exist, therefore they were not imported'
+            ': {}'.format(lost_ndcs)
+        )
 
 
 # Task that handles the post_save signal asynchronously

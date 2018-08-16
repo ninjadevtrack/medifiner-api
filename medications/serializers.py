@@ -275,7 +275,9 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
         return json.loads(obj.geometry.geojson)
 
 
-class ProviderTypesSerializer(serializers.ModelSerializer):
+class ProviderTypesAndCategoriesSerializer(serializers.ModelSerializer):
+    # We can use this serializer for categories as well even if model is
+    # ProviderType since they have the same fields
     providers_count = serializers.SerializerMethodField()
 
     class Meta:

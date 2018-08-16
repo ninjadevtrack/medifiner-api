@@ -490,11 +490,3 @@ class ExistingMedication(models.Model):
 
     def __str__(self):
         return self.ndc
-
-
-class TemporaryFile(models.Model):
-    # Since we cannot pass files to celery, and also cannot pass temporary
-    # files to celery since the temporary python files are closed after the
-    # request is finished, we have to create an object in our database with
-    # the csv file and them make celery delete it.
-    file = models.FileField()
