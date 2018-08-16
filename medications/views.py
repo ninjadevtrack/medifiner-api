@@ -187,7 +187,7 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
 
     def get_queryset(self):
         med_id = self.request.query_params.get('med_id')
-        state = self.kwargs.pop('id')
+        state_id = self.kwargs.pop('state_id')
         try:
             if not med_id or int(
                 med_id
@@ -260,7 +260,7 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
             flat=True,
         )
         qs = County.objects.filter(
-            state__id=state,
+            state__id=state_id,
         ).select_related(
             'state',
         ).annotate(
