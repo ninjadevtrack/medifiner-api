@@ -1,6 +1,7 @@
 from django.db.models import Q, Count
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
+from django.core.cache import cache
 from django.db.models import IntegerField, Case, When, Sum, Value as V
 
 from django.utils.translation import ugettext_lazy as _
@@ -26,7 +27,6 @@ from .serializers import (
 )
 from .models import (
     County,
-    TemporaryFile,
     MedicationName,
     ProviderMedicationThrough,
     ProviderType,
@@ -45,9 +45,10 @@ class CSVUploadView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         csv_file = serializer.validated_data.pop('csv_file')
         organization_id = serializer.validated_data.pop('organization_id')
-        temporary_csv_file = TemporaryFile.objects.create(file=csv_file)
+        cache_key = '{}_{}'.format('csv_uploaded_file', request.user.id)
+        cache.set(cache_key, csv_file, None)
         generate_medications.delay(
-            temporary_csv_file.id,
+            cache_key,
             organization_id,
         )
         return Response(
