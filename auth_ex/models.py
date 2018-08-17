@@ -40,7 +40,12 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     """Abstract User with unique email and no username."""
-
+    NATIONAL_LEVEL = 'nl'
+    STATE_LEVEL = 'sl'
+    LEVEL_CHOICES = (
+        (NATIONAL_LEVEL, _('National level permission')),
+        (STATE_LEVEL, _('State level permission')),
+    )
     first_name = models.CharField(_('first name'), max_length=30, blank=True)
     last_name = models.CharField(_('last name'), max_length=30, blank=True)
     email = models.EmailField(
@@ -64,6 +69,14 @@ class User(AbstractBaseUser, PermissionsMixin):
             'Unselect this instead of deleting accounts.'
         ),
     )
+
+    permission_level = models.CharField(
+        _('permission level'),
+        max_length=2,
+        choices=LEVEL_CHOICES,
+        default=STATE_LEVEL,
+    )
+
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
 
     objects = UserManager()

@@ -35,6 +35,8 @@ from .models import (
     ZipCode,
 )
 
+from .permissions import NationalLevel
+
 
 class CSVUploadView(GenericAPIView):
     serializer_class = CSVUploadSerializer
@@ -367,7 +369,7 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
 
 class ProviderTypesView(ListAPIView):
     serializer_class = ProviderTypesAndCategoriesSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (NationalLevel,)
     allowed_methods = ['GET']
 
     class Meta:
