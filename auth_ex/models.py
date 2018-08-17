@@ -1,3 +1,5 @@
+import pyotp
+
 from django.db import models
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
@@ -76,6 +78,18 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices=LEVEL_CHOICES,
         default=STATE_LEVEL,
     )
+    secret = models.CharField(
+        _('secret'),
+        max_length=20,
+        unique=True,
+    )
+    invitation_mail_sent = models.BooleanField(
+        _('invitation mail sent'),
+        default=False,
+        help_text=_(
+            'Designates whether the invitation mail for this user '
+            ' has been sent'),
+    )
 
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
 
@@ -102,3 +116,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     def email_user(self, subject, message, from_email=None, **kwargs):
         """Send an email to this User."""
         send_mail(subject, message, from_email, [self.email], **kwargs)
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.secret = pyotp.random_base32(length=20)
+        super().save(*args, **kwargs)

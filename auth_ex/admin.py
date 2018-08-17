@@ -7,14 +7,31 @@ from activity_log.models import ActivityLog
 from .forms import UserChangeForm, UserCreationForm
 from .models import User
 
+# TODO: for now using the api url, to be changed once it is done
+frontend_activation_account_url = 'localhost:8000/api/v1/account/setup/'
+
+
+def send_activation_mail(modeladmin, request, queryset):
+    for user in queryset:
+        if not user.invitation_mail_sent:
+            link = '{}?secret={}'.format(
+                frontend_activation_account_url,
+                user.secret,
+            )
+            # TODO: should we pass email? or generate the login token here??
+            # TODO: send mail
+    queryset.update(invitation_mail_sent=False)
+
 
 class UserAdmin(UserAdmin):
     """Uses the custom User model as well as the custom user creation form."""
 
     add_form_template = 'auth_ex/user/add_form.html'
-
+    readonly_fields = ('invitation_mail_sent', )
     fieldsets = (
-        (None, {'fields': ('email', 'password')}),
+        (None, {'fields': (
+            'email', 'password', 'invitation_mail_sent',
+        )}),
         (_('Personal info'), {'fields': ('first_name', 'last_name')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser',
                                        'permission_level',)}),
@@ -28,10 +45,30 @@ class UserAdmin(UserAdmin):
     )
     form = UserChangeForm
     add_form = UserCreationForm
-    list_display = ('email', 'first_name', 'last_name', 'is_staff')
-    list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
+    list_display = (
+        'email',
+        'first_name',
+        'last_name',
+        'is_staff',
+        'invitation_mail_sent',
+    )
+    list_filter = (
+        'invitation_mail_sent',
+        'is_staff',
+        'is_superuser',
+        'is_active',
+    )
     search_fields = ('first_name', 'last_name', 'email')
     ordering = ('email',)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions['send_activation_mail'] = (
+            send_activation_mail,
+            'send_activation_mail',
+            _('Send activation mail')
+        )
+        return actions
 
 
 class CustomLogAdmin(LogAdmin):
