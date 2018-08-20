@@ -5,12 +5,14 @@ from django.conf.urls.static import static
 from rest_framework_swagger.views import get_swagger_view
 
 from medications.api_urls_v1 import medications_api_urlpatterns
+from auth_ex.api_urls_v1 import accounts_api_urlpatterns
 
 schema_view = get_swagger_view(title='MedFinder API')
 
 api_urlpatterns = [
 
     path('accounts/', include('rest_registration.api.urls')),
+    path('accounts/', include(accounts_api_urlpatterns)),
     path('medications/', include(medications_api_urlpatterns)),
 ]
 

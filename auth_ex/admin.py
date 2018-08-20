@@ -8,7 +8,8 @@ from .forms import UserChangeForm, UserCreationForm
 from .models import User
 
 # TODO: for now using the api url, to be changed once it is done
-frontend_activation_account_url = 'localhost:8000/api/v1/account/setup/'
+frontend_activation_account_url = '{FRONTEND_DOMAIN}/register/'
+frontend_activation_account_url = 'localhost:8000/api/v1/sign_in/'
 
 
 def send_activation_mail(modeladmin, request, queryset):
@@ -20,7 +21,7 @@ def send_activation_mail(modeladmin, request, queryset):
             )
             # TODO: should we pass email? or generate the login token here??
             # TODO: send mail
-    queryset.update(invitation_mail_sent=False)
+    queryset.update(invitation_mail_sent=True)
 
 
 class UserAdmin(UserAdmin):

@@ -209,7 +209,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
-    )
+    ),
 }
 
 # --- REST REGISTRATION ---
@@ -231,6 +231,16 @@ REST_REGISTRATION = {
 
     'REGISTER_EMAIL_VERIFICATION_URL':
     'https://{}/verify-email/'.format(FRONTEND_URL),
+
+    'USER_HIDDEN_FIELDS': (
+        'is_active',
+        'is_staff',
+        'is_superuser',
+        'user_permissions',
+        'groups',
+        'date_joined',
+        'secret',
+    ),
 }
 
 EMAIL_BACKEND = env(
