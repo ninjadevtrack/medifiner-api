@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.core.mail import send_mail
+from django.conf import settings
+from django.template.loader import render_to_string
 from django.utils.translation import ugettext_lazy as _
 from activity_log.admin import LogAdmin
 from activity_log.models import ActivityLog
@@ -19,8 +22,21 @@ def send_activation_mail(modeladmin, request, queryset):
                 frontend_activation_account_url,
                 user.secret,
             )
-            # TODO: should we pass email? or generate the login token here??
-            # TODO: send mail
+            msg_plain = render_to_string(
+                'auth_ex/emails/activation_email.txt',
+                {'link': link},
+            )
+            msg_html = render_to_string(
+                'auth_ex/emails/activation_email.html',
+                {'link': link},
+            )
+            send_mail(
+                'MedFinder Account Activation',
+                msg_plain,
+                settings.FROM_EMAIL,
+                [user.email],
+                html_message=msg_html,
+            )
     queryset.update(invitation_mail_sent=True)
 
 

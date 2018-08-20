@@ -248,6 +248,11 @@ EMAIL_BACKEND = env(
     default='django.core.mail.backends.smtp.EmailBackend',
 )
 
+FROM_EMAIL = env(
+    'FROM_EMAIL',
+    default='no-reply@example.com'
+)
+
 if ENABLE_DEBUG_TOOLBAR:
     INSTALLED_APPS += (
         'debug_toolbar',
