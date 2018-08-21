@@ -7,6 +7,8 @@ from rest_framework_jwt.views import obtain_jwt_token
 
 from medications.api_urls_v1 import medications_api_urlpatterns
 from auth_ex.api_urls_v1 import accounts_api_urlpatterns
+from public.api_urls_v1 import public_api_urlpatterns
+
 
 schema_view = get_swagger_view(title='MedFinder API')
 
@@ -16,6 +18,7 @@ api_urlpatterns = [
     path('accounts/', include(accounts_api_urlpatterns)),
     path('accounts/obtain_token/', obtain_jwt_token),
     path('medications/', include(medications_api_urlpatterns)),
+    path('public/', include(public_api_urlpatterns)),
 ]
 
 
