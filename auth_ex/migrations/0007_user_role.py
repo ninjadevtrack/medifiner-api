@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='user',
             name='role',
-            field=models.CharField(blank=True, help_text='role this user has in the related organization', max_length=250, verbose_name='role in organization'),
+            field=models.CharField(blank=True, help_text='Role this user has in the related organization.', max_length=250, verbose_name='role in organization'),
         ),
     ]

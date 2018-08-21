@@ -3,7 +3,9 @@ from django.contrib.auth.admin import UserAdmin
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
+from django.utils.html import format_html
 from django.utils.translation import ugettext_lazy as _
+from django.urls import reverse
 from activity_log.admin import LogAdmin
 from activity_log.models import ActivityLog
 
@@ -44,12 +46,17 @@ class UserAdmin(UserAdmin):
     """Uses the custom User model as well as the custom user creation form."""
 
     add_form_template = 'auth_ex/user/add_form.html'
-    readonly_fields = ('invitation_mail_sent', )
+    readonly_fields = ('invitation_mail_sent', 'organization_link')
     fieldsets = (
         (None, {'fields': (
             'email', 'password', 'invitation_mail_sent',
         )}),
-        (_('Personal info'), {'fields': ('first_name', 'last_name')}),
+        (_('Personal info'), {'fields': (
+            'first_name',
+            'last_name',
+            'organization_link',
+            'role',
+        )}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser',
                                        'permission_level',)}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
@@ -66,6 +73,7 @@ class UserAdmin(UserAdmin):
         'email',
         'first_name',
         'last_name',
+        'organization_link',
         'is_staff',
         'invitation_mail_sent',
     )
@@ -77,6 +85,21 @@ class UserAdmin(UserAdmin):
     )
     search_fields = ('first_name', 'last_name', 'email')
     ordering = ('email',)
+
+    def organization_link(self, obj):
+        if obj.organization:
+            link = reverse(
+                'admin:medications_organization_change',
+                args=[obj.organization.id],
+            )
+            return format_html(
+                '<a href="{link}">{text}</a>',
+                link=link,
+                text=obj.organization,
+            )
+        return None
+
+    organization_link.short_description = _('Organization')
 
     def get_actions(self, request):
         actions = super().get_actions(request)

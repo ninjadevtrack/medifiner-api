@@ -76,7 +76,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         _('role in organization'),
         max_length=250,
         blank=True,
-        help_text=_('role this user has in the related organization'),
+        help_text=_('Role this user has in the related organization.'),
     )
 
     permission_level = models.CharField(
