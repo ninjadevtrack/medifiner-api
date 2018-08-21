@@ -1,5 +1,3 @@
-import pyotp
-
 from django.db import models
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
@@ -118,8 +116,3 @@ class User(AbstractBaseUser, PermissionsMixin):
     def email_user(self, subject, message, from_email=None, **kwargs):
         """Send an email to this User."""
         send_mail(subject, message, from_email, [self.email], **kwargs)
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            self.secret = pyotp.random_base32(length=20)
-        super().save(*args, **kwargs)
