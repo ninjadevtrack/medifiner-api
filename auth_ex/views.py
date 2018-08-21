@@ -1,3 +1,5 @@
+import jwt
+
 from django.contrib import auth
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.views import login as auth_login
@@ -17,6 +19,7 @@ from rest_framework_jwt.serializers import (
     jwt_encode_handler,
 )
 from rest_framework_jwt.views import jwt_response_payload_handler
+from rest_framework_jwt.utils import jwt_decode_handler
 
 from .forms import UserAuthenticationForm
 from .models import User
@@ -40,12 +43,22 @@ class SignInView(RetrieveUpdateAPIView):
 
     def get_object(self):
         secret = self.request.query_params.get('s')
+
+        try:
+            user_id = jwt_decode_handler(secret).get('user_id')
+        except jwt.ExpiredSignature:
+            msg = 'Signature has expired.'
+            raise BadRequest(msg)
+        except jwt.DecodeError:
+            msg = 'Error decoding signature.'
+            raise BadRequest(msg)
+
         try:
             user = User.objects.filter(
                 invitation_mail_sent=True,
-            ).get(secret=secret)
+            ).get(id=user_id)
         except User.DoesNotExist:
-            raise BadRequest('No user found for this secret')
+            raise BadRequest('No user found')
         self.request.user = user
         return user
 

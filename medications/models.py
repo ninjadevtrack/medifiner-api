@@ -409,6 +409,7 @@ class Medication(models.Model):
         on_delete=models.CASCADE,
         null=True,
     )
+    # TODO: 'Brand Drugs', 'Generic Drugs' and 'Public Health Supply'
 
     class Meta:
         verbose_name = _('medication')

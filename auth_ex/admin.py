@@ -6,23 +6,31 @@ from django.template.loader import render_to_string
 from django.utils.html import format_html
 from django.utils.translation import ugettext_lazy as _
 from django.urls import reverse
+
 from activity_log.admin import LogAdmin
 from activity_log.models import ActivityLog
+
+from rest_framework_jwt.serializers import (
+    jwt_payload_handler,
+    jwt_encode_handler,
+)
 
 from .forms import UserChangeForm, UserCreationForm
 from .models import User
 
 # TODO: for now using the api url, to be changed once it is done
 frontend_activation_account_url = '{FRONTEND_DOMAIN}/register/'
-frontend_activation_account_url = 'localhost:8000/api/v1/sign_in/'
+frontend_activation_account_url = 'localhost:8000/api/v1/accounts/sign_in/'
 
 
 def send_activation_mail(modeladmin, request, queryset):
     for user in queryset:
         if not user.invitation_mail_sent:
+            payload = jwt_payload_handler(user)
+            token = jwt_encode_handler(payload)
             link = '{}?s={}'.format(
                 frontend_activation_account_url,
-                user.secret,
+                token,
             )
             msg_plain = render_to_string(
                 'auth_ex/emails/activation_email.txt',

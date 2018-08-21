@@ -85,11 +85,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices=LEVEL_CHOICES,
         default=STATE_LEVEL,
     )
-    secret = models.CharField(
-        _('secret'),
-        max_length=20,
-        unique=True,
-    )
     invitation_mail_sent = models.BooleanField(
         _('invitation mail sent'),
         default=False,
