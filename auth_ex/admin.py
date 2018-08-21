@@ -20,7 +20,7 @@ frontend_activation_account_url = 'localhost:8000/api/v1/sign_in/'
 def send_activation_mail(modeladmin, request, queryset):
     for user in queryset:
         if not user.invitation_mail_sent:
-            link = '{}?secret={}'.format(
+            link = '{}?s={}'.format(
                 frontend_activation_account_url,
                 user.secret,
             )

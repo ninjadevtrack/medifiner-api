@@ -33,7 +33,7 @@ class SignInView(RetrieveUpdateAPIView):
     permission_classes = (AllowAny,)
 
     def get_object(self):
-        secret = self.request.query_params.get('secret')
+        secret = self.request.query_params.get('s')
         try:
             user = User.objects.filter(
                 invitation_mail_sent=True,
@@ -47,7 +47,8 @@ class SignInView(RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         user = self.request.user
         user.set_password(serializer.validated_data['password'])
-        # TODO: Organization and role
+        user.organization = serializer.validated_data['organization']
+        user.role = serializer.validated_data['role']
         user.save()
         auth.login(self.request, user)
 

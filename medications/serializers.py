@@ -15,6 +15,7 @@ from .models import (
     State,
     County,
     ZipCode,
+    Organization,
     Provider,
     ProviderType,
     ProviderCategory,
@@ -297,3 +298,17 @@ class ProviderCategoriesSerializer(serializers.ModelSerializer):
 
     def get_providers_count(self, obj):
         return obj.providers_count
+
+
+class OrganizationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Organization
+        fields = (
+            'id',
+            'organization_name',
+            'contact_name',
+            'phone',
+            'website',
+            'registration_date',
+        )
