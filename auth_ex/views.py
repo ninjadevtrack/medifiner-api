@@ -12,6 +12,12 @@ from rest_framework.response import Response
 
 from rest_registration.exceptions import BadRequest
 
+from rest_framework_jwt.serializers import (
+    jwt_payload_handler,
+    jwt_encode_handler,
+)
+from rest_framework_jwt.views import jwt_response_payload_handler
+
 from .forms import UserAuthenticationForm
 from .models import User
 from .serializers import SignInSerializer
@@ -40,7 +46,6 @@ class SignInView(RetrieveUpdateAPIView):
             ).get(secret=secret)
         except User.DoesNotExist:
             raise BadRequest('No user found for this secret')
-        token, _ = Token.objects.get_or_create(user=user)
         self.request.user = user
         return user
 
@@ -60,4 +65,9 @@ class SignInView(RetrieveUpdateAPIView):
         )
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        return Response({'token': request.user.auth_token.key})
+        payload = jwt_payload_handler(request.user)
+        token = jwt_encode_handler(payload)
+        response_data = jwt_response_payload_handler(
+            token, request.user, self.request
+        )
+        return Response(response_data)
