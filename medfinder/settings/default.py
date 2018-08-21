@@ -30,7 +30,8 @@ SITE_ID = env('SITE_ID')
 LOCAL_APPS = (
     'auth_ex',
     'medfinder',
-    'medications'
+    'medications',
+    'public',
 )
 
 INSTALLED_APPS = (
