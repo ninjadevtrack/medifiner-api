@@ -82,6 +82,7 @@ def generate_medications(cache_key, organization_id):
                 # medication has been created already from this file
                 medication = medication_map.get(ndc_code, None)
                 if not medication:
+                    # TODO: DRUG TYPE?
                     medication, _ = Medication.objects.get_or_create(
                         name=med_name,
                         ndc=ndc_code,

@@ -446,6 +446,8 @@ class ProviderTypesView(ListAPIView):
         )
         return qs
 
+# TODO 'Brand Drugs', 'Generic Drugs' and 'Public Health Supply' with count
+
 
 class ProviderCategoriesView(ProviderTypesView):
     # Inheritance from Provider types view since only the model

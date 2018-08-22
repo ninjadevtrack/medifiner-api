@@ -76,3 +76,6 @@ class FindProviderMedicationView(ListAPIView):
         )
 
         return provider_qs
+
+# TODO epidemic endpoint
+# TODO basic info with the drug types, if public has to be or not
