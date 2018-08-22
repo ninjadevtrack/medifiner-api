@@ -12,7 +12,7 @@ from rest_framework.generics import (
     ListAPIView,
     RetrieveAPIView,
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
 from medications.tasks import generate_medications
@@ -24,10 +24,12 @@ from .serializers import (
     GeoCountyWithMedicationsSerializer,
     GeoZipCodeWithMedicationsSerializer,
     ProviderTypesAndCategoriesSerializer,
+    OrganizationSerializer,
 )
 from .models import (
     County,
     MedicationName,
+    Organization,
     ProviderMedicationThrough,
     ProviderType,
     ProviderCategory,
@@ -449,3 +451,10 @@ class ProviderCategoriesView(ProviderTypesView):
     # Inheritance from Provider types view since only the model
     class Meta:
         model = ProviderCategory
+
+
+class OrganizationViewSet(viewsets.ModelViewSet):
+    serializer_class = OrganizationSerializer
+    permission_classes = (AllowAny,)
+    allowed_methods = ['GET']
+    queryset = Organization.objects.all()

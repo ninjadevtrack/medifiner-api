@@ -70,11 +70,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         ),
     )
 
+    role = models.CharField(
+        _('role in organization'),
+        max_length=250,
+        blank=True,
+        help_text=_('Role this user has in the related organization.'),
+    )
+
     permission_level = models.CharField(
         _('permission level'),
         max_length=2,
         choices=LEVEL_CHOICES,
         default=STATE_LEVEL,
+    )
+    invitation_mail_sent = models.BooleanField(
+        _('invitation mail sent'),
+        default=False,
+        help_text=_(
+            'Designates whether the invitation mail for this user '
+            ' has been sent'),
     )
 
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)

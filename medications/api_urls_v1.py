@@ -8,13 +8,27 @@ from .views import (
     GeoStatsStatesWithMedicationsView,
     GeoStatsCountiesWithMedicationsView,
     GeoZipCodeWithMedicationsView,
+    OrganizationViewSet,
     ProviderTypesView,
     ProviderCategoriesView,
 )
 
 router = DefaultRouter()
-router.register(r'names', MedicationNameViewSet, base_name='name')
-router.register(r'states', StateViewSet, base_name='state')
+router.register(
+    r'names',
+    MedicationNameViewSet,
+    base_name='name',
+)
+router.register(
+    r'states',
+    StateViewSet,
+    base_name='state',
+)
+router.register(
+    r'organizations',
+    OrganizationViewSet,
+    base_name='organization',
+)
 
 medications_api_urlpatterns = [
     path(

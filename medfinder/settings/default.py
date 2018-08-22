@@ -9,6 +9,7 @@ from os import path
 from django.utils.translation import ugettext_lazy as _
 
 import environ
+import datetime
 
 root = environ.Path(__file__) - 3
 env = environ.Env(DEBUG=(bool, False), )
@@ -206,37 +207,50 @@ ENABLE_DEBUG_TOOLBAR = env.bool(
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
-    )
+    ),
+}
+
+# --- JWT ---
+
+JWT_AUTH = {
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1),
+    'JWT_AUTH_HEADER_PREFIX': 'Token',
 }
 
 # --- REST REGISTRATION ---
 FRONTEND_URL = env('FRONTEND_URL', default='localhost:8000')
 REST_REGISTRATION = {
-    'REGISTER_VERIFICATION_ENABLED': True,
-
-    'RESET_PASSWORD_VERIFICATION_URL': '/reset-password/',
-
-    'REGISTER_EMAIL_VERIFICATION_ENABLED': True,
+    'REGISTER_VERIFICATION_ENABLED': False,
+    'REGISTER_EMAIL_VERIFICATION_ENABLED': False,
 
     'VERIFICATION_FROM_EMAIL': 'no-reply@example.com',
-
-    'REGISTER_VERIFICATION_URL':
-    'https://{}/verify-user/'.format(FRONTEND_URL),
 
     'RESET_PASSWORD_VERIFICATION_URL':
     'https://{}/reset-password/'.format(FRONTEND_URL),
 
-    'REGISTER_EMAIL_VERIFICATION_URL':
-    'https://{}/verify-email/'.format(FRONTEND_URL),
+    'USER_HIDDEN_FIELDS': (
+        'is_active',
+        'is_staff',
+        'is_superuser',
+        'user_permissions',
+        'groups',
+        'date_joined',
+        'secret',
+    ),
 }
 
 EMAIL_BACKEND = env(
     'EMAIL_BACKEND',
     default='django.core.mail.backends.smtp.EmailBackend',
+)
+
+FROM_EMAIL = env(
+    'FROM_EMAIL',
+    default='no-reply@example.com'
 )
 
 if ENABLE_DEBUG_TOOLBAR:
