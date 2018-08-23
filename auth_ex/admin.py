@@ -11,12 +11,12 @@ from activity_log.admin import LogAdmin
 from activity_log.models import ActivityLog
 
 from rest_framework_jwt.serializers import (
-    jwt_payload_handler,
     jwt_encode_handler,
 )
 
 from .forms import UserChangeForm, UserCreationForm
 from .models import User
+from .utils import jwt_payload_handler
 
 # TODO: for now using the api url, to be changed once it is done
 frontend_activation_account_url = '{FRONTEND_DOMAIN}/register/'
@@ -47,6 +47,7 @@ def send_activation_mail(modeladmin, request, queryset):
                 [user.email],
                 html_message=msg_html,
             )
+    # TODO Is the invitation mail sent flag necessary?
     queryset.update(invitation_mail_sent=True)
 
 

@@ -45,12 +45,18 @@ class SignInView(RetrieveUpdateAPIView):
         secret = self.request.query_params.get('s')
 
         try:
-            user_id = jwt_decode_handler(secret).get('user_id')
+            decoded_token = jwt_decode_handler(secret)
         except jwt.ExpiredSignature:
-            msg = 'Signature has expired.'
-            raise BadRequest(msg)
+            decoded_token = jwt.decode(secret, None, False)
         except jwt.DecodeError:
             msg = 'Error decoding signature.'
+            raise BadRequest(msg)
+
+        user_id = decoded_token.get('user_id')
+        invitation_code = decoded_token.get('invitation_code')
+
+        if User.objects.filter(used_invitation_code=invitation_code):
+            msg = 'This invitation link has been already used'
             raise BadRequest(msg)
 
         try:
@@ -59,7 +65,9 @@ class SignInView(RetrieveUpdateAPIView):
             ).get(id=user_id)
         except User.DoesNotExist:
             raise BadRequest('No user found')
+
         self.request.user = user
+        self.request.user.used_invitation_code = invitation_code
         return user
 
     def perform_update(self, serializer):
