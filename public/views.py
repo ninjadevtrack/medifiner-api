@@ -1,4 +1,6 @@
 from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.contrib.gis.geos import Point
 from django.db.models import Q, Prefetch
@@ -6,9 +8,11 @@ from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
 from django.contrib.postgres.aggregates import ArrayAgg
 
+from epidemic.models import Epidemic
 from medications.models import (
     ProviderMedicationThrough,
     Provider,
+    Medication,
 )
 from .serializers import FindProviderSerializer
 
@@ -80,5 +84,14 @@ class FindProviderMedicationView(ListAPIView):
 
         return provider_qs
 
-# TODO epidemic endpoint
-# TODO basic info with the drug types, if public has to be or not
+
+class BasicInfoView(APIView):
+
+    def get(self, request):
+        # Making a bigger response in case more objects are added in the future
+        response = {}
+        map_choices = dict(Medication.DRUG_TYPE_CHOICES)
+        if not Epidemic.objects.first().active:
+            map_choices.pop(Medication.PUBLIC_HEALTH_SUPPLY)
+        response['drug_type'] = map_choices
+        return Response(response)
