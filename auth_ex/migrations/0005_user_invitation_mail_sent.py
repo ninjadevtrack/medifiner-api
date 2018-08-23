@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('auth_ex', '0005_user_secret'),
+        ('auth_ex', '0004_user_permission_level'),
     ]
 
     operations = [

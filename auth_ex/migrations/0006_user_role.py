@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('auth_ex', '0006_user_invitation_mail_sent'),
+        ('auth_ex', '0005_user_invitation_mail_sent'),
     ]
 
     operations = [
