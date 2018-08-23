@@ -29,14 +29,15 @@ class FindProviderMedicationView(ListAPIView):
         )
         localization = self.request.query_params.get('localization')
 
+        drug_type_list = self.request.query_params.get(
+            'drug_type',
+            [],
+        )
         # Distance is given in miles
         distance = self.request.query_params.get('distance')
         if not distance:
             distance = 10
 
-        # TODO: narrow for 'Brand Drugs', 'Generic Drugs' and
-        # 'Public Health Supply'. Not implemented yet in models. Waiting
-        # to NCPDP information to populate those
         if formulation_id_raw and med_id and localization:
             formulation_id = int(formulation_id_raw)
             provider_medication_qs = ProviderMedicationThrough.objects.filter(
@@ -45,6 +46,16 @@ class FindProviderMedicationView(ListAPIView):
                 medication__id=formulation_id,
                 # TODO localization
             )
+
+            # Check the list of drug types to filter
+            if drug_type_list:
+                try:
+                    drug_type_list = drug_type_list.split(',')
+                    provider_medication_qs = provider_medication_qs.filter(
+                        medication__drug_type__in=drug_type_list,
+                    )
+                except ValueError:
+                    pass
             provider_medication_ids = provider_medication_qs.values_list(
                 'id',
                 flat=True,
