@@ -32,6 +32,7 @@ LOCAL_APPS = (
     'medfinder',
     'medications',
     'public',
+    'epidemic',
 )
 
 INSTALLED_APPS = (

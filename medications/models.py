@@ -404,6 +404,14 @@ class MedicationName(models.Model):
 
 
 class Medication(models.Model):
+    BRAND_DRUG = 'b'
+    GENERIC_DRUG = 'g'
+    PUBLIC_HEALTH_SUPPLY = 'p'
+    DRUG_TYPE_CHOICES = (
+        (BRAND_DRUG, _('Brand Drugs')),
+        (GENERIC_DRUG, _('Generic Drugs')),
+        (PUBLIC_HEALTH_SUPPLY, _('Public Health Supply')),
+    )
     name = models.CharField(
         _('medication name'),
         max_length=255,
@@ -419,7 +427,12 @@ class Medication(models.Model):
         on_delete=models.CASCADE,
         null=True,
     )
-    # TODO: 'Brand Drugs', 'Generic Drugs' and 'Public Health Supply'
+    drug_type = models.CharField(
+        _('drug type'),
+        max_length=1,
+        choices=DRUG_TYPE_CHOICES,
+        default=BRAND_DRUG,
+    )
 
     class Meta:
         verbose_name = _('medication')
