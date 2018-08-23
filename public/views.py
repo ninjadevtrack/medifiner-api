@@ -6,7 +6,10 @@ from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
 from django.contrib.postgres.aggregates import ArrayAgg
 
-from medications.models import ProviderMedicationThrough, Provider
+from medications.models import (
+    ProviderMedicationThrough,
+    Provider,
+)
 from .serializers import FindProviderSerializer
 
 

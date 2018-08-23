@@ -13,6 +13,8 @@ from medications.api_urls_v1 import medications_api_urlpatterns
 from auth_ex.api_urls_v1 import accounts_api_urlpatterns
 from public.api_urls_v1 import public_api_urlpatterns
 
+from epidemic.views import EpidemicInfoView
+
 
 schema_view = get_swagger_view(title='MedFinder API')
 
@@ -44,6 +46,10 @@ api_urlpatterns = [
         'public/',
         include(public_api_urlpatterns),
     ),
+    path(
+        'epidemic/',
+        EpidemicInfoView.as_view(),
+    )
 ]
 
 
