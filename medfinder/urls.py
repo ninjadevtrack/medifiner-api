@@ -7,6 +7,7 @@ from rest_framework_jwt.views import obtain_jwt_token
 from rest_registration.api.views import (
     send_reset_password_link,
     reset_password,
+    profile,
 )
 
 from medications.api_urls_v1 import medications_api_urlpatterns
@@ -27,6 +28,11 @@ api_urlpatterns = [
         'accounts/obtain_token/',
         obtain_jwt_token,
         name='obtain-token',
+    ),
+    path(
+        'accounts/profile/',
+        profile,
+        name='profile',
     ),
     path(
         'accounts/send-reset-password-link/',
