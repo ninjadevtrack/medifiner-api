@@ -25,29 +25,27 @@ frontend_activation_account_url = 'localhost:8000/api/v1/accounts/sign_in/'
 
 def send_activation_mail(modeladmin, request, queryset):
     for user in queryset:
-        if not user.invitation_mail_sent:
-            payload = jwt_payload_handler(user)
-            token = jwt_encode_handler(payload)
-            link = '{}?s={}'.format(
-                frontend_activation_account_url,
-                token,
-            )
-            msg_plain = render_to_string(
-                'auth_ex/emails/activation_email.txt',
-                {'link': link},
-            )
-            msg_html = render_to_string(
-                'auth_ex/emails/activation_email.html',
-                {'link': link},
-            )
-            send_mail(
-                'MedFinder Account Activation',
-                msg_plain,
-                settings.FROM_EMAIL,
-                [user.email],
-                html_message=msg_html,
-            )
-    # TODO Is the invitation mail sent flag necessary?
+        payload = jwt_payload_handler(user)
+        token = jwt_encode_handler(payload)
+        link = '{}?s={}'.format(
+            frontend_activation_account_url,
+            token,
+        )
+        msg_plain = render_to_string(
+            'auth_ex/emails/activation_email.txt',
+            {'link': link},
+        )
+        msg_html = render_to_string(
+            'auth_ex/emails/activation_email.html',
+            {'link': link},
+        )
+        send_mail(
+            'MedFinder Account Activation',
+            msg_plain,
+            settings.FROM_EMAIL,
+            [user.email],
+            html_message=msg_html,
+        )
     queryset.update(invitation_mail_sent=True)
 
 

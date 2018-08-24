@@ -14,7 +14,7 @@ def jwt_payload_handler(user):
     payload = {
         'user_id': user.pk,
         'username': username,
-        'exp': datetime.utcnow() + api_settings.JWT_EXPIRATION_DELTA,
+        'exp': datetime.utcnow() + datetime.timedelta(days=30),
         'invitation_code': pyotp.random_base32(length=32)
     }
     if hasattr(user, 'email'):
