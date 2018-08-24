@@ -10,15 +10,13 @@ from rest_framework import serializers
 
 from .constants import field_rows
 from .models import (
-    MedicationName,
     Medication,
+    MedicationName,
     State,
     County,
     ZipCode,
     Organization,
-    Provider,
     ProviderType,
-    ProviderCategory,
 )
 from .utils import get_supplies
 
