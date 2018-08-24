@@ -3,11 +3,11 @@ import jwt
 from django.contrib import auth
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.views import login as auth_login
+from django.utils.translation import ugettext_lazy as _
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.debug import sensitive_post_parameters
 
-from rest_framework.authtoken.models import Token
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -45,12 +45,19 @@ class SignInView(RetrieveUpdateAPIView):
         secret = self.request.query_params.get('s')
 
         try:
-            user_id = jwt_decode_handler(secret).get('user_id')
+            decoded_token = jwt_decode_handler(secret)
         except jwt.ExpiredSignature:
-            msg = 'Signature has expired.'
+            msg = _('This invitation is expired.')
             raise BadRequest(msg)
         except jwt.DecodeError:
-            msg = 'Error decoding signature.'
+            msg = _('Error decoding signature.')
+            raise BadRequest(msg)
+
+        user_id = decoded_token.get('user_id')
+        invitation_code = decoded_token.get('invitation_code')
+
+        if User.objects.filter(used_invitation_code=invitation_code):
+            msg = _('This invitation link has been already used')
             raise BadRequest(msg)
 
         try:
@@ -58,8 +65,10 @@ class SignInView(RetrieveUpdateAPIView):
                 invitation_mail_sent=True,
             ).get(id=user_id)
         except User.DoesNotExist:
-            raise BadRequest('No user found')
+            raise BadRequest(_('No user found'))
+
         self.request.user = user
+        self.request.user.used_invitation_code = invitation_code
         return user
 
     def perform_update(self, serializer):

@@ -90,6 +90,11 @@ class User(AbstractBaseUser, PermissionsMixin):
             'Designates whether the invitation mail for this user '
             ' has been sent'),
     )
+    used_invitation_code = models.CharField(
+        _('used invitation code'),
+        max_length=32,
+        blank=True,
+    )
 
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
 
