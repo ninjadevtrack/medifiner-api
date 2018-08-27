@@ -5,19 +5,7 @@ from rest_framework import serializers
 from medications.models import Medication
 from medications.utils import get_supplies
 
-
-def daterange(start, stop, step=datetime.timedelta(days=1), inclusive=False):
-    # inclusive=False to behave like range by default
-    if step.days > 0:
-        while start < stop:
-            yield start
-            start = start + step
-    elif step.days < 0:
-        while start > stop:
-            yield start
-            start = start + step
-    if inclusive and start == stop:
-        yield start
+from .utils import daterange
 
 
 class AverageSupplyLevelSerializer(serializers.ModelSerializer):
