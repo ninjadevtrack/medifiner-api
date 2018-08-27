@@ -42,10 +42,11 @@ class SignInView(RetrieveUpdateAPIView):
     permission_classes = (AllowAny,)
 
     def get_object(self):
-        secret = self.request.query_params.get('s')
+        import pdb; pdb.set_trace()
+        token = self.request.data.get('token')
 
         try:
-            decoded_token = jwt_decode_handler(secret)
+            decoded_token = jwt_decode_handler(token)
         except jwt.ExpiredSignature:
             msg = _('This invitation is expired.')
             raise BadRequest(msg)

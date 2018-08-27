@@ -18,16 +18,17 @@ from .forms import UserChangeForm, UserCreationForm
 from .models import User
 from .utils import jwt_payload_handler
 
-# TODO: for now using the api url, to be changed once it is done
-frontend_activation_account_url = '{FRONTEND_DOMAIN}/register/'
-frontend_activation_account_url = 'localhost:8000/api/v1/accounts/sign_in/'
+
+frontend_activation_account_url = '{}/account-setup/'.format(
+    settings.FRONTEND_URL,
+)
 
 
 def send_activation_mail(modeladmin, request, queryset):
     for user in queryset:
         payload = jwt_payload_handler(user)
         token = jwt_encode_handler(payload)
-        link = '{}?s={}'.format(
+        link = '{}/{}'.format(
             frontend_activation_account_url,
             token,
         )
