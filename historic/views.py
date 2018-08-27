@@ -246,6 +246,7 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
 
     def get_queryset(self):
         zipcode = self.kwargs.get('zipcode')
+        self.request.data['zipcode'] = zipcode
         med_id = self.request.query_params.get('med_id')
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')

@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from rest_framework import serializers
 
-from medications.models import Medication
+from medications.models import Medication, ZipCode
 from medications.utils import get_supplies
 
 from .utils import daterange, get_overall
@@ -29,17 +29,15 @@ class AverageSupplyLevelZipCodeListSerializer(serializers.ListSerializer):
         return super(serializers.ListSerializer, self).data
 
     def to_representation(self, data):
-        try:
+        zipcode = self.context['request'].data.get('zipcode')
+        if zipcode:
+            zipcode_obj = ZipCode.objects.filter(zipcode=zipcode)
+        if zipcode_obj:
             return OrderedDict((
-                (
-                    'state',
-                    data.values_list(
-                        'provider_medication__provider__related_zipcode__state', # noqa
-                        flat=True,
-                    )[0]),
+                ('state', zipcode_obj[0].state.id),
                 ('medication_supplies', super().to_representation(data)),
             ))
-        except IndexError:
+        else:
             return OrderedDict((
                 ('state', None),
                 ('medication_supplies', super().to_representation(data)),
