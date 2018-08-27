@@ -196,7 +196,7 @@ class HistoricAverageStateLevelView(ListAPIView):
 
 class HistoricAverageZipCodeLevelView(ListAPIView):
     serializer_class = AverageSupplyLevelSerializer
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
     lookup_field = 'zipcode'
 
