@@ -23,3 +23,10 @@ class SignInSerializer(serializers.ModelSerializer):
                 _('This field may not be blank.')
             )
         return role
+
+    def validate_organization(self, organization):
+        if not organization:
+            raise serializers.ValidationError(
+                _('This field may not be blank.')
+            )
+        return organization
