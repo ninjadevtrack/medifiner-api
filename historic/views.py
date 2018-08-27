@@ -288,3 +288,13 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
 class HistoricOverallNationalLevelView(HistoricAverageNationalLevelView):
     serializer_class = OverallSupplyLevelSerializer
     permission_classes = (IsAuthenticated,)
+
+
+class HistoricOverallStateLevelView(HistoricAverageStateLevelView):
+    serializer_class = OverallSupplyLevelSerializer
+    permission_classes = (IsAuthenticated,)
+
+
+class HistoricOverallZipCodeLevelView(HistoricAverageZipCodeLevelView):
+    serializer_class = OverallSupplyLevelSerializer
+    permission_classes = (IsAuthenticated,)

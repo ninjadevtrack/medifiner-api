@@ -4,7 +4,9 @@ from .views import (
     HistoricAverageNationalLevelView,
     HistoricAverageStateLevelView,
     HistoricAverageZipCodeLevelView,
-    HistoricOverallNationalLevelView
+    HistoricOverallNationalLevelView,
+    HistoricOverallStateLevelView,
+    HistoricOverallZipCodeLevelView
 )
 
 historic_api_urlpatterns = [
@@ -23,5 +25,13 @@ historic_api_urlpatterns = [
     path(
         'overall/',
         HistoricOverallNationalLevelView.as_view(),
+    ),
+    path(
+        'overall/state/<int:state_id>/',
+        HistoricOverallStateLevelView.as_view(),
+    ),
+    path(
+        'overall/zipcode/<str:zipcode>/',
+        HistoricOverallZipCodeLevelView.as_view(),
     ),
 ]
