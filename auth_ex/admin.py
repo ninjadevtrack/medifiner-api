@@ -19,7 +19,7 @@ from .models import User
 from .utils import jwt_payload_handler
 
 
-frontend_activation_account_url = '{}/account-setup/'.format(
+frontend_activation_account_url = '{}/account-setup'.format(
     settings.FRONTEND_URL,
 )
 
