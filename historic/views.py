@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Q, Prefetch
 
 from rest_framework.generics import (
@@ -12,6 +14,7 @@ from medications.models import (
 )
 from .serializers import (
     AverageSupplyLevelSerializer,
+    AverageSupplyLevelZipCodeSerializer,
     OverallSupplyLevelSerializer,
 )
 
@@ -38,6 +41,9 @@ class HistoricAverageNationalLevelView(ListAPIView):
 
         if not (start_date and end_date):
             return Medication.objects.none()
+
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
 
         # First we take list of provider medication for this med, we will
         # use it for future filters
@@ -145,6 +151,9 @@ class HistoricAverageStateLevelView(ListAPIView):
         if not (start_date and end_date):
             return Medication.objects.none()
 
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
         # First we take list of provider medication for this med, we will
         # use it for future filters
         provider_medication_qs = ProviderMedicationThrough.objects.filter(
@@ -229,7 +238,7 @@ class HistoricAverageStateLevelView(ListAPIView):
 
 
 class HistoricAverageZipCodeLevelView(ListAPIView):
-    serializer_class = AverageSupplyLevelSerializer
+    serializer_class = AverageSupplyLevelZipCodeSerializer
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
     lookup_field = 'zipcode'
@@ -249,9 +258,11 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
                 return Medication.objects.none()
         except ValueError:
             return Medication.objects.none()
-
         if not (start_date and end_date):
             return Medication.objects.none()
+
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
 
         # First we take list of provider medication for this med, we will
         # use it for future filters

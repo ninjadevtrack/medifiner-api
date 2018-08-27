@@ -1,5 +1,7 @@
 import datetime
 
+from collections import OrderedDict
+
 from rest_framework import serializers
 
 from medications.models import Medication
@@ -8,11 +10,44 @@ from medications.utils import get_supplies
 from .utils import daterange, get_overall
 
 
+class AverageSupplyLevelListSerializer(serializers.ListSerializer):
+
+    @property
+    def data(self):
+        return super(serializers.ListSerializer, self).data
+
+    def to_representation(self, data):
+        return OrderedDict((
+            ("medication_supplies", super().to_representation(data)),
+        ))
+
+
+class AverageSupplyLevelZipCodeListSerializer(serializers.ListSerializer):
+
+    @property
+    def data(self):
+        return super(serializers.ListSerializer, self).data
+
+    def to_representation(self, data):
+        try:
+            return OrderedDict((
+                (
+                    'state',
+                    data.first(
+                    ).provider_medication.first(
+                    ).provider.related_zipcode.state.id),
+                ("medication_supplies", super().to_representation(data)),
+            ))
+        except AttributeError:
+            return OrderedDict()
+
+
 class AverageSupplyLevelSerializer(serializers.ModelSerializer):
     average_supply_per_day = serializers.SerializerMethodField()
 
     class Meta:
         model = Medication
+        list_serializer_class = AverageSupplyLevelListSerializer
         fields = (
             'name',
             'average_supply_per_day',
@@ -21,8 +56,7 @@ class AverageSupplyLevelSerializer(serializers.ModelSerializer):
     def get_average_supply_per_day(self, obj):
         pm_qs = obj.provider_medication.all()
         days = []
-        date_format = '%Y-%m-%dT%H:%M:%S.%fZ'
-
+        date_format = '%Y-%m-%d'
         start_date = self.context[
             'request'
         ].query_params.get('start_date')
@@ -46,11 +80,22 @@ class AverageSupplyLevelSerializer(serializers.ModelSerializer):
                         supply_levels.append(pm.level)
             days.append(
                 {
-                    'day': date.isoformat(),
+                    'day': date.date(),
                     'supply': get_supplies(supply_levels),
                 }
             )
         return days
+
+
+class AverageSupplyLevelZipCodeSerializer(AverageSupplyLevelSerializer):
+
+    class Meta:
+        model = Medication
+        list_serializer_class = AverageSupplyLevelZipCodeListSerializer
+        fields = (
+            'name',
+            'average_supply_per_day',
+        )
 
 
 class OverallSupplyLevelSerializer(serializers.ModelSerializer):
@@ -66,7 +111,7 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
     def get_overall_supply_per_day(self, obj):
         pm_qs = obj.provider_medication.all()
         days = []
-        date_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+        date_format = '%Y-%m-%d'
 
         start_date = self.context[
             'request'
@@ -91,7 +136,7 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
                         supply_levels.append(pm.level)
             days.append(
                 {
-                    'day': date.isoformat(),
+                    'day': date.date(),
                     'supply': get_overall(supply_levels),
                 }
             )
