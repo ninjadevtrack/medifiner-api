@@ -13,6 +13,7 @@ from rest_registration.api.views import (
 from medications.api_urls_v1 import medications_api_urlpatterns
 from auth_ex.api_urls_v1 import accounts_api_urlpatterns
 from public.api_urls_v1 import public_api_urlpatterns
+from historic.api_urls_v1 import historic_api_urlpatterns
 
 from epidemic.views import EpidemicInfoView
 
@@ -53,9 +54,13 @@ api_urlpatterns = [
         include(public_api_urlpatterns),
     ),
     path(
+        'historic/',
+        include(historic_api_urlpatterns),
+    ),
+    path(
         'epidemic/',
         EpidemicInfoView.as_view(),
-    )
+    ),
 ]
 
 

@@ -33,6 +33,7 @@ LOCAL_APPS = (
     'medications',
     'public',
     'epidemic',
+    'historic',
 )
 
 INSTALLED_APPS = (

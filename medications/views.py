@@ -606,7 +606,6 @@ class MedicationTypesView(views.APIView):
         values = Medication.objects.filter(
             provider_medication__id__in=provider_medication_ids,
         ).values('drug_type').annotate(count=Count('drug_type'))
-        # TODO no public health if epidemic??
         if not values:
             values = [
                 {'drug_type': 'b', 'count': 0},
