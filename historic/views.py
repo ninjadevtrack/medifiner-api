@@ -16,6 +16,7 @@ from .serializers import (
     AverageSupplyLevelSerializer,
     AverageSupplyLevelZipCodeSerializer,
     OverallSupplyLevelSerializer,
+    OverallSupplyLevelZipCodeSerializer,
 )
 
 
@@ -358,5 +359,5 @@ class HistoricOverallStateLevelView(HistoricAverageStateLevelView):
 
 
 class HistoricOverallZipCodeLevelView(HistoricAverageZipCodeLevelView):
-    serializer_class = OverallSupplyLevelSerializer
+    serializer_class = OverallSupplyLevelZipCodeSerializer
     permission_classes = (IsAuthenticated,)

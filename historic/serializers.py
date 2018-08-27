@@ -33,15 +33,16 @@ class AverageSupplyLevelZipCodeListSerializer(serializers.ListSerializer):
             return OrderedDict((
                 (
                     'state',
-                    data.first(
-                    ).provider_medication.first(
-                    ).provider.related_zipcode.state.id),
+                    data.values_list(
+                        'provider_medication__provider__related_zipcode__state', # noqa
+                        flat=True,
+                    )[0]),
                 ('medication_supplies', super().to_representation(data)),
             ))
-        except AttributeError:
+        except IndexError:
             return OrderedDict((
                 ('state', None),
-                ('medication_supplies', []),
+                ('medication_supplies', super().to_representation(data)),
             ))
 
 
@@ -106,6 +107,7 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Medication
+        list_serializer_class = AverageSupplyLevelListSerializer
         fields = (
             'name',
             'overall_supply_per_day',
@@ -144,3 +146,14 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
                 }
             )
         return days
+
+
+class OverallSupplyLevelZipCodeSerializer(OverallSupplyLevelSerializer):
+
+    class Meta:
+        model = Medication
+        list_serializer_class = AverageSupplyLevelZipCodeListSerializer
+        fields = (
+            'name',
+            'overall_supply_per_day',
+        )
