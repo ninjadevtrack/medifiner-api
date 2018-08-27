@@ -10,12 +10,15 @@ from medications.models import (
     MedicationName,
     ProviderMedicationThrough,
 )
-from .serializers import AverageSupplyLevelSerializer
+from .serializers import (
+    AverageSupplyLevelSerializer,
+    OverallSupplyLevelSerializer,
+)
 
 
 class HistoricAverageNationalLevelView(ListAPIView):
     serializer_class = AverageSupplyLevelSerializer
-    permission_classes = (IsAuthenticated,) 
+    permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
 
     def get_queryset(self):
@@ -280,3 +283,8 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
             )
         )
         return qs
+
+
+class HistoricOverallNationalLevelView(HistoricAverageNationalLevelView):
+    serializer_class = OverallSupplyLevelSerializer
+    permission_classes = (IsAuthenticated,)
