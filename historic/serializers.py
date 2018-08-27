@@ -18,7 +18,7 @@ class AverageSupplyLevelListSerializer(serializers.ListSerializer):
 
     def to_representation(self, data):
         return OrderedDict((
-            ("medication_supplies", super().to_representation(data)),
+            ('medication_supplies', super().to_representation(data)),
         ))
 
 
@@ -36,10 +36,13 @@ class AverageSupplyLevelZipCodeListSerializer(serializers.ListSerializer):
                     data.first(
                     ).provider_medication.first(
                     ).provider.related_zipcode.state.id),
-                ("medication_supplies", super().to_representation(data)),
+                ('medication_supplies', super().to_representation(data)),
             ))
         except AttributeError:
-            return OrderedDict()
+            return OrderedDict((
+                ('state', None),
+                ('medication_supplies', []),
+            ))
 
 
 class AverageSupplyLevelSerializer(serializers.ModelSerializer):
