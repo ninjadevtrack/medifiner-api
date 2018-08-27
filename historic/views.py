@@ -1,9 +1,11 @@
+from datetime import datetime
+
 from django.db.models import Q, Prefetch
 
 from rest_framework.generics import (
     ListAPIView,
 )
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 
 from medications.models import (
     Medication,
@@ -12,6 +14,7 @@ from medications.models import (
 )
 from .serializers import (
     AverageSupplyLevelSerializer,
+    AverageSupplyLevelZipCodeSerializer,
     OverallSupplyLevelSerializer,
 )
 
@@ -39,6 +42,9 @@ class HistoricAverageNationalLevelView(ListAPIView):
         if not (start_date and end_date):
             return Medication.objects.none()
 
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
         # First we take list of provider medication for this med, we will
         # use it for future filters
         provider_medication_qs = ProviderMedicationThrough.objects.filter(
@@ -58,6 +64,23 @@ class HistoricAverageNationalLevelView(ListAPIView):
                 )
             except ValueError:
                 pass
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
 
         # Now we check if there is a list of category of providers to filter
         provider_category_list = self.request.query_params.get(
@@ -128,6 +151,9 @@ class HistoricAverageStateLevelView(ListAPIView):
         if not (start_date and end_date):
             return Medication.objects.none()
 
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
         # First we take list of provider medication for this med, we will
         # use it for future filters
         provider_medication_qs = ProviderMedicationThrough.objects.filter(
@@ -148,6 +174,23 @@ class HistoricAverageStateLevelView(ListAPIView):
                 )
             except ValueError:
                 pass
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
 
         # Now we check if there is a list of category of providers to filter
         provider_category_list = self.request.query_params.get(
@@ -195,7 +238,7 @@ class HistoricAverageStateLevelView(ListAPIView):
 
 
 class HistoricAverageZipCodeLevelView(ListAPIView):
-    serializer_class = AverageSupplyLevelSerializer
+    serializer_class = AverageSupplyLevelZipCodeSerializer
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
     lookup_field = 'zipcode'
@@ -215,9 +258,11 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
                 return Medication.objects.none()
         except ValueError:
             return Medication.objects.none()
-
         if not (start_date and end_date):
             return Medication.objects.none()
+
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
 
         # First we take list of provider medication for this med, we will
         # use it for future filters
@@ -253,6 +298,23 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
                 )
             except ValueError:
                 pass
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
 
         # Now we check if there is a list of drug types to filter
         drug_type_list = self.request.query_params.get(
