@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from rest_framework import serializers
 
-from medications.models import Medication, ZipCode
+from medications.models import Medication, ZipCode, MedicationName
 from medications.utils import get_supplies
 
 from .utils import daterange, get_overall
@@ -104,15 +104,14 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
     overall_supply_per_day = serializers.SerializerMethodField()
 
     class Meta:
-        model = Medication
+        model = MedicationName
         list_serializer_class = AverageSupplyLevelListSerializer
         fields = (
-            'name',
             'overall_supply_per_day',
         )
 
     def get_overall_supply_per_day(self, obj):
-        pm_qs = obj.provider_medication.all()
+        m_qs = obj.medications.all()
         days = []
         date_format = '%Y-%m-%d'
 
@@ -133,10 +132,11 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
         )
         for date in daterange(start_date, end_date, inclusive=True):
             supply_levels = []
-            if pm_qs:
-                for pm in pm_qs:
-                    if pm.date.day == date.day:
-                        supply_levels.append(pm.level)
+            if m_qs:
+                for m in m_qs:
+                    for pm in m.provider_medication.all():
+                        if pm.date.day == date.day:
+                            supply_levels.append(pm.level)
             days.append(
                 {
                     'day': date.date(),
@@ -149,9 +149,8 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
 class OverallSupplyLevelZipCodeSerializer(OverallSupplyLevelSerializer):
 
     class Meta:
-        model = Medication
+        model = MedicationName
         list_serializer_class = AverageSupplyLevelZipCodeListSerializer
         fields = (
-            'name',
             'overall_supply_per_day',
         )
