@@ -42,9 +42,7 @@ class SignInView(RetrieveUpdateAPIView):
     permission_classes = (AllowAny,)
 
     def get_object(self):
-        import pdb; pdb.set_trace()
         token = self.request.data.get('token')
-
         try:
             decoded_token = jwt_decode_handler(token)
         except jwt.ExpiredSignature:
