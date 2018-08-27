@@ -43,23 +43,6 @@ class HistoricAverageNationalLevelView(ListAPIView):
             medication__medication_name__id=med_id,
         )
 
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
-            )
-
         # Now we check if there is a list of type of providers to filter
         provider_type_list = self.request.query_params.get(
             'provider_type',

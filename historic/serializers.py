@@ -53,11 +53,9 @@ class AverageSupplyLevelSerializer(serializers.ModelSerializer):
         for date in daterange(start_date, end_date, inclusive=True):
             supply_levels = []
             if pm_qs:
-                supply_levels = pm_qs.filter(
-                    date__day=date.day,
-                ).values_list('level', flat=True)
-            # TODO This is generating too many queries
-            # We hace to find a way to do it more efficient
+                for pm in pm_qs:
+                    if pm.date.day == date.day:
+                        supply_levels.append(pm.level)
             days.append(
                 {
                     'day': date.isoformat(),
