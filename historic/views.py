@@ -3,7 +3,7 @@ from django.db.models import Q, Prefetch
 from rest_framework.generics import (
     ListAPIView,
 )
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 
 from medications.models import (
     Medication,
@@ -58,6 +58,23 @@ class HistoricAverageNationalLevelView(ListAPIView):
                 )
             except ValueError:
                 pass
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
 
         # Now we check if there is a list of category of providers to filter
         provider_category_list = self.request.query_params.get(
@@ -148,6 +165,23 @@ class HistoricAverageStateLevelView(ListAPIView):
                 )
             except ValueError:
                 pass
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
 
         # Now we check if there is a list of category of providers to filter
         provider_category_list = self.request.query_params.get(
@@ -253,6 +287,23 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
                 )
             except ValueError:
                 pass
+
+        # We take the formulation ids and transform them to use like filter
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
+        )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+        if formulation_ids:
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__id__in=formulation_ids,
+            )
 
         # Now we check if there is a list of drug types to filter
         drug_type_list = self.request.query_params.get(
