@@ -1,6 +1,6 @@
 import pyotp
 
-from datetime import datetime
+from datetime import timedelta, datetime
 
 from rest_framework_jwt.compat import get_username
 from rest_framework_jwt.compat import get_username_field
@@ -14,7 +14,7 @@ def jwt_payload_handler(user):
     payload = {
         'user_id': user.pk,
         'username': username,
-        'exp': datetime.utcnow() + datetime.timedelta(days=30),
+        'exp': datetime.utcnow() + timedelta(days=30),
         'invitation_code': pyotp.random_base32(length=32)
     }
     if hasattr(user, 'email'):

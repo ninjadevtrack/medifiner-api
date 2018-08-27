@@ -26,6 +26,7 @@ class Organization(models.Model):
         related_name='organization',
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
     )
     contact_name = models.CharField(
         _('contact name'),
