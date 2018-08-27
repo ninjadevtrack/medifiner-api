@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db.models import Q, Prefetch
 
@@ -121,7 +121,11 @@ class HistoricAverageNationalLevelView(ListAPIView):
             Prefetch(
                 'provider_medication',
                 queryset=ProviderMedicationThrough.objects.filter(
-                    date__range=[start_date, end_date],
+                    date__gte=start_date,
+                    date__lte=end_date + timedelta(days=1),
+                    # We add 1 day cause we want to check the medications
+                    # supplies in end_date until 23:59:59 which in practice
+                    # is next day 00:00:00
                 )
             )
         )
@@ -231,7 +235,8 @@ class HistoricAverageStateLevelView(ListAPIView):
             Prefetch(
                 'provider_medication',
                 queryset=ProviderMedicationThrough.objects.filter(
-                    date__range=[start_date, end_date],
+                    date__gte=start_date,
+                    date__lte=end_date + timedelta(days=1),
                 )
             )
         )
@@ -342,7 +347,8 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
             Prefetch(
                 'provider_medication',
                 queryset=ProviderMedicationThrough.objects.filter(
-                    date__range=[start_date, end_date],
+                    date__gte=start_date,
+                    date__lte=end_date + timedelta(days=1),
                 )
             )
         )
