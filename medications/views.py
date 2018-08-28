@@ -524,6 +524,15 @@ class MedicationTypesView(views.APIView):
         med_id = self.request.query_params.get('med_id')
         state_id = self.request.query_params.get('state_id')
         zipcode = self.request.query_params.get('zipcode')
+        values = [
+            {'drug_type': 'b', 'count': 0},
+            {'drug_type': 'p', 'count': 0},
+            {'drug_type': 'g', 'count': 0},
+        ]
+        for drug_type in values:
+            drug_type['drug_type_verbose'] = dict(
+                Medication.DRUG_TYPE_CHOICES
+            ).get(drug_type['drug_type'])
         try:
             if not med_id or int(
                 med_id
@@ -531,9 +540,9 @@ class MedicationTypesView(views.APIView):
                 'id',
                 flat=True,
             ):
-                return None
+                return Response(values)
         except ValueError:
-            return None
+            return Response(values)
 
         provider_medication_qs = ProviderMedicationThrough.objects.filter(
             latest=True,
@@ -606,15 +615,6 @@ class MedicationTypesView(views.APIView):
         values = Medication.objects.filter(
             provider_medication__id__in=provider_medication_ids,
         ).values('drug_type').annotate(count=Count('drug_type'))
-        if not values:
-            values = [
-                {'drug_type': 'b', 'count': 0},
-                {'drug_type': 'p', 'count': 0},
-                {'drug_type': 'g', 'count': 0},
-            ]
-        for drug_type in values:
-            drug_type['drug_type_verbose'] = dict(
-                Medication.DRUG_TYPE_CHOICES
-            ).get(drug_type['drug_type'])
+
 
         return Response(values)
