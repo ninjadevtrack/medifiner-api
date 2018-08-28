@@ -615,6 +615,8 @@ class MedicationTypesView(views.APIView):
         values = Medication.objects.filter(
             provider_medication__id__in=provider_medication_ids,
         ).values('drug_type').annotate(count=Count('drug_type'))
-
-
+        for drug_type in values:
+            drug_type['drug_type_verbose'] = dict(
+                Medication.DRUG_TYPE_CHOICES
+            ).get(drug_type['drug_type'])
         return Response(values)
