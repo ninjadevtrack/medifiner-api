@@ -73,6 +73,12 @@ class StateAdmin(admin.ModelAdmin):
 @admin.register(ZipCode)
 class ZipCodeAdmin(admin.ModelAdmin):
 
+    list_display = (
+        'zipcode',
+        'state',
+        'population',
+    )
+
     readonly_fields = (
         'zipcode',
         'state',

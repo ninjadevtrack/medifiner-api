@@ -10,8 +10,8 @@ URL_CENSUS = 'https://api.census.gov/data/2010/sf1'
 POPULATION_VARIABLE = 'P0010001'
 
 REQUEST_STATE = '?get={population_variable}&for=state:{state_id}&key={api_key}' # noqa
-REQUEST_COUNTY = '?get={population_variable}&for=county:{county_id}&in=state:{state_id}&key={api_key}' # noqa
-REQUEST_ZIPCODE = '?get={population_variable}&for=zip%20code%20tabulation%20area:{zipcode}&in=state:{state_id}&key={api_key}' # noqa
+REQUEST_COUNTY = '?get={population_variable}&for=county:*&in=state:{state_id}&key={api_key}' # noqa
+REQUEST_ZIPCODE = '?get={population_variable}&for=zip%20code%20tabulation%20area:*&in=state:{state_id}&key={api_key}' # noqa
 
 
 class Command(BaseCommand):
@@ -41,49 +41,63 @@ class Command(BaseCommand):
             )
             full_path_request_for_state = URL_CENSUS + request_for_state
             response = requests.get(full_path_request_for_state)
-            data_response = response.json()
+            state_data_response = response.json()
             try:
-                population = int(data_response[1][0])
+                population = int(state_data_response[1][0])
                 state.population = population
                 state.save()
             except ValueError:
                 pass
-            print('Requesting population for county:')
+
+            # Generate request all counties in this state
+            request_for_county = REQUEST_COUNTY.format(
+                population_variable=POPULATION_VARIABLE,
+                state_id=state.state_us_id,
+                api_key=settings.CENSUS_API_KEY,
+            )
+            full_path_request_for_county = URL_CENSUS + request_for_county
+            response = requests.get(full_path_request_for_county)
+            county_data_response = response.json()
+
+            # Create a python object with 'county_id: population' values
+            # so we dont have to ask again to the API for every county
+            county_pop_map = {
+                data[2]: data[0] for data in county_data_response
+            }
+
             for county in state.counties.all():
-                print(county)
-                # Generate request for the current state counties
-                request_for_county = REQUEST_COUNTY.format(
-                    population_variable=POPULATION_VARIABLE,
-                    county_id=county.county_id,
-                    state_id=state.state_us_id,
-                    api_key=settings.CENSUS_API_KEY,
-                )
-                full_path_request_for_county = URL_CENSUS + request_for_county
-                response = requests.get(full_path_request_for_county)
-                data_response = response.json()
-                try:
-                    population = int(data_response[1][0])
-                    county.population = population
-                    county.save()
-                except ValueError:
-                    pass
-            print('Requesting population for zipcode:')
+                print('Fething population for: {}'.format(county))
+                # Save the population for every county looking at the
+                # county_pop_map
+
+                # NEED TO FIX SOMETHING IS NOT WORKING HERE
+                county_id = f'{state.counties.first().county_id:03}' # noqa
+                population = int(county_pop_map.get(county_id))
+                county.population = population
+                county.save()
+
+            request_for_zipcode = REQUEST_ZIPCODE.format(
+                population_variable=POPULATION_VARIABLE,
+                state_id=state.state_us_id,
+                api_key=settings.CENSUS_API_KEY,
+            )
+            full_path_request_for_zipcode = URL_CENSUS + request_for_zipcode # noqa
+            response = requests.get(full_path_request_for_zipcode)
+            zipcode_data_response = response.json()
+
+            # Create a python object with 'zipcode: population' values
+            # so we dont have to ask again to the API for every zipcode
+            zipcode_pop_map = {
+                data[2]: data[0] for data in zipcode_data_response
+            }
+
             for zipcode in state.state_zipcodes.all():
-                print(zipcode.zipcode)
-                # Generate request for the current state zipcodes
-                request_for_zipcode = REQUEST_ZIPCODE.format(
-                    population_variable=POPULATION_VARIABLE,
-                    zipcode=zipcode.zipcode,
-                    state_id=state.state_us_id,
-                    api_key=settings.CENSUS_API_KEY,
-                )
-                full_path_request_for_zipcode = URL_CENSUS + request_for_zipcode # noqa
-                response = requests.get(full_path_request_for_zipcode)
-                data_response = response.json()
-                try:
-                    population = int(data_response[1][0])
-                    zipcode.population = population
-                    zipcode.save()
-                except ValueError:
-                    pass
-            print('Imported all populations succesfully!')
+                print('Fething population for: {}'.format(zipcode))
+                # Save the population for every county looking at the
+                # county_pop_map
+                population = int(zipcode_pop_map.get(zipcode.zipcode))
+                zipcode.population = population
+                zipcode.save()
+
+            print('Imported all populations for {} succesfully!'.format(state))
+        print('IMPORTED ALL POPULATIONS SUCCESFULLY!')
