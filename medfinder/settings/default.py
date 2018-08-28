@@ -122,6 +122,8 @@ ACTIVITYLOG_METHODS = ('POST',)
 
 NDC_DATABASE_URL = env('NDC_DATABASE_URL', default='')
 
+CENSUS_API_KEY = env('CENSUS_API_KEY', default='')
+
 # --- LANGUAGES ---
 USE_I18N = True
 USE_L10N = True

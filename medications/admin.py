@@ -42,16 +42,19 @@ class StateAdmin(admin.ModelAdmin):
         'state_name',
         'display_state_code',
         'state_us_id',
+        'population',
     )
     fields = (
         'display_state_code',
         'state_name',
+        'population',
         'state_us_id',
         'geometry',
     )
     readonly_fields = (
         'display_state_code',
         'state_name',
+        'population',
         'geometry',
         'state_us_id'
     )
@@ -74,6 +77,7 @@ class ZipCodeAdmin(admin.ModelAdmin):
         'zipcode',
         'state',
         'counties',
+        'population',
         'geometry',
     )
     list_filter = (
@@ -95,6 +99,7 @@ class CountyAdmin(admin.ModelAdmin):
         'county_name',
         'state',
         'county_id',
+        'population',
     )
     list_filter = (
         'state',
@@ -104,6 +109,7 @@ class CountyAdmin(admin.ModelAdmin):
         'state',
         'county_name_slug',
         'county_id',
+        'population',
         'geo_id',
         'geometry',
     )
@@ -111,6 +117,7 @@ class CountyAdmin(admin.ModelAdmin):
         'county_name',
         'state',
         'county_id',
+        'population',
         'geo_id',
         'geometry',
     )
