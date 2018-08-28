@@ -170,6 +170,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# --- S3 SETTINGS ---
+S3_STORAGE_ENABLE = env.bool('S3_STORAGE_ENABLE', default=False)
+if S3_STORAGE_ENABLE:
+    DEFAULT_FILE_STORAGE = 'django_s3_storage.storage.S3Storage'
+    STATICFILES_STORAGE = 'django_s3_storage.storage.StaticS3Storage'
+    AWS_REGION = env('AWS_REGION')
+    AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
+    AWS_S3_BUCKET_NAME = env('AWS_S3_BUCKET_NAME')
+    AWS_S3_BUCKET_NAME_STATIC = env('AWS_S3_BUCKET_NAME_STATIC')
+    AWS_S3_BUCKET_AUTH = env.bool('AWS_S3_BUCKET_AUTH', default=False)
+    AWS_S3_MAX_AGE_SECONDS = 60 * 60 * 24 * 365  # 1 year.
 
 # --- DJANGO COMPRESSOR ---
 # STATICFILES_FINDERS += ('compressor.finders.CompressorFinder',)
