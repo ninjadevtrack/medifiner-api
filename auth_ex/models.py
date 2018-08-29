@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django.core.mail import send_mail
 
+from medications.models import State
 
 class UserManager(BaseUserManager):
     """Manager for User."""
@@ -93,6 +94,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     used_invitation_code = models.CharField(
         _('used invitation code'),
         max_length=32,
+        blank=True,
+    )
+
+    state = models.ForeignKey(
+        State,
+        related_name='users',
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
     )
 

@@ -64,6 +64,7 @@ class UserAdmin(UserAdmin):
             'last_name',
             'organization_link',
             'role',
+            'state',
         )}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser',
                                        'permission_level',)}),
@@ -72,7 +73,13 @@ class UserAdmin(UserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'password1', 'password2'),
+            'fields': (
+                'email',
+                'password1',
+                'password2',
+                'state',
+                'permission_level',
+            ),
         }),
     )
     form = UserChangeForm
@@ -81,6 +88,7 @@ class UserAdmin(UserAdmin):
         'email',
         'first_name',
         'last_name',
+        'state',
         'organization_link',
         'is_staff',
         'invitation_mail_sent',

@@ -13,7 +13,19 @@ class UserCreationForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ('email',)
+        fields = ('email', 'state', 'permission_level')
+
+    def clean(self):
+        state = self.cleaned_data.get('state')
+        permission_level = self.cleaned_data.get('permission_level')
+        if permission_level == User.STATE_LEVEL and not state:
+            raise forms.ValidationError(
+                {
+                    'state':
+                    _('You have to set a state for that permission level'),
+                }
+            )
+        return self.cleaned_data
 
 
 class UserChangeForm(UserChangeForm):
