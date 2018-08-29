@@ -69,6 +69,7 @@ class StateSerializer(serializers.ModelSerializer):
             'id',
             'state_name',
             'state_code',
+            'population',
             'county_list',
         )
 
@@ -134,12 +135,14 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
             item for sublist in medication_levels_list for item in sublist
         ]
         supplies, supply = get_supplies(flatten_medications_levels)
+        state_obj = data[0].state
         state = {
-            'name': data[0].state.state_name,
-            'id': data[0].state.id,
-            'code': data[0].state.state_code,
+            'name': state_obj.state_name,
+            'id': state_obj.id,
+            'code': state_obj.state_code,
             'supplies': supplies,
             'supply': supply,
+            'population': state_obj.population,
         }
         return OrderedDict((
             ("type", "FeatureCollection"),
@@ -168,10 +171,12 @@ def get_properties(instance, geographic_type=None):
         properties['state'] = {
             'name': instance.state.state_name,
             'id': instance.state.id,
+            'population': instance.state.population
         }
     supplies, supply = get_supplies(instance.medication_levels)
     properties['supplies'] = supplies
     properties['supply'] = supply
+    properties['population'] = instance.population
     return properties
 
 

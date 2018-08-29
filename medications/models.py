@@ -81,6 +81,10 @@ class State(models.Model):
         null=True,
         unique=True,
     )
+    population = models.PositiveIntegerField(
+        _('population'),
+        null=True,
+    )
 
     class Meta:
         verbose_name = _('state')
@@ -118,6 +122,10 @@ class County(models.Model):
         _('geo id'),
         null=True,
     )
+    population = models.PositiveIntegerField(
+        _('population'),
+        null=True,
+    )
 
     class Meta:
         verbose_name = _('county')
@@ -149,6 +157,10 @@ class ZipCode(models.Model):
     counties = models.ManyToManyField(
         County,
         related_name='county_zipcodes',
+        null=True,
+    )
+    population = models.PositiveIntegerField(
+        _('population'),
         null=True,
     )
 
