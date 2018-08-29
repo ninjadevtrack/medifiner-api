@@ -64,7 +64,7 @@ class CSVUploadView(GenericAPIView):
 
 class MedicationNameViewSet(viewsets.ModelViewSet):
     serializer_class = MedicationNameSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (AllowAny,)
     allowed_methods = ['GET']
 
     def get_queryset(self):
