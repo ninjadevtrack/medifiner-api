@@ -59,7 +59,7 @@ class Command(BaseCommand):
             response = requests.get(full_path_request_for_county)
             county_data_response = response.json()
 
-            # Create a python object with 'county_id: population' values
+            # Create a python dict with 'county_id: population' values
             # so we dont have to ask again to the API for every county
             county_pop_map = {
                 data[2]: data[0] for data in county_data_response
@@ -70,8 +70,7 @@ class Command(BaseCommand):
                 # Save the population for every county looking at the
                 # county_pop_map
 
-                # NEED TO FIX SOMETHING IS NOT WORKING HERE
-                county_id = f'{state.counties.first().county_id:03}' # noqa
+                county_id = f'{county.county_id:03}' # noqa
                 population = int(county_pop_map.get(county_id))
                 county.population = population
                 county.save()
@@ -85,8 +84,8 @@ class Command(BaseCommand):
             response = requests.get(full_path_request_for_zipcode)
             zipcode_data_response = response.json()
 
-            # Create a python object with 'zipcode: population' values
-            # so we dont have to ask again to the API for every zipcode
+            # # Create a python dict with 'zipcode: population' values
+            # # so we dont have to ask again to the API for every zipcode
             zipcode_pop_map = {
                 data[2]: data[0] for data in zipcode_data_response
             }
