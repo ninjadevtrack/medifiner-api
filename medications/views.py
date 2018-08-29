@@ -7,6 +7,7 @@ from django.db.models import IntegerField, Case, When, Sum, Value as V
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status, viewsets, views
+from rest_registration.exceptions import BadRequest
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -38,7 +39,11 @@ from .models import (
     Medication,
 )
 
-from .permissions import NationalLevel
+from .permissions import (
+    NationalLevel,
+    SelfStatePermissionLevel,
+    SelfZipCodePermissionLevel,
+)
 
 
 class CSVUploadView(GenericAPIView):
@@ -85,7 +90,20 @@ class StateViewSet(viewsets.ModelViewSet):
     allowed_methods = ['GET']
 
     def get_queryset(self):
-        states_qs = State.objects.all()
+        user_state = getattr(self.request.user, 'state', None)
+        if user_state and \
+           self.request.user.permission_level == self.request.user.STATE_LEVEL:
+            states_qs = State.objects.filter(id=user_state.id)
+        elif not user_state and \
+            self.request.user.permission_level == \
+                self.request.user.STATE_LEVEL:
+            msg = _(
+                'This user has not national level permission '
+                'and no attached state'
+            )
+            raise BadRequest(msg)
+        else:
+            states_qs = State.objects.all()
         ordering = self.request.query_params.get('ordering')
         if ordering and ('name' == ordering.replace('-', '')):
             if ordering.startswith('-'):
@@ -210,7 +228,7 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
 
 class GeoStatsCountiesWithMedicationsView(ListAPIView):
     serializer_class = GeoCountyWithMedicationsSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (SelfStatePermissionLevel,)
     allowed_methods = ['GET']
 
     def get_queryset(self):
@@ -248,7 +266,7 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
 
 class GeoZipCodeWithMedicationsView(RetrieveAPIView):
     serializer_class = GeoZipCodeWithMedicationsSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (SelfZipCodePermissionLevel,)
     lookup_field = 'zipcode'
 
     def get_queryset(self):
