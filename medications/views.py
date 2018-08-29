@@ -97,6 +97,86 @@ class StateViewSet(viewsets.ModelViewSet):
         )
 
 
+def get_provider_medicatiopn_id(query_params):
+    # Method use to save many line codes in the geo_stats views
+    med_id = query_params.get('med_id')
+
+    # First we take list of provider medication for this med, we will
+    # use it for future filters
+    provider_medication_qs = ProviderMedicationThrough.objects.filter(
+        latest=True,
+        medication__medication_name__id=med_id,
+    )
+    # We take the formulation ids and transform them to use like filter
+    formulation_ids_raw = query_params.get(
+        'formulations',
+    )
+    formulation_ids = []
+    if formulation_ids_raw:
+        try:
+            formulation_ids = list(
+                map(int, formulation_ids_raw.split(','))
+            )
+        except ValueError:
+            pass
+    if formulation_ids:
+        provider_medication_qs = provider_medication_qs.filter(
+            medication__id__in=formulation_ids,
+        )
+
+    # Now we check if there is a list of type of providers to filter
+    provider_type_list = query_params.get(
+        'provider_type',
+        [],
+    )
+    if provider_type_list:
+        try:
+            provider_type_list = provider_type_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                provider__type__in=provider_type_list,
+            )
+        except ValueError:
+            pass
+
+    # Now we check if there is a list of category of providers to filter
+    provider_category_list = query_params.get(
+        'provider_category',
+        [],
+    )
+    if provider_category_list:
+        try:
+            provider_category_list = provider_category_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                provider__category__in=provider_category_list,
+            )
+        except ValueError:
+            pass
+
+    # Now we check if there is a list of drug types to filter
+    drug_type_list = query_params.get(
+        'drug_type',
+        [],
+    )
+    if drug_type_list:
+        try:
+            drug_type_list = drug_type_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                medication__drug_type__in=drug_type_list,
+            )
+        except ValueError:
+            pass
+
+    # Annotate the list of the medication levels for every state
+    # to be used to calculate the low/medium/high after in the serializer.
+    # We create a list of the ids of the provider medication objects that
+    # we have after filtering.
+    provider_medication_ids = provider_medication_qs.values_list(
+        'id',
+        flat=True,
+    )
+    return provider_medication_ids
+
+
 class GeoStatsStatesWithMedicationsView(ListAPIView):
     serializer_class = GeoStateWithMedicationsSerializer
     permission_classes = (IsAuthenticated,)
@@ -114,80 +194,8 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
                 return State.objects.none()
         except ValueError:
             return State.objects.none()
-
-        # First we take list of provider medication for this med, we will
-        # use it for future filters
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            latest=True,
-            medication__medication_name__id=med_id,
-        )
-
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
-            )
-
-        # Now we check if there is a list of type of providers to filter
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-        if provider_type_list:
-            try:
-                provider_type_list = provider_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__type__in=provider_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of category of providers to filter
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if provider_category_list:
-            try:
-                provider_category_list = provider_category_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__category__in=provider_category_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of drug types to filter
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Annotate the list of the medication levels for every state
-        # to be used to calculate the low/medium/high after in the serializer.
-        # We create a list of the ids of the provider medication objects that
-        # we have after filtering.
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
+        provider_medication_ids = get_provider_medicatiopn_id(
+            self.request.query_params,
         )
         qs = State.objects.all().annotate(
             medication_levels=ArrayAgg(
@@ -219,79 +227,8 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
         except ValueError:
             return County.objects.none()
 
-        # First we take list of provider medication for this med, we will
-        # use it for future filters
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            latest=True,
-            medication__medication_name__id=med_id,
-        )
-
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
-            )
-
-        # Now we check if there is a list of type of providers to filter
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-        if provider_type_list:
-            try:
-                provider_type_list = provider_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__type__in=provider_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of category of providers to filter
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if provider_category_list:
-            try:
-                provider_category_list = provider_category_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__category__in=provider_category_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of drug types to filter
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Annotate the list of the medication levels for every county
-        # to be used to calculate the low/medium/high after in the serializer
-        # We create a list of the ids of the provider medication objects that
-        # we have after filtering.
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
+        provider_medication_ids = get_provider_medicatiopn_id(
+            self.request.query_params,
         )
         qs = County.objects.filter(
             state__id=state_id,
@@ -327,78 +264,8 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
                 return ZipCode.objects.none()
         except ValueError:
             return ZipCode.objects.none()
-
-        # First we take list of provider medication for this med, we will
-        # use it for future filters
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            latest=True,
-            medication__medication_name__id=med_id,
-        )
-
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
-            )
-
-        # Now we check if there is a list of type of providers to filter
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-        if provider_type_list:
-            try:
-                provider_type_list = provider_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__type__in=provider_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of category of providers to filter
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if provider_category_list:
-            try:
-                provider_category_list = provider_category_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__category__in=provider_category_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of drug types to filter
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
-
-        # We create a list of the ids of the provider medication objects that
-        # we have after filtering.
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
+        provider_medication_ids = get_provider_medicatiopn_id(
+            self.request.query_params,
         )
         zipcode_qs = ZipCode.objects.filter(zipcode=zipcode).annotate(
             medication_levels=ArrayAgg(
