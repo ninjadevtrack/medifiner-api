@@ -4,24 +4,28 @@ services:
     image: redis
     command: redis-server
     volumes:
-      - "redis:/data"
-    ports:
-      - "6379:6379"
+      - redis:/data
   postgres:
     image: mdillon/postgis:10
     environment:
       - PGDATA=/var/lib/postgresql/data
     volumes:
       - data:/var/lib/postgresql/data/
+  web:
+    build:
+      context: .
+      dockerfile: ./compose/nginx/Dockerfile
+    volumes:
+      - static:/static:ro
+      - media:/media:ro
+    ports:
+      -"80:80"
   django:
     build:
       context: .
       dockerfile: ./compose/django/Dockerfile
-    command: python manage.py runserver 0.0.0.0:8000
-    ports:
-      - "8000:8000"
+    command: uwsgi --ini=./compose/django/uwsgi.ini
     volumes:
-      - .:/code
       - media:/media
     depends_on:
       - postgres
@@ -31,7 +35,6 @@ services:
     image: medfinder-api_django
     command: celery -A medfinder beat --scheduler django_celery_beat.schedulers:DatabaseScheduler -l info
     volumes:
-      - .:/code
       - media:/media
     depends_on:
       - postgres
@@ -40,14 +43,7 @@ services:
     image: medfinder-api_django
     command: celery -A medfinder worker -l debug -E -Q celery,signals
     volumes:
-      - .:/code
       - media:/media
     depends_on:
       - postgres
       - redis
-volumes:
-  data:
-    driver: local
-  media:
-    driver: local
-  redis:
