@@ -143,15 +143,11 @@ FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
 
 # --- DATABASE ---
 # --- POSTGRESQL
+
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'postgres',
-        'PORT': '5432',
-    }
+    'default': env.db(
+        default='postgis://postgres:postgres@postgres:5432/postgres'),
 }
 
 # Password validation
