@@ -2,3 +2,5 @@
 .git
 media/
 static/
+celerybeat.pid
+celerybeat-schedule
