@@ -23,10 +23,29 @@ class FindProviderMedicationView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
-        med_id = self.request.query_params.get('med_id')
-        formulation_id_raw = self.request.query_params.get(
-            'formulation',
+        med_ids_raw = self.request.query_params.get('med_ids')
+
+        formulation_ids_raw = self.request.query_params.get(
+            'formulations',
         )
+        formulation_ids = []
+        if formulation_ids_raw:
+            try:
+                formulation_ids = list(
+                    map(int, formulation_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+
+        med_ids = []
+        if med_ids_raw:
+            try:
+                med_ids = list(
+                    map(int, med_ids_raw.split(','))
+                )
+            except ValueError:
+                pass
+
         localization = self.request.query_params.get('localization')
 
         drug_type_list = self.request.query_params.get(
@@ -38,12 +57,11 @@ class FindProviderMedicationView(ListAPIView):
         if not distance:
             distance = 10
 
-        if formulation_id_raw and med_id and localization:
-            formulation_id = int(formulation_id_raw)
+        if formulation_ids and med_ids and localization:
             provider_medication_qs = ProviderMedicationThrough.objects.filter(
                 latest=True,
-                medication__medication_name__id=med_id,
-                medication__id=formulation_id,
+                medication__medication_name__id__in=med_ids,
+                medication__id__in=formulation_ids,
                 # TODO localization
             )
 
@@ -62,10 +80,8 @@ class FindProviderMedicationView(ListAPIView):
             )
         else:
             return None
-
         # test point used for development, to be taken from query params
         test_point = Point(41.7798226, -72.4372796, srid=4326)
-
         provider_qs = Provider.objects.filter(
             provider_medication__id__in=provider_medication_ids,
             geo_localization__distance_lte=(test_point, D(mi=distance)),
