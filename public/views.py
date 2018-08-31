@@ -82,6 +82,13 @@ class FindProviderMedicationView(ListAPIView):
             return None
         # test point used for development, to be taken from query params
         test_point = Point(41.7798226, -72.4372796, srid=4326)
+
+        # TODO: other medications will be only if there is generoc nad brand
+        # no other kind of medications
+
+        # TODO: return all the pharmacies in the are even with no data
+
+
         provider_qs = Provider.objects.filter(
             provider_medication__id__in=provider_medication_ids,
             geo_localization__distance_lte=(test_point, D(mi=distance)),
@@ -108,6 +115,14 @@ class FindProviderMedicationView(ListAPIView):
                 )
             )
         )
+
+        # TODO order by distance
+        # TODO in advanced search for several medications
+        # first show the highest supply if they have the same supply
+        # then the generic
+
+        # TODO in simple search if the same medication is brand an generic show 
+        # the generic
 
         return provider_qs
 
