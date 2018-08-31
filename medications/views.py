@@ -1,3 +1,5 @@
+import csv
+
 from datetime import datetime, timedelta
 
 from django.db.models import Q, Count, Prefetch
@@ -10,17 +12,19 @@ from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status, viewsets, views
 from rest_registration.exceptions import BadRequest
+from rest_framework.response import Response
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
     RetrieveAPIView,
 )
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
+from django.http import HttpResponse
 
 from medications.tasks import generate_medications
 from .serializers import (
     CSVUploadSerializer,
+    CSVExportSerializer,
     MedicationNameSerializer,
     StateSerializer,
     GeoStateWithMedicationsSerializer,
@@ -511,6 +515,7 @@ class MedicationTypesView(views.APIView):
 
 class CSVExportView(GenericAPIView):
     permission_classes = (AllowAny,)
+    serializer_class = CSVExportSerializer
     allowed_methods = ['GET']
 
     def dispatch(self, request, *args, **kwargs):
@@ -638,12 +643,22 @@ class CSVExportView(GenericAPIView):
         return qs
 
     def get(self, request):
-
+        state_id = getattr(self, 'state_id', None)
+        zipcode = getattr(self, 'zipcode', None)
         qs = self.get_queryset(
-            getattr(self, 'state_id', None),
-            getattr(self, 'zipcode', None),
+            state_id,
+            zipcode,
         )
-        # TODO generate the CSV, queryset already done
-        # return the csv
-        return None
-
+        # TODO Make name of file dynamic
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="export.csv"'
+        serializer = self.get_serializer(
+            qs,
+            many=True
+        )
+        header = CSVExportSerializer.Meta.fields
+        writer = csv.DictWriter(response, fieldnames=header)
+        writer.writeheader()
+        for row in serializer.data:
+            writer.writerow(row)
+        return response
