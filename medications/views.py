@@ -645,20 +645,49 @@ class CSVExportView(GenericAPIView):
     def get(self, request):
         state_id = getattr(self, 'state_id', None)
         zipcode = getattr(self, 'zipcode', None)
-        qs = self.get_queryset(
-            state_id,
-            zipcode,
-        )
-        # TODO Make name of file dynamic
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="export.csv"'
-        serializer = self.get_serializer(
-            qs,
-            many=True
-        )
-        header = CSVExportSerializer.Meta.fields
-        writer = csv.DictWriter(response, fieldnames=header)
-        writer.writeheader()
-        for row in serializer.data:
-            writer.writerow(row)
-        return response
+        med_id = request.query_params.get('med_id')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        if med_id and start_date and end_date:
+            qs = self.get_queryset(
+                state_id,
+                zipcode,
+            )
+
+            # Generate the name for the file
+            if zipcode:
+                geography = zipcode
+            elif state_id:
+                try:
+                    geography = State.objects.get(id=state_id).state_name
+                except State.DoesNotExist:
+                    raise BadRequest('No such state exists')
+            else:
+                geography = 'US'
+
+            try:
+                med_name = MedicationName.objects.get(id=med_id)
+            except MedicationName.DoesNotExist:
+                raise BadRequest('No such medication in database')
+
+            filename = '{medication_name}-{geography}_{date_from}-{date_to}'.format( # noqa
+                medication_name=med_name.name,
+                geography=geography,
+                date_from=start_date,
+                date_to=end_date,
+            )
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename={}'.format(
+                filename,
+            )
+            serializer = self.get_serializer(
+                qs,
+                many=True
+            )
+            header = CSVExportSerializer.Meta.fields
+            writer = csv.DictWriter(response, fieldnames=header)
+            writer.writeheader()
+            for row in serializer.data:
+                writer.writerow(row)
+            return response
+        raise BadRequest('No med_id start_date or end_date in request')
