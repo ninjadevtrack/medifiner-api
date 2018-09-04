@@ -21,11 +21,20 @@ class Command(BaseCommand):
         if ZipCode.objects.all().count() > 33000:
             raise CommandError('ZipCodes already imported.')
         for state in states:
+            if state.state_code == 'PR':
+                continue
             print('Getting zipcodes for {}'.format(state))
-            state_url = settings.US_ZIPCODES_DATABASE.format(
-                state.state_code.lower(),
-                state.state_name.lower().replace(' ', '_'),
-            )
+            if 'D.C.' in state.state_name:
+                state_url = settings.US_ZIPCODES_DATABASE.format(
+                    'dc',
+                    'district_of_columbia',
+                )
+
+            else:
+                state_url = settings.US_ZIPCODES_DATABASE.format(
+                    state.state_code.lower(),
+                    state.state_name.lower().replace(' ', '_'),
+                )
             try:
                 state_response_json = requests.get(state_url).json()
                 for zipcode_json in state_response_json['features']:
