@@ -57,12 +57,20 @@ class FindProviderMedicationView(ListAPIView):
         if not distance:
             distance = 10
 
+        localization = list(
+            map(float, localization.split(','))
+        )
+        localization_point = Point(localization[0], localization[1], srid=4326)
+
         if formulation_ids and med_ids and localization:
             provider_medication_qs = ProviderMedicationThrough.objects.filter(
                 latest=True,
                 medication__medication_name__id__in=med_ids,
                 medication__id__in=formulation_ids,
-                # TODO localization
+                provider__geo_localization__distance_lte=(
+                    localization_point,
+                    D(mi=distance),
+                ),
             )
 
             # Check the list of drug types to filter
@@ -80,22 +88,22 @@ class FindProviderMedicationView(ListAPIView):
             )
         else:
             return None
-        # test point used for development, to be taken from query params
-        test_point = Point(41.7798226, -72.4372796, srid=4326)
 
         # TODO: other medications will be only if there is generoc nad brand
         # no other kind of medications
 
         # TODO: return all the pharmacies in the are even with no data
 
-
         provider_qs = Provider.objects.filter(
             provider_medication__id__in=provider_medication_ids,
-            geo_localization__distance_lte=(test_point, D(mi=distance)),
+            geo_localization__distance_lte=(
+                localization_point,
+                D(mi=distance),
+            ),
         ).annotate(
             distance=Distance(
                 'geo_localization',
-                test_point,
+                localization_point,
             ),
             medication_levels=ArrayAgg(
                 'provider_medication__level',
@@ -114,10 +122,9 @@ class FindProviderMedicationView(ListAPIView):
                     'medication',
                 )
             )
-        )
+        ).order_by('distance')
 
-        # TODO order by distance
-        # TODO in advanced search for several medications
+        # TODO
         # first show the highest supply if they have the same supply
         # then the generic
 
