@@ -20,7 +20,7 @@ from .serializers import (
 )
 
 
-def get_average_queryset(query_params, state_id=None, zipcode=None):
+def get_provider_medication_queryset(query_params, state_id=None, zipcode=None):
     med_id = query_params.get('med_id')
 
     # First we take list of provider medication for this med, we will
@@ -134,7 +134,7 @@ class HistoricAverageNationalLevelView(ListAPIView):
         start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
         end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
 
-        provider_medication_ids = get_average_queryset(
+        provider_medication_ids = get_provider_medication_queryset(
             query_params,
         )
         qs = Medication.objects.filter(
@@ -182,7 +182,7 @@ class HistoricAverageStateLevelView(ListAPIView):
         start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
         end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
 
-        provider_medication_ids = get_average_queryset(
+        provider_medication_ids = get_provider_medication_queryset(
             query_params,
             state_id=state_id,
         )
@@ -232,7 +232,7 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
         start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
         end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
 
-        provider_medication_ids = get_average_queryset(
+        provider_medication_ids = get_provider_medication_queryset(
             query_params,
             zipcode=zipcode,
         )
@@ -256,6 +256,7 @@ class HistoricOverallNationalLevelView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        query_params = self.request.query_params
         med_id = self.request.query_params.get('med_id')
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
@@ -275,75 +276,10 @@ class HistoricOverallNationalLevelView(ListAPIView):
         start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
         end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
 
-        # First we take list of provider medication for this med, we will
-        # use it for future filters
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            medication__medication_name__id=med_id,
+        provider_medication_ids = get_provider_medication_queryset(
+            query_params,
         )
 
-        # Now we check if there is a list of type of providers to filter
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-        if provider_type_list:
-            try:
-                provider_type_list = provider_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__type__in=provider_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of category of providers to filter
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if provider_category_list:
-            try:
-                provider_category_list = provider_category_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__category__in=provider_category_list,
-                )
-            except ValueError:
-                pass
-
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
-            )
-
-        # Now we check if there is a list of drug types to filter
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
-
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
-        )
         qs = MedicationName.objects.filter(
             id=med_id,
         ).prefetch_related(
@@ -373,6 +309,7 @@ class HistoricOverallStateLevelView(ListAPIView):
 
     def get_queryset(self):
         state_id = self.kwargs.get('state_id')
+        query_params = self.request.query_params
         med_id = self.request.query_params.get('med_id')
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
@@ -392,75 +329,9 @@ class HistoricOverallStateLevelView(ListAPIView):
         start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
         end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
 
-        # First we take list of provider medication for this med, we will
-        # use it for future filters
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            medication__medication_name__id=med_id,
-            provider__related_zipcode__state=state_id,
-        )
-
-        # Now we check if there is a list of type of providers to filter
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-        if provider_type_list:
-            try:
-                provider_type_list = provider_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__type__in=provider_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of category of providers to filter
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if provider_category_list:
-            try:
-                provider_category_list = provider_category_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__category__in=provider_category_list,
-                )
-            except ValueError:
-                pass
-
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
-            )
-
-        # Now we check if there is a list of drug types to filter
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
-
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
+        provider_medication_ids = get_provider_medication_queryset(
+            query_params,
+            state_id=state_id,
         )
         qs = MedicationName.objects.filter(
             id=med_id,
@@ -493,6 +364,7 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
     def get_queryset(self):
         zipcode = self.kwargs.get('zipcode')
         self.request.data['zipcode'] = zipcode
+        query_params = self.request.query_params
         med_id = self.request.query_params.get('med_id')
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
@@ -512,76 +384,11 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
         start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
         end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
 
-        # First we take list of provider medication for this med, we will
-        # use it for future filters
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            medication__medication_name__id=med_id,
-            provider__related_zipcode__zipcode=zipcode,
+        provider_medication_ids = get_provider_medication_queryset(
+            query_params,
+            zipcode=zipcode,
         )
 
-        # Now we check if there is a list of type of providers to filter
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-        if provider_type_list:
-            try:
-                provider_type_list = provider_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__type__in=provider_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of category of providers to filter
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if provider_category_list:
-            try:
-                provider_category_list = provider_category_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__category__in=provider_category_list,
-                )
-            except ValueError:
-                pass
-
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
-            )
-
-        # Now we check if there is a list of drug types to filter
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
-
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
-        )
         qs = MedicationName.objects.filter(
             id=med_id,
         ).prefetch_related(
