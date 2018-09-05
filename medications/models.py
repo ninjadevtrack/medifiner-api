@@ -188,7 +188,6 @@ class ProviderType(models.Model):
         max_length=255,
     )
 
-
     def __str__(self):
         return '{} - {}'.format(self.code, self.name)
 
