@@ -49,6 +49,7 @@ INSTALLED_APPS = (
     'activity_log',
     'corsheaders',
     'django_celery_beat',
+    'django_s3_storage',
     'localflavor',
     'phonenumber_field',
     'rest_registration',
