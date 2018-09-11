@@ -194,8 +194,13 @@ def get_properties(instance, geographic_type=None):
         }
     if hasattr(instance, 'medication_levels'):
         supplies, supply = get_supplies(instance.medication_levels)
-        properties['supplies'] = supplies
-        properties['supply'] = supply
+    else:
+        # We pass an empty list only to receive that are no supplies
+        # in case when med_id is nor in the request. We need to pass
+        # those keys to the frontend.
+        supplies, supply = get_supplies([])
+    properties['supplies'] = supplies
+    properties['supply'] = supply
     properties['population'] = instance.population
     return properties
 
