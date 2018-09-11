@@ -670,7 +670,7 @@ class CSVExportView(GenericAPIView):
             except MedicationName.DoesNotExist:
                 raise BadRequest('No such medication in database')
 
-            filename = '{medication_name}-{geography}_{date_from}-{date_to}'.format( # noqa
+            filename = '{medication_name}-{geography}_{date_from}-{date_to}.csv'.format( # noqa
                 medication_name=med_name.name,
                 geography=geography,
                 date_from=start_date,
