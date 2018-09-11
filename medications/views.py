@@ -247,9 +247,21 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
                 'id',
                 flat=True,
             ):
-                return County.objects.none()
+                return County.objects.filter(
+                    state__id=state_id,
+                ).select_related(
+                    'state',
+                ).annotate(
+                    centroid=AsGeoJSON(Centroid('state__geometry')),
+                )
         except ValueError:
-            return County.objects.none()
+            return County.objects.filter(
+                state__id=state_id,
+            ).select_related(
+                'state',
+            ).annotate(
+                centroid=AsGeoJSON(Centroid('state__geometry')),
+            )
 
         provider_medication_ids = get_provider_medicatiopn_id(
             self.request.query_params,
@@ -278,16 +290,13 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
     def get_queryset(self):
         med_id = self.request.query_params.get('med_id')
         zipcode = self.kwargs.get('zipcode')
+        # import pdb; pdb.set_trace()
         try:
-            if not med_id or int(
-                med_id
-            ) not in MedicationName.objects.values_list(
-                'id',
-                flat=True,
-            ):
-                return ZipCode.objects.none()
-        except ValueError:
-            return ZipCode.objects.none()
+            int(med_id)
+        except (ValueError, TypeError):
+            return ZipCode.objects.filter(zipcode=zipcode).annotate(
+                centroid=AsGeoJSON(Centroid('geometry')),
+            )
         provider_medication_ids = get_provider_medicatiopn_id(
             self.request.query_params,
         )

@@ -8,6 +8,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 
 from rest_framework import serializers
+from rest_registration.exceptions import BadRequest
 
 from historic.utils import daterange
 
@@ -130,6 +131,21 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         """
         Add GeoJSON compatible formatting to a serialized queryset list
         """
+        if not hasattr(data[0], 'medication_levels'):
+            state_obj = data[0].state
+            state = {
+                'name': state_obj.state_name,
+                'id': state_obj.id,
+                'code': state_obj.state_code,
+                'population': state_obj.population,
+            }
+            return OrderedDict((
+                ("type", "FeatureCollection"),
+                ("zoom", settings.ZOOM_STATE),
+                ("center", json.loads(data[0].centroid) if data else ''),
+                ("state", state),
+                ("features", [])
+            ))
         medication_levels_list = data.values_list(
             'medication_levels',
             flat=True,
@@ -176,9 +192,10 @@ def get_properties(instance, geographic_type=None):
             'id': instance.state.id,
             'population': instance.state.population
         }
-    supplies, supply = get_supplies(instance.medication_levels)
-    properties['supplies'] = supplies
-    properties['supply'] = supply
+    if hasattr(instance, 'medication_levels'):
+        supplies, supply = get_supplies(instance.medication_levels)
+        properties['supplies'] = supplies
+        properties['supply'] = supply
     properties['population'] = instance.population
     return properties
 
