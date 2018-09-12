@@ -22,7 +22,8 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
 
     list_display = (
         '__str__',
-        'date',
+        'creation_date',
+        'last_modified',
         'latest',
         'level',
     )
@@ -31,7 +32,8 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         'level',
-        'date',
+        'creation_date',
+        'last_modified',
     )
 
 

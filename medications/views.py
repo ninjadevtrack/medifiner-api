@@ -2,7 +2,7 @@ import csv
 
 from datetime import datetime, timedelta
 
-from django.db.models import Q, Count, Prefetch
+from django.db.models import Q, Count
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
 from django.core.cache import cache
@@ -24,7 +24,6 @@ from django.http import HttpResponse
 from medications.tasks import generate_medications
 from .serializers import (
     CSVUploadSerializer,
-    CSVExportSerializer,
     MedicationNameSerializer,
     StateSerializer,
     GeoStateWithMedicationsSerializer,
@@ -524,7 +523,6 @@ class MedicationTypesView(views.APIView):
 
 class CSVExportView(GenericAPIView):
     permission_classes = (AllowAny,)
-    serializer_class = CSVExportSerializer
     allowed_methods = ['GET']
 
     def dispatch(self, request, *args, **kwargs):
@@ -630,25 +628,17 @@ class CSVExportView(GenericAPIView):
                 )
             except ValueError:
                 pass
-
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
-        )
-        qs = Medication.objects.filter(
-            provider_medication__id__in=provider_medication_ids,
+        qs = ProviderMedicationThrough.objects.filter(
+            creation_date__gte=start_date,
+            creation_date__lte=end_date + timedelta(days=1),
         ).prefetch_related(
-            Prefetch(
-                'provider_medication',
-                queryset=ProviderMedicationThrough.objects.filter(
-                    date__gte=start_date,
-                    date__lte=end_date + timedelta(days=1),
-                    # We add 1 day cause we want to check the medications
-                    # supplies in end_date until 23:59:59 which in practice
-                    # is next day 00:00:00
-                )
-            )
-        ).distinct()
+            'provider',
+            'provider__organization',
+            'provider__type',
+            'provider__category',
+            'medication',
+            'medication__medication_name',
+        )
         return qs
 
     def get(self, request):
@@ -689,14 +679,47 @@ class CSVExportView(GenericAPIView):
             response['Content-Disposition'] = 'attachment; filename={}'.format(
                 filename,
             )
-            serializer = self.get_serializer(
-                qs,
-                many=True
-            )
-            header = CSVExportSerializer.Meta.fields
+            header = [
+                'Date',
+                'Organization',
+                'Provider ID',
+                'Provider Name',
+                'Provider Address',
+                'Provider City',
+                'Provider State',
+                'Provider Zip',
+                'Provider Type',
+                'Pharmacy Category',
+                'Medication Name',
+                'Med ID',
+                'Product Type',
+                'Inventory',
+                'Last Updated',
+                'Latest',
+            ]
             writer = csv.DictWriter(response, fieldnames=header)
             writer.writeheader()
-            for row in serializer.data:
-                writer.writerow(row)
+            for instance in qs:
+                data_row = (
+                    instance.creation_date.date().isoformat(),
+                    instance.provider.organization,
+                    instance.provider.store_number,
+                    instance.provider.name,
+                    instance.provider.address,
+                    instance.provider.city,
+                    instance.provider.state,
+                    instance.provider.zip,
+                    instance.provider.type,
+                    instance.provider.category,
+                    instance.medication.medication_name,
+                    instance.medication,
+                    dict(Medication.DRUG_TYPE_CHOICES).get(
+                        instance.medication.drug_type
+                    ),
+                    instance.supply,
+                    instance.last_modified.ctime(),
+                    instance.latest,
+                )
+                writer.writerow(dict(zip(header, data_row)))
             return response
         raise BadRequest('No med_id start_date or end_date in request')

@@ -78,7 +78,7 @@ class AverageSupplyLevelSerializer(serializers.ModelSerializer):
             supply_levels = []
             if pm_qs:
                 for pm in pm_qs:
-                    if pm.date.day == date.day:
+                    if pm.creation_date.day == date.day:
                         supply_levels.append(pm.level)
             days.append(
                 {
@@ -135,7 +135,7 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
             if m_qs:
                 for m in m_qs:
                     for pm in m.provider_medication.all():
-                        if pm.date.day == date.day:
+                        if pm.creation_date.day == date.day:
                             supply_levels.append(pm.level)
             days.append(
                 {
