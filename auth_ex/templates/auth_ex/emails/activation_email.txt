@@ -1,1 +1,135 @@
-{{link}}
+{% load static %}
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedFinder</title>
+
+  <style type="text/css">
+    /* reset */
+    #outlook a {
+      padding: 0;
+    }
+
+    /* Force Outlook to provide a "view in browser" menu link. */
+    .ExternalClass {
+      width: 100%;
+    }
+
+    /* Force Hotmail to display emails at full width */
+    .ExternalClass,
+    .ExternalClass p,
+    .ExternalClass span,
+    .ExternalClass font,
+    .ExternalClass td,
+    .ExternalClass div {
+      line-height: 100%;
+    }
+
+    /* Forces Hotmail to display normal line spacing.  More on that: http://www.emailonacid.com/forum/viewthread/43/ */
+    p {
+      margin: 0;
+      padding: 0;
+      font-size: 0px;
+      line-height: 0px;
+    }
+
+    /* squash Exact Target injected paragraphs */
+    table td {
+      border-collapse: collapse;
+    }
+
+    /* Outlook 07, 10 padding issue fix */
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+
+    /* remove spacing around Outlook 07, 10 tables */
+
+    /* bring inline */
+    img {
+      display: block;
+      outline: none;
+      text-decoration: none;
+      -ms-interpolation-mode: bicubic;
+    }
+
+    a img {
+      border: none;
+    }
+
+    a {
+      text-decoration: none;
+      color: #000001;
+    }
+
+    /* text link */
+    a.phone {
+      text-decoration: none;
+      color: #000001 !important;
+      pointer-events: auto;
+      cursor: default;
+    }
+
+    /* phone link, use as wrapper on phone numbers */
+    span {
+      font-size: 13px;
+      line-height: 17px;
+      font-family: monospace;
+      color: #000001;
+    }
+
+  </style>
+  <!--[if gte mso 9]>
+  <style>
+  /* Target Outlook 2007 and 2010 */
+  </style>
+<![endif]-->
+</head>
+
+<body style="width:100%; margin:0; padding:0; color: #35383B; font-family: 'Helvetica', 'Verdana', 'Arial'; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; background: #FAFBFB">
+
+  <table cellpadding="0" cellspacing="0" border="0" width="500" style="margin:0 auto; padding:0; line-height: 100% !important;">
+    <tr>
+      <td valign="top" style="padding: 32px 30px;">
+        <img src="{% static 'auth_ex/logo.jpg' %}" alt="MedFinder" width="138" height="22" />
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 24px 30px; background: #fff; border-radius: 3px; box-shadow: 1px 1px 6px 0 rgba(213,222,229,0.2);">
+        <p style="font-size: 20px; font-weight: bold; letter-spacing: 0.83px; line-height: 25px;">
+          Your MedFinder Dashboard account has been approved!
+        </p>
+        <p style="padding-top: 15px; font-size: 16px; font-weight: 500; line-height: 26px;">
+          Congratulations, your account has been approved for the MedFinder Dashboard! Follow the one-time link below to access the dashboard and set up your account:
+        </p>
+        <table cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding-top: 36px;">
+              <p style="padding: 9px 20px 11px; background: #0F67A2; border-radius: 3px;">
+                <a href="{{link}}" target="_blank" style="color: #fff; font-size: 14px; font-weight: bold; letter-spacing: 1px; line-height: 26px; text-decoration: none;">
+                  Complete Account Setup
+                </a>
+              </p>
+            </td>
+          </tr>
+        </table>
+        <p style="padding-top: 30px; font-size: 16px; font-weight: 500; line-height: 26px;">
+          Link not working? Copy and paste this link directly into your web browser: <a href="{{link}}" target="_blank" style="color: #0F67A2; text-decoration: none">auto-generated URL</a>
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 24px 30px 29px; color: #757D82; font-size: 12px; font-weight: 500; line-height: 22px;">
+        MedFinder is an online service that provides accurate and up-to-date information about medication supply levels across the United States. For questions about the MedFinder program, contact us at <a href="" target="_blank" style="color: #0F67A2; text-decoration: none">MedFinder email</a>.
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>

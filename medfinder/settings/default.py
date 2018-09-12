@@ -49,6 +49,7 @@ INSTALLED_APPS = (
     'activity_log',
     'corsheaders',
     'django_celery_beat',
+    'django_s3_storage',
     'localflavor',
     'phonenumber_field',
     'rest_registration',
@@ -242,7 +243,7 @@ REST_REGISTRATION = {
     'VERIFICATION_FROM_EMAIL': 'no-reply@example.com',
 
     'RESET_PASSWORD_VERIFICATION_URL':
-    'https://{}/reset-password/'.format(FRONTEND_URL),
+    'https://{}/reset-password'.format(FRONTEND_URL),
 
     'USER_HIDDEN_FIELDS': (
         'is_active',
