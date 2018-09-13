@@ -307,11 +307,17 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
             ),
             centroid=AsGeoJSON(Centroid('geometry')),
         )
+        # TODO: Caught the exception and return a serializer with states to select
         if len(zipcode_qs) > 1:
             zipcode_qs = zipcode_qs.filter(
                 population=max(zipcode_qs.values_list('population', flat=True))
             )
         return zipcode_qs
+
+    # def get_object(self):
+    #     try:
+    #         super
+    #     except Multiple
 
 
 class ProviderTypesView(ListAPIView):

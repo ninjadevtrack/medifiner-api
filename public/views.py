@@ -1,4 +1,5 @@
 from rest_framework.generics import ListAPIView
+from rest_registration.exceptions import BadRequest
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
@@ -23,8 +24,15 @@ class FindProviderMedicationView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        '''
+        query_params:
+            - med_ids: list of MedicaitonName ids
+            - formulations: list of Medication ids
+            - localization: list of 2 coordinates (must be int or float)
+            - drug_type: list of 1 character str, for drug_type in Medication
+            - distance: int, in miles
+        '''
         med_ids_raw = self.request.query_params.get('med_ids')
-
         formulation_ids_raw = self.request.query_params.get(
             'formulations',
         )
@@ -57,10 +65,17 @@ class FindProviderMedicationView(ListAPIView):
         if not distance:
             distance = 10
 
-        localization = list(
-            map(float, localization.split(','))
-        )
-        localization_point = Point(localization[0], localization[1], srid=4326)
+        try:
+            localization = list(
+                map(float, localization.split(','))
+            )
+            localization_point = Point(
+                localization[0], localization[1], srid=4326,
+            )
+        except (IndexError, ValueError):
+            raise BadRequest(
+                'Localization should consist of 2 coordinates'
+            )
 
         if formulation_ids and med_ids and localization:
             provider_medication_qs = ProviderMedicationThrough.objects.filter(
@@ -89,13 +104,7 @@ class FindProviderMedicationView(ListAPIView):
         else:
             return None
 
-        # TODO: other medications will be only if there is generoc nad brand
-        # no other kind of medications
-
-        # TODO: return all the pharmacies in the are even with no data
-
         provider_qs = Provider.objects.filter(
-            provider_medication__id__in=provider_medication_ids,
             geo_localization__distance_lte=(
                 localization_point,
                 D(mi=distance),
@@ -124,11 +133,14 @@ class FindProviderMedicationView(ListAPIView):
             )
         ).order_by('distance')
 
+        # TODO: other medications will be only if there is generoc nad brand
+        # no other kind of medications
+
         # TODO
         # first show the highest supply if they have the same supply
         # then the generic
 
-        # TODO in simple search if the same medication is brand an generic show 
+        # TODO in simple search if the same medication is brand an generic show
         # the generic
 
         return provider_qs
