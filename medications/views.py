@@ -289,7 +289,6 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
     def get_queryset(self):
         med_id = self.request.query_params.get('med_id')
         zipcode = self.kwargs.get('zipcode')
-        # import pdb; pdb.set_trace()
         try:
             int(med_id)
         except (ValueError, TypeError):
@@ -308,6 +307,10 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
             ),
             centroid=AsGeoJSON(Centroid('geometry')),
         )
+        if len(zipcode_qs) > 1:
+            zipcode_qs = zipcode_qs.filter(
+                population=max(zipcode_qs.values_list('population', flat=True))
+            )
         return zipcode_qs
 
 
