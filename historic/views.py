@@ -143,8 +143,8 @@ class HistoricAverageNationalLevelView(ListAPIView):
             Prefetch(
                 'provider_medication',
                 queryset=ProviderMedicationThrough.objects.filter(
-                    date__gte=start_date,
-                    date__lte=end_date + timedelta(days=1),
+                    creation_date__gte=start_date,
+                    creation_date__lte=end_date + timedelta(days=1),
                     # We add 1 day cause we want to check the medications
                     # supplies in end_date until 23:59:59 which in practice
                     # is next day 00:00:00
@@ -192,8 +192,8 @@ class HistoricAverageStateLevelView(ListAPIView):
             Prefetch(
                 'provider_medication',
                 queryset=ProviderMedicationThrough.objects.filter(
-                    date__gte=start_date,
-                    date__lte=end_date + timedelta(days=1),
+                    creation_date__gte=start_date,
+                    creation_date__lte=end_date + timedelta(days=1),
                 )
             )
         ).distinct()
@@ -242,8 +242,8 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
             Prefetch(
                 'provider_medication',
                 queryset=ProviderMedicationThrough.objects.filter(
-                    date__gte=start_date,
-                    date__lte=end_date + timedelta(days=1),
+                    creation_date__gte=start_date,
+                    creation_date__lte=end_date + timedelta(days=1),
                 )
             )
         ).distinct()
@@ -291,8 +291,8 @@ class HistoricOverallNationalLevelView(ListAPIView):
                     Prefetch(
                         'provider_medication',
                         queryset=ProviderMedicationThrough.objects.filter(
-                            date__gte=start_date,
-                            date__lte=end_date + timedelta(days=1),
+                            creation_date__gte=start_date,
+                            creation_date__lte=end_date + timedelta(days=1),
                         )
                     )
                 ).distinct()
@@ -345,8 +345,8 @@ class HistoricOverallStateLevelView(ListAPIView):
                         'provider_medication',
                         queryset=ProviderMedicationThrough.objects.filter(
                             id__in=provider_medication_ids,
-                            date__gte=start_date,
-                            date__lte=end_date + timedelta(days=1),
+                            creation_date__gte=start_date,
+                            creation_date__lte=end_date + timedelta(days=1),
                         )
                     )
                 ).distinct()
@@ -401,8 +401,8 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
                         'provider_medication',
                         queryset=ProviderMedicationThrough.objects.filter(
                             id__in=provider_medication_ids,
-                            date__gte=start_date,
-                            date__lte=end_date + timedelta(days=1),
+                            creation_date__gte=start_date,
+                            creation_date__lte=end_date + timedelta(days=1),
                         )
                     )
                 ).distinct()

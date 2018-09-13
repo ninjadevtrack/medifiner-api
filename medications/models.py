@@ -477,10 +477,15 @@ class ProviderMedicationThrough(models.Model):
         _('medication level'),
         default=0,
     )
-    date = models.DateTimeField(
-        _('date'),
+    creation_date = models.DateTimeField(
+        _('creation date'),
         auto_now_add=True,
         help_text=_('Creation date'),
+    )
+    last_modified = models.DateTimeField(
+        _('last modified date'),
+        auto_now=True,
+        help_text=_('Last modification date'),
     )
     latest = models.BooleanField(
         _('latest'),

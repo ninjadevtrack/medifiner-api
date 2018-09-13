@@ -1,5 +1,4 @@
 import csv
-import datetime
 import json
 
 from collections import OrderedDict
@@ -8,9 +7,6 @@ from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 
 from rest_framework import serializers
-from rest_registration.exceptions import BadRequest
-
-from historic.utils import daterange
 
 from .constants import field_rows
 from .models import (
@@ -340,64 +336,3 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'website',
             'registration_date',
         )
-
-
-class CSVExportSerializer(serializers.Serializer):
-
-    class Meta:
-        model = Medication
-        fields = (
-            'name',
-        )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        date_format = '%Y-%m-%d'
-        start_date = self.context[
-            'request'
-        ].query_params.get('start_date')
-        start_date = datetime.datetime.strptime(
-            start_date,
-            date_format,
-        )
-
-        end_date = self.context[
-            'request'
-        ].query_params.get('end_date')
-        end_date = datetime.datetime.strptime(
-            end_date,
-            date_format,
-        )
-        for date in daterange(start_date, end_date, inclusive=True):
-            self.Meta.fields += (date.date().isoformat(),)
-            self.fields[date.date().isoformat()] = serializers.CharField()
-
-    def to_representation(self, instance):
-        data = OrderedDict()
-        data['name'] = instance.name
-
-        pm_qs = instance.provider_medication.all()
-        date_format = '%Y-%m-%d'
-        start_date = self.context[
-            'request'
-        ].query_params.get('start_date')
-        start_date = datetime.datetime.strptime(
-            start_date,
-            date_format,
-        )
-
-        end_date = self.context[
-            'request'
-        ].query_params.get('end_date')
-        end_date = datetime.datetime.strptime(
-            end_date,
-            date_format,
-        )
-        for date in daterange(start_date, end_date, inclusive=True):
-            supply_levels = []
-            if pm_qs:
-                for pm in pm_qs:
-                    if pm.date.day == date.day:
-                        supply_levels.append(pm.level)
-            data[date.date().isoformat()] = get_supplies(supply_levels)[1]
-        return data
