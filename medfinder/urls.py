@@ -3,7 +3,7 @@ from django.urls import include, path
 from django.contrib import admin
 from django.conf.urls.static import static
 from rest_framework_swagger.views import get_swagger_view
-from rest_framework_jwt.views import obtain_jwt_token
+from rest_framework_jwt.views import ObtainJSONWebToken
 from rest_registration.api.views import (
     send_reset_password_link,
     reset_password,
@@ -12,6 +12,7 @@ from rest_registration.api.views import (
 
 from medications.api_urls_v1 import medications_api_urlpatterns
 from auth_ex.api_urls_v1 import accounts_api_urlpatterns
+from auth_ex.serializers import JSONWebTokenSerializer
 from public.api_urls_v1 import public_api_urlpatterns
 from historic.api_urls_v1 import historic_api_urlpatterns
 
@@ -27,7 +28,7 @@ api_urlpatterns = [
     ),
     path(
         'accounts/obtain_token/',
-        obtain_jwt_token,
+        ObtainJSONWebToken.as_view(serializer_class=JSONWebTokenSerializer),
         name='obtain-token',
     ),
     path(
