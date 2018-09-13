@@ -112,6 +112,16 @@ class HistoricAverageNationalLevelView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        '''
+        query_params:
+            - med_id: MedicationName id
+            - start_date: Date str to start filter
+            - end_date: Date str to end filter
+            - formulations: list of Medication ids
+            - provider_category: list of ProviderCategory ids
+            - provider_type: list of ProviderType ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         med_id = self.request.query_params.get('med_id')
         query_params = self.request.query_params
         start_date = self.request.query_params.get('start_date')
@@ -160,6 +170,18 @@ class HistoricAverageStateLevelView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        '''
+        kwargs: state_id
+
+        query_params:
+            - med_id: MedicationName id
+            - start_date: Date str to start filter
+            - end_date: Date str to end filter
+            - formulations: list of Medication ids
+            - provider_category: list of ProviderCategory ids
+            - provider_type: list of ProviderType ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         state_id = self.kwargs.get('state_id')
         query_params = self.request.query_params
         med_id = self.request.query_params.get('med_id')
@@ -207,7 +229,18 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
     lookup_field = 'zipcode'
 
     def get_queryset(self):
+        '''
+        kwargs: zipcode
 
+        query_params:
+            - med_id: MedicationName id
+            - start_date: Date str to start filter
+            - end_date: Date str to end filter
+            - formulations: list of Medication ids
+            - provider_category: list of ProviderCategory ids
+            - provider_type: list of ProviderType ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         zipcode = self.kwargs.get('zipcode')
         self.request.data['zipcode'] = zipcode
         med_id = self.request.query_params.get('med_id')
@@ -256,6 +289,16 @@ class HistoricOverallNationalLevelView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        '''
+        query_params:
+            - med_id: MedicationName id
+            - start_date: Date str to start filter
+            - end_date: Date str to end filter
+            - formulations: list of Medication ids
+            - provider_category: list of ProviderCategory ids
+            - provider_type: list of ProviderType ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         query_params = self.request.query_params
         med_id = self.request.query_params.get('med_id')
         start_date = self.request.query_params.get('start_date')
@@ -308,6 +351,18 @@ class HistoricOverallStateLevelView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        '''
+        kwargs: state_id
+
+        query_params:
+            - med_id: MedicationName id
+            - start_date: Date str to start filter
+            - end_date: Date str to end filter
+            - formulations: list of Medication ids
+            - provider_category: list of ProviderCategory ids
+            - provider_type: list of ProviderType ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         state_id = self.kwargs.get('state_id')
         query_params = self.request.query_params
         med_id = self.request.query_params.get('med_id')
@@ -362,6 +417,18 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
     lookup_field = 'zipcode'
 
     def get_queryset(self):
+        '''
+        kwargs: zipcode
+
+        query_params:
+            - med_id: MedicationName id
+            - start_date: Date str to start filter
+            - end_date: Date str to end filter
+            - formulations: list of Medication ids
+            - provider_category: list of ProviderCategory ids
+            - provider_type: list of ProviderType ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         zipcode = self.kwargs.get('zipcode')
         self.request.data['zipcode'] = zipcode
         query_params = self.request.query_params

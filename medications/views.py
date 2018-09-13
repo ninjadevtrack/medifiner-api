@@ -122,6 +122,7 @@ class StateViewSet(viewsets.ModelViewSet):
 
 def get_provider_medicatiopn_id(query_params):
     # Method use to save many line codes in the geo_stats views
+
     med_id = query_params.get('med_id')
 
     # First we take list of provider medication for this med, we will
@@ -206,6 +207,14 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        '''
+        query_params:
+            - med_id: MedicationName id
+            - formulations: list of Medication ids
+            - provider_type: list of ProviderType ids
+            - provider_category: list of ProviderCategory ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         med_id = self.request.query_params.get('med_id')
         try:
             if not med_id or int(
@@ -237,6 +246,16 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        '''
+        kwarg: state_id
+
+        query_params:
+            - med_id: MedicationName id
+            - formulations: list of Medication ids
+            - provider_type: list of ProviderType ids
+            - provider_category: list of ProviderCategory ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         med_id = self.request.query_params.get('med_id')
         state_id = self.kwargs.pop('state_id')
         try:
@@ -287,6 +306,16 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
     lookup_field = 'zipcode'
 
     def get_queryset(self):
+        '''
+        kwarg: zipcode
+
+        query_params:
+            - med_id: MedicationName id
+            - formulations: list of Medication ids
+            - provider_type: list of ProviderType ids
+            - provider_category: list of ProviderCategory ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         med_id = self.request.query_params.get('med_id')
         zipcode = self.kwargs.get('zipcode')
         try:
@@ -329,6 +358,14 @@ class ProviderTypesView(ListAPIView):
         model = ProviderType
 
     def get_queryset(self):
+        '''
+        query_params:
+            - med_id: MedicationName id
+            - formulations: list of Medication ids
+            - state_id: id of State object
+            - zipcode: zipcode
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         med_id = self.request.query_params.get('med_id')
         state_id = self.request.query_params.get('state_id')
         zipcode = self.request.query_params.get('zipcode')
@@ -429,6 +466,15 @@ class MedicationTypesView(views.APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
+        '''
+        query_params:
+            - med_id: MedicationName id
+            - formulations: list of Medication ids
+            - state_id: id of State object
+            - zipcode: zipcode
+            - provider_category: list of ProviderCategory ids
+            - provider_type: list of ProviderType ids
+        '''
         med_id = self.request.query_params.get('med_id')
         state_id = self.request.query_params.get('state_id')
         zipcode = self.request.query_params.get('zipcode')
@@ -535,6 +581,9 @@ class CSVExportView(GenericAPIView):
     allowed_methods = ['GET']
 
     def dispatch(self, request, *args, **kwargs):
+        '''
+        kwargs: may be state_id or zipcode
+        '''
         kwargs_keys = kwargs.keys()
         if 'state_id' in kwargs_keys:
             self.state_id = kwargs.pop('state_id')
@@ -543,6 +592,16 @@ class CSVExportView(GenericAPIView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self, state_id=None, zipcode=None):
+        '''
+        query_params:
+            - med_id: MedicationName id
+            - start_date: Date str to start filter
+            - end_date: Date str to end filter
+            - formulations: list of Medication ids
+            - provider_category: list of ProviderCategory ids
+            - provider_type: list of ProviderType ids
+            - drug_type: list of 1 character str, for drug_type in Medication
+        '''
         med_id = self.request.query_params.get('med_id')
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
