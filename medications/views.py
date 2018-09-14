@@ -6,6 +6,7 @@ from django.db.models import Q, Count
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
 from django.core.cache import cache
+from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import IntegerField, Case, When, Sum, Value as V
 
 from django.utils.translation import ugettext_lazy as _
@@ -26,6 +27,7 @@ from .serializers import (
     CSVUploadSerializer,
     MedicationNameSerializer,
     StateSerializer,
+    SimpleStateSerializer,
     GeoStateWithMedicationsSerializer,
     GeoCountyWithMedicationsSerializer,
     GeoZipCodeWithMedicationsSerializer,
@@ -315,8 +317,10 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
             - provider_type: list of ProviderType ids
             - provider_category: list of ProviderCategory ids
             - drug_type: list of 1 character str, for drug_type in Medication
+            - state_id: int of a state obj, used when more than one zipcode
         '''
         med_id = self.request.query_params.get('med_id')
+        state_id = self.request.query_params.get('state_id')
         zipcode = self.kwargs.get('zipcode')
         try:
             int(med_id)
@@ -327,26 +331,41 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
         provider_medication_ids = get_provider_medicatiopn_id(
             self.request.query_params,
         )
-        zipcode_qs = ZipCode.objects.filter(zipcode=zipcode).annotate(
-            medication_levels=ArrayAgg(
-                'providers__provider_medication__level',
-                filter=Q(
-                        providers__provider_medication__id__in=provider_medication_ids # noqa
-                )
-            ),
-            centroid=AsGeoJSON(Centroid('geometry')),
-        )
-        # TODO: Caught the exception and return a serializer with states to select
-        if len(zipcode_qs) > 1:
-            zipcode_qs = zipcode_qs.filter(
-                population=max(zipcode_qs.values_list('population', flat=True))
+        if state_id:
+            zipcode_qs = ZipCode.objects.filter(
+                zipcode=zipcode,
+                state=state_id,
+            ).annotate(
+                medication_levels=ArrayAgg(
+                    'providers__provider_medication__level',
+                    filter=Q(
+                            providers__provider_medication__id__in=provider_medication_ids # noqa
+                    )
+                ),
+                centroid=AsGeoJSON(Centroid('geometry')),
             )
+        else:
+            zipcode_qs = ZipCode.objects.filter(zipcode=zipcode).annotate(
+                medication_levels=ArrayAgg(
+                    'providers__provider_medication__level',
+                    filter=Q(
+                            providers__provider_medication__id__in=provider_medication_ids # noqa
+                    )
+                ),
+                centroid=AsGeoJSON(Centroid('geometry')),
+            )
+
         return zipcode_qs
 
-    # def get_object(self):
-    #     try:
-    #         super
-    #     except Multiple
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+        except MultipleObjectsReturned:
+            zipcodes = self.get_queryset()
+            states = [zipcode.state for zipcode in zipcodes]
+            serializer = SimpleStateSerializer(states, many=True)
+        return Response(serializer.data, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProviderTypesView(ListAPIView):
