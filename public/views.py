@@ -1,13 +1,18 @@
-from rest_framework.generics import ListAPIView
+from rest_framework import status
+from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_registration.exceptions import BadRequest
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.contrib.gis.geos import Point
 from django.db.models import Q, Prefetch
+from django.core.mail import send_mail
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
 from django.contrib.postgres.aggregates import ArrayAgg
+from django.template.loader import render_to_string
+from django.utils.translation import ugettext_lazy as _
+
 
 from epidemic.models import Epidemic
 from medications.models import (
@@ -15,7 +20,7 @@ from medications.models import (
     Provider,
     Medication,
 )
-from .serializers import FindProviderSerializer
+from .serializers import FindProviderSerializer, ContactFormSerializer
 
 
 class FindProviderMedicationView(ListAPIView):
@@ -156,3 +161,50 @@ class BasicInfoView(APIView):
             map_choices.pop(Medication.PUBLIC_HEALTH_SUPPLY)
         response['drug_type'] = map_choices
         return Response(response)
+
+
+class ContactFormView(GenericAPIView):
+    serializer_class = ContactFormSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            validated_data = serializer.validated_data
+            email_to = 'medfinder@healthmap.org'
+            from_email = validated_data.get('email')
+            context = {
+                'representative_name': validated_data.get(
+                    'representative_name'
+                ),
+                'pharmacy_name': validated_data.get('pharmacy_name'),
+                'pharmacy_address': validated_data.get('pharmacy_address'),
+                'additional_comments': validated_data.get(
+                    'additional_comments'
+                ),
+                'email': from_email,
+            }
+            # TODO: Template to be completed by front end
+            msg_html = render_to_string(
+                'public/emails/contact_email.html',
+                context=context,
+            )
+            msg_plain = render_to_string(
+                'public/emails/contact_email.txt',
+                context=context,
+            )
+
+            send_mail(
+                'MedFinder: New Interested Pharmacy',
+                msg_plain,
+                from_email,
+                [email_to],
+                html_message=msg_html,
+            )
+            return Response(
+                _('Successfully sent email'),
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            _('There are errors in the dara provided'),
+            status=status.HTTP_400_BAD_REQUEST,
+        )
