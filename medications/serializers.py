@@ -77,6 +77,16 @@ class StateSerializer(serializers.ModelSerializer):
         return obj.county_list
 
 
+class SimpleStateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = State
+        fields = (
+            'id',
+            'state_name',
+            'state_code',
+        )
+
+
 class MedicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Medication
