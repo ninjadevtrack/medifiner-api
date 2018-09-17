@@ -1,5 +1,19 @@
-{{representative_name}}
-{{pharmacy_name}}
-{{pharmacy_address}}
-{{additional_comments}}
-{{email}}
+{% extends "emails/base.html" %}
+{% load static %}
+{% block content %}
+<p style="margin: 0; color: #35383B; font-size: 20px; font-weight: 700; letter-spacing: 0.83px; line-height: 25px;">
+    New Interested Pharmacy 
+</p>
+<div>
+    <p style="margin: 0; padding-top: 24px; color: #35383B; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; line-height: 20px;">
+        Pharmacy Information
+    </p>
+    <p style="margin: 0; padding-top: 4px; color: #35383B; font-size: 16px; font-weight: 500; line-height: 26px;">
+		{{representative_name}}
+		{{pharmacy_name}}
+		{{pharmacy_address}}
+		{{email}}
+		{{additional_comments}}
+    </p>
+</div>
+{% endblock content %}
