@@ -59,3 +59,20 @@ class FindProviderSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'geo_localization'):
             return json.loads(obj.geo_localization.json)
         return None
+
+
+class ContactFormSerializer(serializers.Serializer):
+    representative_name = serializers.CharField(max_length=255)
+    pharmacy_name = serializers.CharField(max_length=255)
+    pharmacy_address = serializers.CharField(max_length=255)
+    email = serializers.EmailField()
+    additional_comments = serializers.CharField(allow_blank=True)
+
+    class Meta:
+        fields = (
+            'representative_name',
+            'email',
+            'pharmacy_name',
+            'pharmacy_address',
+            'additional_comments',
+        )
