@@ -185,16 +185,6 @@ if S3_STORAGE_ENABLE:
 # --- DJANGO COMPRESSOR ---
 # STATICFILES_FINDERS += ('compressor.finders.CompressorFinder',)
 
-# --- CACHE ---
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
-    }
-}
 # --- DJANGO REGISTRATION REDUX ---
 ACCOUNT_ACTIVATION_DAYS = 7
 REGISTRATION_AUTO_LOGIN = False
