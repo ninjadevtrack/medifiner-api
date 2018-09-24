@@ -202,6 +202,17 @@ REGISTRATION_AUTO_LOGIN = False
 # --- CELERY ---
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/')
 
+# --- CACHE ---
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "{}1".format(CELERY_BROKER_URL),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
 # CELERY_BEAT_SCHEDULE = {
 #     'import_existing_medications': {
 #         'task': 'medications.tasks.import_existing_medications',
