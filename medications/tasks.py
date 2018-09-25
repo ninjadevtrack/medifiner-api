@@ -76,6 +76,7 @@ def generate_medications(cache_key, organization_id):
                     phone=phone,
                     related_zipcode=zipcode_obj,
                 )
+                # TODO: create and update a last_import_date = Now
             if not medication or (medication.ndc != ndc_code):
                 # Will do the same check as in provider
                 # Second check in the medication_map to lookup if this

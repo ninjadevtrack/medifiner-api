@@ -193,22 +193,23 @@ if S3_STORAGE_ENABLE:
 # --- DJANGO COMPRESSOR ---
 # STATICFILES_FINDERS += ('compressor.finders.CompressorFinder',)
 
-# --- CACHE ---
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
-    }
-}
 # --- DJANGO REGISTRATION REDUX ---
 ACCOUNT_ACTIVATION_DAYS = 7
 REGISTRATION_AUTO_LOGIN = False
 
 # --- CELERY ---
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/')
+
+# --- CACHE ---
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "{}1".format(CELERY_BROKER_URL),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
 
 # CELERY_BEAT_SCHEDULE = {
 #     'import_existing_medications': {
