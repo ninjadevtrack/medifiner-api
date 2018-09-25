@@ -20,7 +20,6 @@ from .models import (
 )
 
 
-
 @shared_task
 # This task can't be atomic because we need to run a post_save signal for
 # every ProviderMedicationThrough object created
@@ -39,6 +38,7 @@ def generate_medications(cache_key, organization_id):
     temporary_file_obj = csv_file.open()
     decoded_file = temporary_file_obj.read().decode('utf-8').splitlines()
     reader = csv.DictReader(decoded_file)
+
     for row in reader:
         # Iterate through the rows to get the neccessary information
         store_number = row.get('store #')

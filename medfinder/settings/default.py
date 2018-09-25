@@ -34,6 +34,7 @@ LOCAL_APPS = (
     'public',
     'epidemic',
     'historic',
+    'vaccinefinder',
 )
 
 INSTALLED_APPS = (
@@ -149,6 +150,13 @@ FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
 DATABASES = {
     'default': env.db(
         default='postgis://postgres:postgres@postgres:5432/postgres'),
+    'vaccinedb': {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': env('VACCINEFINDER_HOST'),
+        'NAME': env('VACCINEFINDER_NAME'),
+        'PASSWORD': env('VACCINEFINDER_PASSWORD'),
+        'USER': env('VACCINEFINDER_USER'),
+    }
 }
 
 # Password validation

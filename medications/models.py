@@ -383,9 +383,10 @@ class Provider(models.Model):
                 )
             self.change_coordinates = False
         if self.relate_related_zipcode and self.zip:
+            zipcode = False
             try:
                 zipcode = ZipCode.objects.get(
-                    zipcode=self.zip,
+                    zipcode=self.zip[:5],
                     state__state_code=self.state,
                 )
             except ZipCode.DoesNotExist:

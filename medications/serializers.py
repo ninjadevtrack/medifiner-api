@@ -37,7 +37,7 @@ class CSVUploadSerializer(serializers.Serializer):
             organization = None
         if not organization:
             raise serializers.ValidationError(
-                {'csv_file': _('This user has not organization related.')}
+                {'csv_file': _('No linked organization found for user')}
             )
         file = data.get('csv_file')
         if not file.name.endswith('.csv'):
@@ -51,7 +51,7 @@ class CSVUploadSerializer(serializers.Serializer):
                 {
                     'csv_file':
                     _(
-                        'Wrong headers in CSV file, headers must be: {}.'
+                        'CSV file header format error, headers must be: {}.'
                     ). format(', '.join(field_rows))}
             )
         data['csv_file'] = file

@@ -69,7 +69,7 @@ class CSVUploadView(GenericAPIView):
             organization_id,
         )
         return Response(
-            {'status': _('The medications creation proccess has been queued')},
+            {'status': _('Supply level import proccess has been queued')},
             status=status.HTTP_200_OK,
         )
 
@@ -235,7 +235,7 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
             medication_levels=ArrayAgg(
                 'state_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                        state_zipcodes__providers__provider_medication__id__in=provider_medication_ids # noqa
+                        state_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
                 )
             ),
         )
@@ -294,7 +294,7 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
             medication_levels=ArrayAgg(
                 'county_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                        county_zipcodes__providers__provider_medication__id__in=provider_medication_ids # noqa
+                        county_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
                 )
             ),
             centroid=AsGeoJSON(Centroid('state__geometry')),
@@ -339,7 +339,7 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
                 medication_levels=ArrayAgg(
                     'providers__provider_medication__level',
                     filter=Q(
-                            providers__provider_medication__id__in=provider_medication_ids # noqa
+                            providers__provider_medication__id__in=provider_medication_ids  # noqa
                     )
                 ),
                 centroid=AsGeoJSON(Centroid('geometry')),
@@ -349,7 +349,7 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
                 medication_levels=ArrayAgg(
                     'providers__provider_medication__level',
                     filter=Q(
-                            providers__provider_medication__id__in=provider_medication_ids # noqa
+                            providers__provider_medication__id__in=provider_medication_ids  # noqa
                     )
                 ),
                 centroid=AsGeoJSON(Centroid('geometry')),
@@ -457,7 +457,7 @@ class ProviderTypesView(ListAPIView):
             providers_count=Sum(
                 Case(
                     When(
-                        providers__provider_medication__id__in=provider_medication_ids, # noqa
+                        providers__provider_medication__id__in=provider_medication_ids,  # noqa
                         then=V(1),
                     ),
                     output_field=IntegerField(),
@@ -756,7 +756,7 @@ class CSVExportView(GenericAPIView):
             except MedicationName.DoesNotExist:
                 raise BadRequest('No such medication in database')
 
-            filename = '{medication_name}-{geography}_{date_from}-{date_to}.csv'.format( # noqa
+            filename = '{medication_name}-{geography}_{date_from}-{date_to}.csv'.format(  # noqa
                 medication_name=med_name.name,
                 geography=geography,
                 date_from=start_date,

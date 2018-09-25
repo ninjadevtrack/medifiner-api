@@ -13,6 +13,8 @@ services:
       - PGDATA=/var/lib/postgresql/data
     volumes:
       - data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
   django:
     build:
       context: .
