@@ -77,11 +77,10 @@ class FindProviderMedicationView(ListAPIView):
             localization_point = Point(
                 localization[0], localization[1], srid=4326,
             )
-        except (IndexError, ValueError):
+        except (IndexError, ValueError, AttributeError):
             raise BadRequest(
-                'Localization should consist of 2 coordinates'
+                'Localization should be provided and consist of 2 coordinates'
             )
-
         if formulation_ids and med_ids and localization:
             provider_medication_qs = ProviderMedicationThrough.objects.filter(
                 latest=True,
@@ -107,8 +106,10 @@ class FindProviderMedicationView(ListAPIView):
                 flat=True,
             )
         else:
-            return None
-
+            raise BadRequest(
+                'You should provie med_ids, formulations and'
+                ' lozalization params'
+            )
         provider_qs = Provider.objects.filter(
             geo_localization__distance_lte=(
                 localization_point,
