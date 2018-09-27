@@ -365,7 +365,7 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
             zipcodes = self.get_queryset()
             states = [zipcode.state for zipcode in zipcodes]
             serializer = SimpleStateSerializer(states, many=True)
-        return Response(serializer.data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ProviderTypesView(ListAPIView):
