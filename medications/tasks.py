@@ -6,6 +6,7 @@ from celery.decorators import task
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
+from django.db import IntegrityError
 from io import BytesIO
 from urllib.request import urlopen
 from zipfile import ZipFile
@@ -18,7 +19,6 @@ from .models import (
     ProviderMedicationThrough,
     ZipCode,
 )
-
 
 
 @shared_task
@@ -84,10 +84,15 @@ def generate_medications(cache_key, organization_id):
                 medication = medication_map.get(ndc_code, None)
                 if not medication:
                     # TODO: DRUG TYPE?
-                    medication, _ = Medication.objects.get_or_create(
-                        name=med_name,
-                        ndc=ndc_code,
-                    )
+
+                    try:
+                        medication, _ = Medication.objects.get_or_create(
+                            name=med_name,
+                            ndc=ndc_code,
+                        )
+                    except IntegrityError:
+                        lost_ndcs.append(ndc_code)
+                        pass
 
             if medication:
                 # Add the actual medication (whatever it is) to the medication
@@ -113,7 +118,8 @@ def generate_medications(cache_key, organization_id):
     # Send to sentry not found ndcs
     if lost_ndcs:
         raise ValidationError(
-            'Following ndcs does not exist, therefore they were not imported'
+            'Following ndcs does not exist or exists in the database with '
+            'another medication name, therefore they were not imported'
             ': {}'.format(lost_ndcs)
         )
 

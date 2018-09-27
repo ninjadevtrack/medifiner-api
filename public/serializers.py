@@ -8,15 +8,30 @@ from medications.utils import get_supplies
 
 
 class ProviderMedicationSimpleSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='medication.id')
+    medication_name = serializers.CharField(
+        source='medication.medication_name',
+    )
     name = serializers.CharField(source='medication.name')
-    supply = serializers.SerializerMethodField()
+    drug_type = serializers.SerializerMethodField()
+    supply_level = serializers.SerializerMethodField()
 
     class Meta:
         model = ProviderMedicationThrough
-        fields = ('name', 'supply')
+        fields = (
+            'id',
+            'medication_name',
+            'name',
+            'drug_type',
+            'supply_level',
+        )
 
-    def get_supply(self, obj):
-        return get_supplies([obj.level])[1]
+    def get_drug_type(self, obj):
+        return obj.medication.get_drug_type_display()
+
+    def get_supply_level(self, obj):
+        levels, verbose = get_supplies([obj.level])
+        return {'supplies': levels, 'supply': verbose}
 
 
 class GeoJSONFindProviderListSerializer(serializers.ListSerializer):
@@ -79,15 +94,7 @@ class FindProviderSerializer(serializers.ModelSerializer):
         properties['insurance_accepted'] = instance.insurance_accepted
         properties['distance'] = instance.distance.mi
         properties['store_number'] = instance.store_number
-
-        if hasattr(instance, 'medication_levels'):
-            supplies, supply = get_supplies(instance.medication_levels)
-        else:
-            supplies, supply = get_supplies([])
-        properties['drug'] = {}
-        properties['drug']['supply'] = supply
-        properties['drug']['supplies'] = supplies
-        properties['other_drugs'] = ProviderMedicationSimpleSerializer(
+        properties['drugs'] = ProviderMedicationSimpleSerializer(
             instance.provider_medication.all(),
             many=True,
         ).data

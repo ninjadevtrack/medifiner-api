@@ -24,7 +24,7 @@ def get_lat_lng(location):
         return (None, None)
 
 
-def get_dominant_supply(low, medium, high ,total):
+def get_dominant_supply(low, medium, high, total):
     if total:
         if high / total > 0.85:
             return 'high'

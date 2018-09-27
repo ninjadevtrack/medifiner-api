@@ -5,11 +5,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.contrib.gis.geos import Point
-from django.db.models import Q, Prefetch
+from django.db.models import Prefetch
 from django.core.mail import send_mail
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
-from django.contrib.postgres.aggregates import ArrayAgg
 from django.template.loader import render_to_string
 from django.utils.translation import ugettext_lazy as _
 
@@ -101,15 +100,22 @@ class FindProviderMedicationView(ListAPIView):
                     )
                 except ValueError:
                     pass
+
+            # Exclude public health medications if epidemic is not active
+            if not Epidemic.objects.first().active:
+                provider_medication_qs = provider_medication_qs.exclude(
+                    medication__drug_type='p',
+                )
             provider_medication_ids = provider_medication_qs.values_list(
                 'id',
                 flat=True,
             )
         else:
             raise BadRequest(
-                'You should provie med_ids, formulations and'
+                'You should provide med_ids, formulations and'
                 ' lozalization params'
             )
+
         provider_qs = Provider.objects.filter(
             geo_localization__distance_lte=(
                 localization_point,
@@ -119,23 +125,17 @@ class FindProviderMedicationView(ListAPIView):
             distance=Distance(
                 'geo_localization',
                 localization_point,
-            ),
-            medication_levels=ArrayAgg(
-                'provider_medication__level',
-                filter=Q(
-                    provider_medication__id__in=provider_medication_ids
-                )
-            ),
+            )
         ).prefetch_related(
             Prefetch(
                 'provider_medication',
                 queryset=ProviderMedicationThrough.objects.filter(
                     latest=True,
-                ).exclude(
                     id__in=provider_medication_ids,
                 ).select_related(
                     'medication',
-                )
+                    'medication__medication_name',
+                ).order_by('-medication__drug_type')
             )
         ).order_by('distance')
 
