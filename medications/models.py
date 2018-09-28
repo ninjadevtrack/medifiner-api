@@ -428,11 +428,6 @@ class Medication(models.Model):
         _('medication name'),
         max_length=255,
     )
-    ndc = models.CharField(
-        _('national drug code'),
-        max_length=32,
-        unique=True,
-    )
     medication_name = models.ForeignKey(
         MedicationName,
         related_name='medications',
@@ -454,16 +449,37 @@ class Medication(models.Model):
         return self.name
 
 
-class ProviderMedicationThrough(models.Model):
+class MedicationNdc(models.Model):
+    medication = models.ForeignKey(
+        Medication,
+        related_name='ndc_codes',
+        on_delete=models.CASCADE,
+    )
+    ndc = models.CharField(
+        _('national drug code'),
+        max_length=32,
+        unique=True,
+    )
+
+    class Meta:
+        verbose_name = _('medication NDC')
+        verbose_name_plural = _('medication NDCs')
+
+    def __str__(self):
+        return self.ndc
+
+
+class ProviderMedicationNdcThrough(models.Model):
     provider = models.ForeignKey(
         Provider,
         related_name='provider_medication',
         on_delete=models.CASCADE,
     )
-    medication = models.ForeignKey(
-        Medication,
+    medication_ndc = models.ForeignKey(
+        MedicationNdc,
         related_name='provider_medication',
         on_delete=models.CASCADE,
+        null=True,
     )
     supply = models.CharField(
         _('medication supply'),
@@ -497,7 +513,11 @@ class ProviderMedicationThrough(models.Model):
         verbose_name_plural = _('provider medication relations')
 
     def __str__(self):
-        return '{} - {}'.format(self.provider, self.medication)
+        if self.medication_ndc and hasattr(self.medication_ndc, 'medication'):
+            medication = self.medication_ndc.medication
+        else:
+            medication = self.medication_ndc
+        return '{} - {}'.format(self.provider, medication)
 
     def save(self, *args, **kwargs):
         # Using a simple map for now, according to the specs

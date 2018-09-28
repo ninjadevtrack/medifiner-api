@@ -3,21 +3,21 @@ import json
 from collections import OrderedDict
 from rest_framework import serializers
 
-from medications.models import ProviderMedicationThrough, Provider
+from medications.models import ProviderMedicationNdcThrough, Provider
 from medications.utils import get_supplies
 
 
 class ProviderMedicationSimpleSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(source='medication.id')
+    id = serializers.IntegerField(source='medication_ndc.medication.id')
     medication_name = serializers.CharField(
-        source='medication.medication_name',
+        source='medication_ndc.medication.medication_name',
     )
-    name = serializers.CharField(source='medication.name')
+    name = serializers.CharField(source='medication_ndc.medication.name')
     drug_type = serializers.SerializerMethodField()
     supply_level = serializers.SerializerMethodField()
 
     class Meta:
-        model = ProviderMedicationThrough
+        model = ProviderMedicationNdcThrough
         fields = (
             'id',
             'medication_name',
@@ -27,7 +27,7 @@ class ProviderMedicationSimpleSerializer(serializers.ModelSerializer):
         )
 
     def get_drug_type(self, obj):
-        return obj.medication.get_drug_type_display()
+        return obj.medication_ndc.medication.get_drug_type_display()
 
     def get_supply_level(self, obj):
         levels, verbose = get_supplies([obj.level])

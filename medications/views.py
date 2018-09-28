@@ -38,7 +38,7 @@ from .models import (
     County,
     MedicationName,
     Organization,
-    ProviderMedicationThrough,
+    ProviderMedicationNdcThrough,
     ProviderType,
     ProviderCategory,
     State,
@@ -64,7 +64,7 @@ class CSVUploadView(GenericAPIView):
         organization_id = serializer.validated_data.pop('organization_id')
         cache_key = '{}_{}'.format('csv_uploaded_file', request.user.id)
         cache.set(cache_key, csv_file, None)
-        generate_medications.delay(
+        generate_medications(
             cache_key,
             organization_id,
         )
@@ -129,9 +129,9 @@ def get_provider_medicatiopn_id(query_params):
 
     # First we take list of provider medication for this med, we will
     # use it for future filters
-    provider_medication_qs = ProviderMedicationThrough.objects.filter(
+    provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
         latest=True,
-        medication__medication_name__id=med_id,
+        medication_ndc__medication__medication_name__id=med_id,
     )
     # We take the formulation ids and transform them to use like filter
     formulation_ids_raw = query_params.get(
@@ -399,9 +399,9 @@ class ProviderTypesView(ListAPIView):
         except ValueError:
             return None
 
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
             latest=True,
-            medication__medication_name__id=med_id,
+            medication_ndc__medication__medication_name__id=med_id,
         )
 
         if state_id and not zipcode:
@@ -517,9 +517,9 @@ class MedicationTypesView(views.APIView):
         except ValueError:
             return Response(values)
 
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
             latest=True,
-            medication__medication_name__id=med_id,
+            medication_ndc__medication__medication_name__id=med_id,
         )
 
         if state_id and not zipcode:
@@ -644,18 +644,18 @@ class CSVExportView(GenericAPIView):
         # First we take list of provider medication for this med, we will
         # use it for future filters
         if zipcode:
-            provider_medication_qs = ProviderMedicationThrough.objects.filter(
-                medication__medication_name__id=med_id,
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+                medication_ndc__medication__medication_name__id=med_id,
                 provider__related_zipcode__zipcode=zipcode,
             )
         elif not zipcode and state_id:
-            provider_medication_qs = ProviderMedicationThrough.objects.filter(
-                medication__medication_name__id=med_id,
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+                medication_ndc__medication__medication_name__id=med_id,
                 provider__related_zipcode__state=state_id,
             )
         else:
-            provider_medication_qs = ProviderMedicationThrough.objects.filter(
-                medication__medication_name__id=med_id,
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+                medication_ndc__medication__medication_name__id=med_id,
             )
         # Now we check if there is a list of type of providers to filter
         provider_type_list = self.request.query_params.get(
@@ -715,7 +715,7 @@ class CSVExportView(GenericAPIView):
                 )
             except ValueError:
                 pass
-        qs = ProviderMedicationThrough.objects.filter(
+        qs = ProviderMedicationNdcThrough.objects.filter(
             creation_date__gte=start_date,
             creation_date__lte=end_date + timedelta(days=1),
         ).prefetch_related(

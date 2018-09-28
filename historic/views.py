@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from medications.models import (
     Medication,
     MedicationName,
-    ProviderMedicationThrough,
+    ProviderMedicationNdcThrough,
 )
 from .serializers import (
     AverageSupplyLevelSerializer,
@@ -26,18 +26,18 @@ def get_provider_medication_queryset(query_params, state_id=None, zipcode=None):
     # First we take list of provider medication for this med, we will
     # use it for future filter
     if zipcode:
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            medication__medication_name__id=med_id,
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+            medication_ndc__medication__medication_name__id=med_id,
             provider__related_zipcode__zipcode=zipcode,
         )
     elif state_id:
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            medication__medication_name__id=med_id,
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+            medication_ndc__medication__medication_name__id=med_id,
             provider__related_zipcode__state=state_id,
         )
     else:
-        provider_medication_qs = ProviderMedicationThrough.objects.filter(
-            medication__medication_name__id=med_id,
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+            medication_ndc__medication__medication_name__id=med_id,
         )
 
     # Now we check if there is a list of type of providers to filter
@@ -82,7 +82,7 @@ def get_provider_medication_queryset(query_params, state_id=None, zipcode=None):
             pass
     if formulation_ids:
         provider_medication_qs = provider_medication_qs.filter(
-            medication__id__in=formulation_ids,
+            medication_ndc__medication__id__in=formulation_ids,
         )
 
     # Now we check if there is a list of drug types to filter
@@ -94,7 +94,7 @@ def get_provider_medication_queryset(query_params, state_id=None, zipcode=None):
         try:
             drug_type_list = drug_type_list.split(',')
             provider_medication_qs = provider_medication_qs.filter(
-                medication__drug_type__in=drug_type_list,
+                medication_ndc__medication__drug_type__in=drug_type_list,
             )
         except ValueError:
             pass
@@ -148,11 +148,11 @@ class HistoricAverageNationalLevelView(ListAPIView):
             query_params,
         )
         qs = Medication.objects.filter(
-            provider_medication__id__in=provider_medication_ids,
+            ndc_codes__provider_medication__id__in=provider_medication_ids,
         ).prefetch_related(
             Prefetch(
                 'provider_medication',
-                queryset=ProviderMedicationThrough.objects.filter(
+                queryset=ProviderMedicationNdcThrough.objects.filter(
                     creation_date__gte=start_date,
                     creation_date__lte=end_date + timedelta(days=1),
                     # We add 1 day cause we want to check the medications
@@ -209,11 +209,11 @@ class HistoricAverageStateLevelView(ListAPIView):
             state_id=state_id,
         )
         qs = Medication.objects.filter(
-            provider_medication__id__in=provider_medication_ids,
+            ndc_codes__provider_medication__id__in=provider_medication_ids,
         ).prefetch_related(
             Prefetch(
                 'provider_medication',
-                queryset=ProviderMedicationThrough.objects.filter(
+                queryset=ProviderMedicationNdcThrough.objects.filter(
                     creation_date__gte=start_date,
                     creation_date__lte=end_date + timedelta(days=1),
                 )
@@ -270,11 +270,11 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
             zipcode=zipcode,
         )
         qs = Medication.objects.filter(
-            provider_medication__id__in=provider_medication_ids,
+            ndc_codes__provider_medication__id__in=provider_medication_ids,
         ).prefetch_related(
             Prefetch(
                 'provider_medication',
-                queryset=ProviderMedicationThrough.objects.filter(
+                queryset=ProviderMedicationNdcThrough.objects.filter(
                     creation_date__gte=start_date,
                     creation_date__lte=end_date + timedelta(days=1),
                 )
@@ -329,11 +329,11 @@ class HistoricOverallNationalLevelView(ListAPIView):
             Prefetch(
                 'medications',
                 queryset=Medication.objects.filter(
-                    provider_medication__id__in=provider_medication_ids,
+                    ndc_codes__provider_medication__id__in=provider_medication_ids,
                 ).prefetch_related(
                     Prefetch(
                         'provider_medication',
-                        queryset=ProviderMedicationThrough.objects.filter(
+                        queryset=ProviderMedicationNdcThrough.objects.filter(
                             creation_date__gte=start_date,
                             creation_date__lte=end_date + timedelta(days=1),
                         )
@@ -398,7 +398,7 @@ class HistoricOverallStateLevelView(ListAPIView):
                 ).prefetch_related(
                     Prefetch(
                         'provider_medication',
-                        queryset=ProviderMedicationThrough.objects.filter(
+                        queryset=ProviderMedicationNdcThrough.objects.filter(
                             id__in=provider_medication_ids,
                             creation_date__gte=start_date,
                             creation_date__lte=end_date + timedelta(days=1),
@@ -466,7 +466,7 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
                 ).prefetch_related(
                     Prefetch(
                         'provider_medication',
-                        queryset=ProviderMedicationThrough.objects.filter(
+                        queryset=ProviderMedicationNdcThrough.objects.filter(
                             id__in=provider_medication_ids,
                             creation_date__gte=start_date,
                             creation_date__lte=end_date + timedelta(days=1),
