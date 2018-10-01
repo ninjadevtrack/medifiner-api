@@ -88,7 +88,10 @@ class MedicationNameViewSet(viewsets.ModelViewSet):
             else:
                 medications_qs = medications_qs.order_by('name')
 
-        return medications_qs.prefetch_related('medications')
+        return medications_qs.prefetch_related(
+            'medications',
+            'medications__ndc_codes',
+        )
 
 
 class StateViewSet(viewsets.ModelViewSet):
@@ -147,7 +150,7 @@ def get_provider_medicatiopn_id(query_params):
             pass
     if formulation_ids:
         provider_medication_qs = provider_medication_qs.filter(
-            medication__id__in=formulation_ids,
+            medication_ndc__medication__id__in=formulation_ids,
         )
 
     # Now we check if there is a list of type of providers to filter
@@ -187,7 +190,7 @@ def get_provider_medicatiopn_id(query_params):
         try:
             drug_type_list = drug_type_list.split(',')
             provider_medication_qs = provider_medication_qs.filter(
-                medication__drug_type__in=drug_type_list,
+                medication_ndc__medication__drug_type__in=drug_type_list,
             )
         except ValueError:
             pass
@@ -432,7 +435,7 @@ class ProviderTypesView(ListAPIView):
                 pass
         if formulation_ids:
             provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
+                medication_ndc__medication__id__in=formulation_ids,
             )
 
         # Now we check if there is a list of drug types to filter
@@ -444,7 +447,7 @@ class ProviderTypesView(ListAPIView):
             try:
                 drug_type_list = drug_type_list.split(',')
                 provider_medication_qs = provider_medication_qs.filter(
-                    medication__drug_type__in=drug_type_list,
+                    medication_ndc__medication__drug_type__in=drug_type_list,
                 )
             except ValueError:
                 pass
@@ -470,6 +473,7 @@ class ProviderTypesView(ListAPIView):
 
 class ProviderCategoriesView(ProviderTypesView):
     # Inheritance from Provider types view since only the model
+
     class Meta:
         model = ProviderCategory
 
@@ -550,7 +554,7 @@ class MedicationTypesView(views.APIView):
                 pass
         if formulation_ids:
             provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
+                medication_ndc__medication__id__in=formulation_ids,
             )
 
         # Now we check if there is a list of type of providers to filter
@@ -586,7 +590,7 @@ class MedicationTypesView(views.APIView):
             flat=True,
         )
         values = Medication.objects.filter(
-            provider_medication__id__in=provider_medication_ids,
+            ndc_codes__provider_medication__id__in=provider_medication_ids,
         ).values('drug_type').annotate(count=Count('drug_type'))
         for drug_type in values:
             drug_type['drug_type_verbose'] = dict(
@@ -644,17 +648,17 @@ class CSVExportView(GenericAPIView):
         # First we take list of provider medication for this med, we will
         # use it for future filters
         if zipcode:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
                 medication_ndc__medication__medication_name__id=med_id,
                 provider__related_zipcode__zipcode=zipcode,
             )
         elif not zipcode and state_id:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
                 medication_ndc__medication__medication_name__id=med_id,
                 provider__related_zipcode__state=state_id,
             )
         else:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
                 medication_ndc__medication__medication_name__id=med_id,
             )
         # Now we check if there is a list of type of providers to filter
@@ -685,7 +689,7 @@ class CSVExportView(GenericAPIView):
                 pass
         if formulation_ids:
             provider_medication_qs = provider_medication_qs.filter(
-                medication__id__in=formulation_ids,
+                medication_ndc__medication__id__in=formulation_ids,
             )
 
         # Now we check if there is a list of category of providers to filter
@@ -711,7 +715,7 @@ class CSVExportView(GenericAPIView):
             try:
                 drug_type_list = drug_type_list.split(',')
                 provider_medication_qs = provider_medication_qs.filter(
-                    medication__drug_type__in=drug_type_list,
+                    medication_ndc__medication__drug_type__in=drug_type_list,
                 )
             except ValueError:
                 pass
@@ -723,8 +727,8 @@ class CSVExportView(GenericAPIView):
             'provider__organization',
             'provider__type',
             'provider__category',
-            'medication',
-            'medication__medication_name',
+            'medication_ndc__medication',
+            'medication_ndc__medication__medication_name',
         )
         return qs
 

@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta
 
 from django.db.models import Prefetch
+from django.utils.translation import ugettext_lazy as _
+
+from rest_registration.exceptions import BadRequest
 
 from rest_framework.generics import (
     ListAPIView,
@@ -140,10 +143,11 @@ class HistoricAverageNationalLevelView(ListAPIView):
 
         if not (start_date and end_date):
             return Medication.objects.none()
-
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
-
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        except ValueError as e:
+            raise BadRequest(_('Incorrect date: {}').format(e))
         provider_medication_ids = get_provider_medication_queryset(
             query_params,
         )
@@ -151,14 +155,14 @@ class HistoricAverageNationalLevelView(ListAPIView):
             ndc_codes__provider_medication__id__in=provider_medication_ids,
         ).prefetch_related(
             Prefetch(
-                'provider_medication',
+                'ndc_codes__provider_medication',
                 queryset=ProviderMedicationNdcThrough.objects.filter(
                     creation_date__gte=start_date,
                     creation_date__lte=end_date + timedelta(days=1),
                     # We add 1 day cause we want to check the medications
                     # supplies in end_date until 23:59:59 which in practice
                     # is next day 00:00:00
-                )
+                ),
             )
         ).distinct()
         return qs
@@ -201,8 +205,11 @@ class HistoricAverageStateLevelView(ListAPIView):
         if not (start_date and end_date):
             return Medication.objects.none()
 
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        except ValueError as e:
+            raise BadRequest(_('Incorrect date: {}').format(e))
 
         provider_medication_ids = get_provider_medication_queryset(
             query_params,
@@ -212,7 +219,7 @@ class HistoricAverageStateLevelView(ListAPIView):
             ndc_codes__provider_medication__id__in=provider_medication_ids,
         ).prefetch_related(
             Prefetch(
-                'provider_medication',
+                'ndc_codes__provider_medication',
                 queryset=ProviderMedicationNdcThrough.objects.filter(
                     creation_date__gte=start_date,
                     creation_date__lte=end_date + timedelta(days=1),
@@ -262,8 +269,11 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
         if not (start_date and end_date):
             return Medication.objects.none()
 
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        except ValueError as e:
+            raise BadRequest(_('Incorrect date: {}').format(e))
 
         provider_medication_ids = get_provider_medication_queryset(
             query_params,
@@ -273,7 +283,7 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
             ndc_codes__provider_medication__id__in=provider_medication_ids,
         ).prefetch_related(
             Prefetch(
-                'provider_medication',
+                'ndc_codes__provider_medication',
                 queryset=ProviderMedicationNdcThrough.objects.filter(
                     creation_date__gte=start_date,
                     creation_date__lte=end_date + timedelta(days=1),
@@ -316,8 +326,11 @@ class HistoricOverallNationalLevelView(ListAPIView):
         if not (start_date and end_date):
             return MedicationName.objects.none()
 
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        except ValueError as e:
+            raise BadRequest(_('Incorrect date: {}').format(e))
 
         provider_medication_ids = get_provider_medication_queryset(
             query_params,
@@ -329,10 +342,10 @@ class HistoricOverallNationalLevelView(ListAPIView):
             Prefetch(
                 'medications',
                 queryset=Medication.objects.filter(
-                    ndc_codes__provider_medication__id__in=provider_medication_ids,
+                    ndc_codes__provider_medication__id__in=provider_medication_ids, # noqa
                 ).prefetch_related(
                     Prefetch(
-                        'provider_medication',
+                        'ndc_codes__provider_medication',
                         queryset=ProviderMedicationNdcThrough.objects.filter(
                             creation_date__gte=start_date,
                             creation_date__lte=end_date + timedelta(days=1),
@@ -381,8 +394,11 @@ class HistoricOverallStateLevelView(ListAPIView):
         if not (start_date and end_date):
             return MedicationName.objects.none()
 
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        except ValueError as e:
+            raise BadRequest(_('Incorrect date: {}').format(e))
 
         provider_medication_ids = get_provider_medication_queryset(
             query_params,
@@ -394,10 +410,10 @@ class HistoricOverallStateLevelView(ListAPIView):
             Prefetch(
                 'medications',
                 queryset=Medication.objects.filter(
-                    provider_medication__id__in=provider_medication_ids,
+                    ndc_codes__provider_medication__id__in=provider_medication_ids, # noqa
                 ).prefetch_related(
                     Prefetch(
-                        'provider_medication',
+                        'ndc_codes__provider_medication',
                         queryset=ProviderMedicationNdcThrough.objects.filter(
                             id__in=provider_medication_ids,
                             creation_date__gte=start_date,
@@ -448,8 +464,11 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
         if not (start_date and end_date):
             return MedicationName.objects.none()
 
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
+        except ValueError as e:
+            raise BadRequest(_('Incorrect date: {}').format(e))
 
         provider_medication_ids = get_provider_medication_queryset(
             query_params,
@@ -462,10 +481,10 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
             Prefetch(
                 'medications',
                 queryset=Medication.objects.filter(
-                    provider_medication__id__in=provider_medication_ids,
+                    ndc_codes__provider_medication__id__in=provider_medication_ids, # noqa
                 ).prefetch_related(
                     Prefetch(
-                        'provider_medication',
+                        'ndc_codes__provider_medication',
                         queryset=ProviderMedicationNdcThrough.objects.filter(
                             id__in=provider_medication_ids,
                             creation_date__gte=start_date,
