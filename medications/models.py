@@ -340,6 +340,17 @@ class Provider(models.Model):
     walkins_accepted = models.NullBooleanField(
         _('walkins accepted'),
     )
+    last_import_date = models.DateTimeField(
+        _('last import date'),
+        auto_now_add=True,
+        help_text=_(
+            'Last time this provider uploaded new information.'
+        ),
+    )
+    active = models.BooleanField(
+        _('active'),
+        default=True,
+    )
 
     class Meta:
         verbose_name = _('provider')

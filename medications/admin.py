@@ -234,8 +234,15 @@ class ProviderAdmin(admin.ModelAdmin):
         'zip',
         'state',
         'full_address',
+        'active',
+        'last_import_date',
     )
-    readonly_fields = ('related_zipcode', 'full_address',)
+    readonly_fields = (
+        'related_zipcode',
+        'full_address',
+        'active',
+        'last_import_date',
+    )
     list_display_links = (
         'store_number',
         '_name',
@@ -243,6 +250,7 @@ class ProviderAdmin(admin.ModelAdmin):
     list_filter = (
         'type',
         'category',
+        'active',
         'related_zipcode__state',
     )
     search_fields = (
@@ -260,6 +268,8 @@ class ProviderAdmin(admin.ModelAdmin):
                 'name',
                 'type',
                 'category',
+                'active',
+                'last_import_date',
             )
             }
         ),
