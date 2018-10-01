@@ -56,7 +56,10 @@ class AverageSupplyLevelSerializer(serializers.ModelSerializer):
         )
 
     def get_average_supply_per_day(self, obj):
-        pm_qs = obj.provider_medication.all()
+        provider_medication_qs = []
+        for ndc_code in obj.ndc_codes.all():
+            for provider_medication in ndc_code.provider_medication.all():
+                provider_medication_qs.append(provider_medication)
         days = []
         date_format = '%Y-%m-%d'
         start_date = self.context[
@@ -76,10 +79,10 @@ class AverageSupplyLevelSerializer(serializers.ModelSerializer):
         )
         for date in daterange(start_date, end_date, inclusive=True):
             supply_levels = []
-            if pm_qs:
-                for pm in pm_qs:
-                    if pm.creation_date.day == date.day:
-                        supply_levels.append(pm.level)
+            if provider_medication_qs:
+                for provider_medication in provider_medication_qs:
+                    if provider_medication.creation_date.day == date.day:
+                        supply_levels.append(provider_medication.level)
             days.append(
                 {
                     'day': date.date(),
@@ -111,7 +114,7 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
         )
 
     def get_overall_supply_per_day(self, obj):
-        m_qs = obj.medications.all()
+        medications_qs = obj.medications.all()
         days = []
         date_format = '%Y-%m-%d'
 
@@ -132,11 +135,14 @@ class OverallSupplyLevelSerializer(serializers.ModelSerializer):
         )
         for date in daterange(start_date, end_date, inclusive=True):
             supply_levels = []
-            if m_qs:
-                for m in m_qs:
-                    for pm in m.provider_medication.all():
-                        if pm.creation_date.day == date.day:
-                            supply_levels.append(pm.level)
+            if medications_qs:
+                for medication in medications_qs:
+                    for ndc_code in medication.ndc_codes.all():
+                        for provider_medication in \
+                                ndc_code.provider_medication.all():
+                            if provider_medication.creation_date.day == \
+                               date.day:
+                                supply_levels.append(provider_medication.level)
             days.append(
                 {
                     'day': date.date(),

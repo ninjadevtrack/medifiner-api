@@ -7,9 +7,10 @@ from .models import (
     ExistingMedication,
     Medication,
     MedicationName,
+    MedicationNdc,
     Organization,
     Provider,
-    ProviderMedicationThrough,
+    ProviderMedicationNdcThrough,
     ProviderType,
     ProviderCategory,
     State,
@@ -17,8 +18,8 @@ from .models import (
 )
 
 
-@admin.register(ProviderMedicationThrough)
-class ProviderMedicationThroughAdmin(admin.ModelAdmin):
+@admin.register(ProviderMedicationNdcThrough)
+class ProviderMedicationNDCThroughAdmin(admin.ModelAdmin):
 
     list_display = (
         '__str__',
@@ -159,20 +160,27 @@ class ExistingMedicationAdmin(admin.ModelAdmin):
 class MedicationAdmin(admin.ModelAdmin):
     list_display = (
         'name',
-        'ndc',
+        'ndcs',
         'medication_name',
     )
     readonly_fields = (
-        'ndc',
+        'ndcs',
     )
 
     search_fields = (
-        'ndc',
         'name',
     )
     list_filter = (
         'medication_name',
     )
+
+    def ndcs(self, obj):
+        return ", ".join([p.ndc for p in obj.ndc_codes.all()])
+
+    def queryset(self, request):
+        return super().queryset(
+            request
+        ).select_related('medication_name').prefetch_related('ndc_codes')
 
 
 @admin.register(MedicationName)
@@ -182,6 +190,18 @@ class MedicationName(admin.ModelAdmin):
     )
     search_fields = (
         'name',
+    )
+
+
+@admin.register(MedicationNdc)
+class MedicationNDC(admin.ModelAdmin):
+    list_display = (
+        'medication',
+        'ndc',
+    )
+    search_fields = (
+        'medication',
+        'ndc',
     )
 
 

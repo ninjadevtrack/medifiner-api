@@ -15,7 +15,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from epidemic.models import Epidemic
 from medications.models import (
-    ProviderMedicationThrough,
+    ProviderMedicationNdcThrough,
     Provider,
     Medication,
 )
@@ -81,10 +81,10 @@ class FindProviderMedicationView(ListAPIView):
                 'Localization should be provided and consist of 2 coordinates'
             )
         if formulation_ids and med_ids and localization:
-            provider_medication_qs = ProviderMedicationThrough.objects.filter(
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
                 latest=True,
-                medication__medication_name__id__in=med_ids,
-                medication__id__in=formulation_ids,
+                medication_ndc__medication__medication_name__id__in=med_ids,
+                medication_ndc__medication__id__in=formulation_ids,
                 provider__geo_localization__distance_lte=(
                     localization_point,
                     D(mi=distance),
@@ -96,7 +96,7 @@ class FindProviderMedicationView(ListAPIView):
                 try:
                     drug_type_list = drug_type_list.split(',')
                     provider_medication_qs = provider_medication_qs.filter(
-                        medication__drug_type__in=drug_type_list,
+                        medication_ndc__medication__drug_type__in=drug_type_list,
                     )
                 except ValueError:
                     pass
@@ -104,7 +104,7 @@ class FindProviderMedicationView(ListAPIView):
             # Exclude public health medications if epidemic is not active
             if not Epidemic.objects.first().active:
                 provider_medication_qs = provider_medication_qs.exclude(
-                    medication__drug_type='p',
+                    medication_ndc__medication__drug_type='p',
                 )
             provider_medication_ids = provider_medication_qs.values_list(
                 'id',
@@ -129,16 +129,15 @@ class FindProviderMedicationView(ListAPIView):
         ).prefetch_related(
             Prefetch(
                 'provider_medication',
-                queryset=ProviderMedicationThrough.objects.filter(
+                queryset=ProviderMedicationNdcThrough.objects.filter(
                     latest=True,
                     id__in=provider_medication_ids,
                 ).select_related(
-                    'medication',
-                    'medication__medication_name',
-                ).order_by('-medication__drug_type')
+                    'medication_ndc__medication',
+                    'medication_ndc__medication__medication_name',
+                ).order_by('-medication_ndc__medication__drug_type')
             )
         ).order_by('distance')
-
         # TODO: other medications will be only if there is generoc nad brand
         # no other kind of medications
 

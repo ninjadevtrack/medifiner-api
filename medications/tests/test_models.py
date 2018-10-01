@@ -17,6 +17,7 @@ from medications.factories import (
     OrganizationFactory,
     ProviderFactory,
     MedicationFactory,
+    MedicationNDCFactory,
     ExistingMedicationFactory,
     ProviderMedicationThroughFactory,
     StateFactory,
@@ -634,7 +635,7 @@ class TestExistingMedication:
         assert now <= medication.import_date
 
 
-class TestProviderMedicationThrough:
+class TestPProviderMedicationNdcThrough:
     """
     Test ProviderMedicationThrough model.
     While testing provider_medication_through == pmt for short.
@@ -647,12 +648,15 @@ class TestProviderMedicationThrough:
         medication = MedicationFactory(
             name=medication_name,
         )
+        medication_ndc = MedicationNDCFactory(
+            ndc=TEST_NDC,
+        )
         provider = ProviderFactory(
             name=provider_name,
         )
-        pmt = ProviderMedicationThroughFactory(
+        pmt = ProviderMedicationNdcThroughFactory(
             provider=provider,
-            medication=medication,
+            medication_ndc=medication_ndc,
         )
         provider_medication_str = '{} - store number: {} - {}'.format(
             provider_name,

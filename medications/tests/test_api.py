@@ -22,7 +22,7 @@ from medications.factories import (
     ProviderFactory,
     MedicationFactory,
     ExistingMedicationFactory,
-    ProviderMedicationThroughFactory,
+    ProviderMedicationNdcThroughFactory,
     StateFactory,
     ZipCodeFactory,
     CountyFactory,
