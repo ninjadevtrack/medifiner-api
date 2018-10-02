@@ -69,7 +69,7 @@ class CSVUploadView(GenericAPIView):
             organization_id,
         )
         return Response(
-            {'status': _('Supply level import proccess has been queued')},
+            {'status': _('Supply level import process has been queued')},
             status=status.HTTP_200_OK,
         )
 
