@@ -216,6 +216,14 @@ class ProviderCategory(models.Model):
         return '{} - {}'.format(self.code, self.name)
 
 
+class ActiveProviderManager(models.Manager):
+    """Custom manager to return active providers."""
+
+    def active(self):
+        """Method to return active providers."""
+        return self.get_queryset().filter(active=True)
+
+
 class Provider(models.Model):
     organization = models.ForeignKey(
         Organization,
@@ -351,6 +359,8 @@ class Provider(models.Model):
         _('active'),
         default=True,
     )
+
+    objects = ActiveProviderManager()
 
     class Meta:
         verbose_name = _('provider')

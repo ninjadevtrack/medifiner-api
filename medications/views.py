@@ -135,6 +135,7 @@ def get_provider_medicatiopn_id(query_params):
     provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
         latest=True,
         medication_ndc__medication__medication_name__id=med_id,
+        provider__active=True,
     )
     # We take the formulation ids and transform them to use like filter
     formulation_ids_raw = query_params.get(
@@ -405,6 +406,7 @@ class ProviderTypesView(ListAPIView):
         provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
             latest=True,
             medication_ndc__medication__medication_name__id=med_id,
+            provider__active=True,
         )
 
         if state_id and not zipcode:
@@ -524,6 +526,7 @@ class MedicationTypesView(views.APIView):
         provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
             latest=True,
             medication_ndc__medication__medication_name__id=med_id,
+            provider__active=True,
         )
 
         if state_id and not zipcode:
@@ -651,15 +654,18 @@ class CSVExportView(GenericAPIView):
             provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
                 medication_ndc__medication__medication_name__id=med_id,
                 provider__related_zipcode__zipcode=zipcode,
+                provider__active=True,
             )
         elif not zipcode and state_id:
             provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
                 medication_ndc__medication__medication_name__id=med_id,
                 provider__related_zipcode__state=state_id,
+                provider__active=True,
             )
         else:
             provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
                 medication_ndc__medication__medication_name__id=med_id,
+                provider__active=True,
             )
         # Now we check if there is a list of type of providers to filter
         provider_type_list = self.request.query_params.get(
