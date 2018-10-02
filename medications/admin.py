@@ -37,6 +37,15 @@ class ProviderMedicationNDCThroughAdmin(admin.ModelAdmin):
         'last_modified',
     )
 
+    def get_queryset(self, request):
+        return super().get_queryset(
+            request
+        ).select_related(
+            'medication_ndc',
+            'medication_ndc__medication',
+            'provider',
+        )
+
 
 @admin.register(State)
 class StateAdmin(admin.ModelAdmin):
@@ -169,6 +178,7 @@ class MedicationAdmin(admin.ModelAdmin):
 
     search_fields = (
         'name',
+        'ndc_codes__ndc',
     )
     list_filter = (
         'medication_name',
@@ -177,10 +187,14 @@ class MedicationAdmin(admin.ModelAdmin):
     def ndcs(self, obj):
         return ", ".join([p.ndc for p in obj.ndc_codes.all()])
 
-    def queryset(self, request):
-        return super().queryset(
+    def get_queryset(self, request):
+        return super().get_queryset(
             request
-        ).select_related('medication_name').prefetch_related('ndc_codes')
+        ).select_related(
+            'medication_name',
+        ).prefetch_related(
+            'ndc_codes',
+        )
 
 
 @admin.register(MedicationName)
@@ -234,8 +248,15 @@ class ProviderAdmin(admin.ModelAdmin):
         'zip',
         'state',
         'full_address',
+        'active',
+        'last_import_date',
     )
-    readonly_fields = ('related_zipcode', 'full_address',)
+    readonly_fields = (
+        'related_zipcode',
+        'full_address',
+        'active',
+        'last_import_date',
+    )
     list_display_links = (
         'store_number',
         '_name',
@@ -243,6 +264,7 @@ class ProviderAdmin(admin.ModelAdmin):
     list_filter = (
         'type',
         'category',
+        'active',
         'related_zipcode__state',
     )
     search_fields = (
@@ -260,6 +282,8 @@ class ProviderAdmin(admin.ModelAdmin):
                 'name',
                 'type',
                 'category',
+                'active',
+                'last_import_date',
             )
             }
         ),
@@ -306,6 +330,15 @@ class ProviderAdmin(admin.ModelAdmin):
         if obj.name:
             return obj.name
         return obj
+
+    def get_queryset(self, request):
+        return super().get_queryset(
+            request
+        ).select_related(
+            'category',
+            'organization',
+            'type',
+        )
 
 
 admin.site.register(ProviderType)

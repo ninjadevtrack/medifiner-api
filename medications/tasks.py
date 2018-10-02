@@ -3,10 +3,12 @@ import csv
 
 from celery import shared_task
 from celery.decorators import task
+from datetime import timedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
 from django.db import IntegrityError
+from django.utils import timezone
 from io import BytesIO
 from urllib.request import urlopen
 from zipfile import ZipFile
@@ -28,6 +30,11 @@ from .models import (
 def generate_medications(cache_key, organization_id):
     # Already checked in serializer validation that this organization exists.
     lost_ndcs = []
+
+    # A list to update the last_import_date field in
+    # all providers during this import
+    updated_providers = []
+
     organization = Organization.objects.get(pk=organization_id)
     existing_ndc_codes = ExistingMedication.objects.values_list(
         'ndc',
@@ -67,7 +74,7 @@ def generate_medications(cache_key, organization_id):
                 except ZipCode.DoesNotExist:
                     zipcode_obj = None
                 # TODO: type and category?
-                provider, _ = Provider.objects.get_or_create(
+                provider, created = Provider.objects.get_or_create(
                     organization=organization,
                     store_number=store_number,
                     address=address,
@@ -77,7 +84,7 @@ def generate_medications(cache_key, organization_id):
                     phone=phone,
                     related_zipcode=zipcode_obj,
                 )
-                # TODO: create and update a last_import_date = Now
+
             # TODO: DRUG TYPE? MediationName ForeignKey?
             medication, _ = Medication.objects.get_or_create(
                 name=med_name,
@@ -114,8 +121,18 @@ def generate_medications(cache_key, organization_id):
                     supply=row.get('supply_level'),
                     latest=True
                 )
+                if provider not in updated_providers:
+                    updated_providers.append(provider.id)
         else:
             lost_ndcs.append(ndc_code)
+
+    # Finnally update the last_import_date in all the updated_providers
+    if updated_providers:
+        Provider.objects.filter(
+            id__in=updated_providers,
+        ).update(
+            last_import_date=timezone.now(),
+        )
     # Make celery delete the csv file in cache
     if temporary_file_obj:
         cache.delete(cache_key)
@@ -177,3 +194,13 @@ def import_existing_medications():
                 )
                 cached_ndc_list.append(ndc)
     cache.set('cached_ndc_list', cached_ndc_list, None)
+
+
+@shared_task
+def mark_inactive_providers():
+    filter_date = timezone.now() - timedelta(days=15)
+    Provider.objects.filter(
+        last_import_date__lte=filter_date,
+    ).update(
+        active=False,
+    )

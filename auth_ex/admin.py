@@ -126,6 +126,13 @@ class UserAdmin(UserAdmin):
         )
         return actions
 
+    def get_queryset(self, request):
+        return super().get_queryset(
+            request
+        ).select_related(
+            'organization',
+        )
+
 
 class CustomLogAdmin(LogAdmin):
     # Crete custom adming for Logs in order to avoid creating and updating logs

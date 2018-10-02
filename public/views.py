@@ -115,7 +115,6 @@ class FindProviderMedicationView(ListAPIView):
                 'You should provide med_ids, formulations and'
                 ' lozalization params'
             )
-
         provider_qs = Provider.objects.filter(
             geo_localization__distance_lte=(
                 localization_point,
