@@ -13,8 +13,11 @@ from django.utils.translation import ugettext_lazy as _
 from celery.task.control import inspect
 from rest_framework.test import APIClient
 from rest_framework import status
-from rest_framework.authtoken.models import Token
+from rest_framework_jwt.serializers import (
+    jwt_encode_handler,
+)
 
+from auth_ex.utils import jwt_payload_handler
 from medications.models import Organization, MedicationName, State
 from medications.constants import field_rows
 from medications.factories import (
@@ -48,6 +51,8 @@ def testuser(organization):
         email,
         password,
     )
+    user.permission_level = User.NATIONAL_LEVEL
+    user.save()
     organization.user = user
     organization.save()
     return user
@@ -75,8 +80,7 @@ def geographic_object():
 
 class TestTokenAuth:
     """Token authentication"""
-    token_model = Token
-    path = '/api/v1/medications/csv_import'
+    path = '/api/v1/medications/csv_import/'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
@@ -84,11 +88,15 @@ class TestTokenAuth:
         self.factory = APIClient()
         self.user = testuser
 
-        self.key = 'abcd1234'
-        self.token = self.token_model.objects.create(
-            key=self.key,
-            user=self.user,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': testuser.email,
+                'password': 'password',
+            }
         )
+        self.token = response.json().get('token')
 
     def test_post_form_passing_token_auth(self):
         """
@@ -104,7 +112,7 @@ class TestTokenAuth:
             )
             filewriter.writerow(field_rows)
             csv_file.seek(0)
-            auth = self.header_prefix + self.key
+            auth = self.header_prefix + self.token
             response = self.factory.post(
                 self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
             )
@@ -112,16 +120,18 @@ class TestTokenAuth:
 
     def test_fail_authentication_if_user_is_not_active(
         self,
+        testuser,
     ):
-        user = User.objects.create_user('bar', 'baz')
-        user.is_active = False
-        user.save()
-        self.token_model.objects.create(key='foobar_token', user=user)
+        testuser.is_active = False
+        testuser.save()
         response = self.factory.post(
             self.path, {'example': 'example'},
-            HTTP_AUTHORIZATION=self.header_prefix + 'foobar_token'
+            HTTP_AUTHORIZATION=self.header_prefix + self.token
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+        testuser.is_active = True
+        testuser.save()
 
     def test_fail_post_form_passing_nonexistent_token_auth(self):
         # use a nonexistent token key
@@ -146,7 +156,7 @@ class TestTokenAuth:
 
     def test_fail_post_form_passing_invalid_token_auth(self):
         # add an 'invalid' unicode character
-        auth = self.header_prefix + self.key + "¸"
+        auth = self.header_prefix + self.token + "¸"
         response = self.factory.post(
             self.path, {'example': 'example'}, HTTP_AUTHORIZATION=auth
         )
@@ -174,8 +184,7 @@ class TestTokenAuth:
 
 
 class TestMedicationsPOSTView:
-    token_model = Token
-    path = '/api/v1/medications/csv_import'
+    path = '/api/v1/medications/csv_import/'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
@@ -183,11 +192,15 @@ class TestMedicationsPOSTView:
         self.factory = APIClient()
         self.user = testuser
 
-        self.key = 'abcd1234'
-        self.token = self.token_model.objects.create(
-            key=self.key,
-            user=self.user,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': testuser.email,
+                'password': 'password',
+            }
         )
+        self.token = response.json().get('token')
 
     def test_post_with_correct_data(self):
         """
@@ -202,7 +215,7 @@ class TestMedicationsPOSTView:
             )
             filewriter.writerow(field_rows)
             csv_file.seek(0)
-            auth = self.header_prefix + self.key
+            auth = self.header_prefix + self.token
             response = self.factory.post(
                 self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
             )
@@ -213,11 +226,15 @@ class TestMedicationsPOSTView:
         Ensure POSTing with user without organization is bad request
         """
         msg = _('This user has not organization related.')
-        key = 'atyd5678'
-        self.token_model.objects.create(
-            key=key,
-            user=user_no_organization,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': user_no_organization.email,
+                'password': 'password',
+            }
         )
+        token = response.json().get('token')
         with open('temporal.csv', 'w+', newline='') as csv_file:
             filewriter = csv.writer(
                 csv_file,
@@ -227,7 +244,7 @@ class TestMedicationsPOSTView:
             )
             filewriter.writerow(field_rows)
             csv_file.seek(0)
-            auth = self.header_prefix + key
+            auth = self.header_prefix + token
             response = self.factory.post(
                 self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
             )
@@ -249,7 +266,7 @@ class TestMedicationsPOSTView:
             )
             filewriter.writerow(field_rows)
             csv_file.seek(0)
-            auth = self.header_prefix + self.key
+            auth = self.header_prefix + self.token
             response = self.factory.post(
                 self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
             )
@@ -275,7 +292,7 @@ class TestMedicationsPOSTView:
             )
             filewriter.writerow(['Spam'] * 5 + ['Baked Beans'])
             csv_file.seek(0)
-            auth = self.header_prefix + self.key
+            auth = self.header_prefix + self.token
             response = self.factory.post(
                 self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
             )
@@ -290,7 +307,6 @@ class TestMedicationsPOSTView:
 
 
 class TestMedicationNamesGETView:
-    token_model = Token
     path = '/api/v1/medications/names/'
     header_prefix = 'Token '
 
@@ -299,29 +315,33 @@ class TestMedicationNamesGETView:
         self.factory = APIClient()
         self.user = testuser
 
-        self.key = 'abcd1234'
-        self.token = self.token_model.objects.create(
-            key=self.key,
-            user=self.user,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': testuser.email,
+                'password': 'password',
+            }
         )
+        self.token = response.json().get('token')
 
     def test_get_medications_with_token_success(self):
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             self.path, HTTP_AUTHORIZATION=auth
         )
         assert response.status_code == status.HTTP_200_OK
 
-    def test_get_medications_without_token_unsuccess(self):
+    def test_get_medications_without_token_success(self):
         response = self.factory.get(
             self.path
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_200_OK
 
     def test_get_correct_number_medications(self):
         MedicationName.objects.create()
         medication_names_number = MedicationName.objects.all().count()
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             self.path, HTTP_AUTHORIZATION=auth
         )
@@ -329,7 +349,6 @@ class TestMedicationNamesGETView:
 
 
 class TestStatesGETView:
-    token_model = Token
     path = '/api/v1/medications/states/'
     header_prefix = 'Token '
 
@@ -337,15 +356,18 @@ class TestStatesGETView:
     def setup_stuff(self, db, testuser):
         self.factory = APIClient()
         self.user = testuser
-
-        self.key = 'abcd1234'
-        self.token = self.token_model.objects.create(
-            key=self.key,
-            user=self.user,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': testuser.email,
+                'password': 'password',
+            }
         )
+        self.token = response.json().get('token')
 
     def test_get_states_with_token_success(self):
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             self.path, HTTP_AUTHORIZATION=auth
         )
@@ -360,7 +382,7 @@ class TestStatesGETView:
     def test_get_correct_number_states(self):
         State.objects.create()
         states_number = State.objects.all().count()
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             self.path, HTTP_AUTHORIZATION=auth
         )
@@ -368,20 +390,22 @@ class TestStatesGETView:
 
 
 class TestGenerateMedicationTaskTriggered:
-    token_model = Token
-    path = '/api/v1/medications/csv_import'
+    path = '/api/v1/medications/csv_import/'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
     def setup_stuff(self, db, testuser):
         self.factory = APIClient()
         self.user = testuser
-
-        self.key = 'abcd1234'
-        self.token = self.token_model.objects.create(
-            key=self.key,
-            user=self.user,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': testuser.email,
+                'password': 'password',
+            }
         )
+        self.token = response.json().get('token')
 
     def test_post_triggers_generate_medications_task(self):
         """
@@ -412,7 +436,7 @@ class TestGenerateMedicationTaskTriggered:
             )
             filewriter.writerow(field_rows)
             csv_file.seek(0)
-            auth = self.header_prefix + self.key
+            auth = self.header_prefix + self.token
             self.factory.post(
                 self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
             )
@@ -433,23 +457,25 @@ class TestGenerateMedicationTaskTriggered:
 
 
 class TestGeoStatsStateGETView:
-    token_model = Token
-    path = '/api/v1/medications/geo_stats'
+    path = '/api/v1/medications/geo_stats/'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
     def setup_stuff(self, db, testuser):
         self.factory = APIClient()
         self.user = testuser
-
-        self.key = 'abcd1234'
-        self.token = self.token_model.objects.create(
-            key=self.key,
-            user=self.user,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': testuser.email,
+                'password': 'password',
+            }
         )
+        self.token = response.json().get('token')
 
     def test_get_states_with_token_success(self):
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             self.path, HTTP_AUTHORIZATION=auth
         )
@@ -462,7 +488,7 @@ class TestGeoStatsStateGETView:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_center_coordinates_USA_and_correct_zoom_in_response(self):
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             self.path, HTTP_AUTHORIZATION=auth
         )
@@ -476,7 +502,7 @@ class TestGeoStatsStateGETView:
         medication_name = MedicationNameFactory()
         StateFactory(geometry=geographic_object)
         number_states = State.objects.all().count()
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         path_with_medication = '?med_id={}'.format(medication_name.id)
         response = self.factory.get(
             self.path + path_with_medication, HTTP_AUTHORIZATION=auth
@@ -488,7 +514,7 @@ class TestGeoStatsStateGETView:
         geographic_object,
     ):
         StateFactory(geometry=geographic_object)
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         path_with_medication = '?med_id='
         response = self.factory.get(
             self.path + path_with_medication, HTTP_AUTHORIZATION=auth
@@ -501,7 +527,7 @@ class TestGeoStatsStateGETView:
     ):
         medication_name = MedicationNameFactory()
         StateFactory(geometry=geographic_object)
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         path_with_medication = '?med_id={}'.format(
             randint(medication_name.id + 1, medication_name.id + 19)
         )
@@ -512,25 +538,28 @@ class TestGeoStatsStateGETView:
 
 
 class TestGeoStatsCountyGETView:
-    token_model = Token
-    path = '/api/v1/medications/geo_stats/state/{}'
+    path = '/api/v1/medications/geo_stats/state/{}/'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
     def setup_stuff(self, db, testuser):
         self.factory = APIClient()
         self.user = testuser
-
-        self.key = 'abcd1234'
-        self.token = self.token_model.objects.create(
-            key=self.key,
-            user=self.user,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': testuser.email,
+                'password': 'password',
+            }
         )
+        self.token = response.json().get('token')
 
     def test_get_counties_with_token_success(self, geographic_object):
         state = StateFactory(geometry=geographic_object)
+        county = CountyFactory(geometry=geographic_object, state=state)
         path = self.path.format(state.id)
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             path, HTTP_AUTHORIZATION=auth
         )
@@ -538,6 +567,7 @@ class TestGeoStatsCountyGETView:
 
     def test_get_counties_without_token_unsuccess(self, geographic_object):
         state = StateFactory(geometry=geographic_object)
+        county = CountyFactory(geometry=geographic_object, state=state)
         path = self.path.format(state.id)
         response = self.factory.get(
             path
@@ -545,7 +575,7 @@ class TestGeoStatsCountyGETView:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_404_if_not_state_id_in_url(self):
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             self.path, HTTP_AUTHORIZATION=auth
         )
@@ -555,13 +585,14 @@ class TestGeoStatsCountyGETView:
         self,
         geographic_object,
     ):
-        state = StateFactory(geometry=geographic_object)
-        path = self.path.format(state.id + 1)
-        auth = self.header_prefix + self.key
-        response = self.factory.get(
-            path, HTTP_AUTHORIZATION=auth
-        )
-        assert len(response.json().get('features')) == 0
+        with pytest.raises(IndexError):
+            state = StateFactory(geometry=geographic_object)
+            county = CountyFactory(geometry=geographic_object, state=state)
+            path = self.path.format(state.id + 1)
+            auth = self.header_prefix + self.token
+            response = self.factory.get(
+                path, HTTP_AUTHORIZATION=auth
+            )
 
     def test_1_feature_when_state_has_county(self, geographic_object):
         medication_name = MedicationNameFactory()
@@ -570,7 +601,7 @@ class TestGeoStatsCountyGETView:
         path = self.path.format(state.id) + '?med_id={}'.format(
             medication_name.id
         )
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             path, HTTP_AUTHORIZATION=auth
         )
@@ -585,7 +616,7 @@ class TestGeoStatsCountyGETView:
         path = self.path.format(state.id) + '?med_id={}'.format(
             medication_name.id
         )
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             path, HTTP_AUTHORIZATION=auth
         )
@@ -600,7 +631,7 @@ class TestGeoStatsCountyGETView:
     ):
         state = StateFactory(geometry=geographic_object)
         CountyFactory(state=state, geometry=geographic_object)
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         path = self.path.format(state.id) + '?med_id='
         response = self.factory.get(
             path, HTTP_AUTHORIZATION=auth
@@ -609,20 +640,22 @@ class TestGeoStatsCountyGETView:
 
 
 class TestGeoStatsZipCodeGETView:
-    token_model = Token
-    path = '/api/v1/medications/geo_stats/zipcode/{}'
+    path = '/api/v1/medications/geo_stats/zipcode/{}/'
     header_prefix = 'Token '
 
     @pytest.fixture(autouse=True)
     def setup_stuff(self, db, testuser):
         self.factory = APIClient()
         self.user = testuser
-
-        self.key = 'abcd1234'
-        self.token = self.token_model.objects.create(
-            key=self.key,
-            user=self.user,
+        path = '/api/v1/accounts/obtain_token/'
+        response = self.factory.post(
+            path,
+            {
+                'email': testuser.email,
+                'password': 'password',
+            }
         )
+        self.token = response.json().get('token')
 
     def test_get_zipcode_with_token_success(self, geographic_object):
         zip_code = f'{randrange(1, 10**5):05}'
@@ -636,7 +669,7 @@ class TestGeoStatsZipCodeGETView:
         path = self.path.format(zipcode.zipcode) + '?med_id={}'.format(
             medication_name.id
         )
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             path, HTTP_AUTHORIZATION=auth
         )
@@ -660,7 +693,7 @@ class TestGeoStatsZipCodeGETView:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_404_if_not_zipcode_in_url(self):
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             self.path, HTTP_AUTHORIZATION=auth
         )
@@ -678,7 +711,7 @@ class TestGeoStatsZipCodeGETView:
         path = self.path.format(zipcode.zipcode) + '?med_id={}'.format(
             medication_name.id
         )
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             path, HTTP_AUTHORIZATION=auth
         )
@@ -690,7 +723,7 @@ class TestGeoStatsZipCodeGETView:
             'center'
         ) == json.loads(geographic_object.json)
 
-    def test_response_without_med_id_returns_404(
+    def test_response_without_med_id_returns_200(
         self,
         geographic_object,
     ):
@@ -702,13 +735,13 @@ class TestGeoStatsZipCodeGETView:
             zipcode=zip_code,
         )
         path = self.path.format(zipcode.zipcode) + '?med_id='
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             path, HTTP_AUTHORIZATION=auth
         )
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_200_OK
 
-    def test_response_with_wrong_med_id_returns_404(
+    def test_response_with_wrong_med_id_returns_200(
         self,
         geographic_object,
     ):
@@ -723,8 +756,8 @@ class TestGeoStatsZipCodeGETView:
         path = self.path.format(zipcode.zipcode) + '?med_id={}'.format(
             medication_name.id + 1
         )
-        auth = self.header_prefix + self.key
+        auth = self.header_prefix + self.token
         response = self.factory.get(
             path, HTTP_AUTHORIZATION=auth
         )
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_200_OK

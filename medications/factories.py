@@ -8,6 +8,8 @@ from .models import (
     Organization,
     Provider,
     ProviderMedicationNdcThrough,
+    ProviderCategory,
+    ProviderType,
     State,
     ZipCode,
 )
@@ -45,7 +47,7 @@ class ExistingMedicationFactory(factory.DjangoModelFactory):
         model = ExistingMedication
 
 
-class ProviderMedicationThroughFactory(factory.DjangoModelFactory):
+class ProviderMedicationNdcThroughFactory(factory.DjangoModelFactory):
     """
         Define ProviderMedicationNdcThrough Factory
     """
@@ -91,3 +93,19 @@ class MedicationNDCFactory(factory.DjangoModelFactory):
     """
     class Meta:
         model = MedicationNdc
+
+
+class ProviderTypeFactory(factory.DjangoModelFactory):
+    """
+        Define ProviderType Factory
+    """
+    class Meta:
+        model = ProviderType
+
+
+class ProviderCategoryFactory(factory.DjangoModelFactory):
+    """
+        Define ProviderCategory Factory
+    """
+    class Meta:
+        model = ProviderCategory

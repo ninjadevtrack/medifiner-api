@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, IntegrityError
 from django.conf import settings
 from django.contrib.gis.db.models import GeometryField, PointField
 from django.contrib.gis.geos import Point
@@ -500,7 +500,6 @@ class ProviderMedicationNdcThrough(models.Model):
         MedicationNdc,
         related_name='provider_medication',
         on_delete=models.CASCADE,
-        null=True,
     )
     supply = models.CharField(
         _('medication supply'),
@@ -542,6 +541,8 @@ class ProviderMedicationNdcThrough(models.Model):
 
     def save(self, *args, **kwargs):
         # Using a simple map for now, according to the specs
+        if not self.medication_ndc:
+            raise IntegrityError(_('Medication NDC object must be provided'))
         supply_to_level_map = {
             '<24': 1,
             '24': 2,
