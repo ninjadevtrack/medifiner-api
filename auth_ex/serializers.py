@@ -53,7 +53,7 @@ class JSONWebTokenSerializer(JSONWebTokenSerializer):
 
             if user:
                 if not user.is_active:
-                    msg = _('User account is disabled.')
+                    msg = _('User account disabled.')
                     raise serializers.ValidationError(msg)
 
                 payload = jwt_payload_handler(user)
@@ -64,8 +64,7 @@ class JSONWebTokenSerializer(JSONWebTokenSerializer):
                 }
             else:
                 msg = _(
-                    'That password and email combination was not recognized. '
-                    'Please try again.'
+                    'Wrong set of credentials'
                 )
                 raise serializers.ValidationError(msg)
         else:
