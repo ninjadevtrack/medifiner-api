@@ -7,9 +7,10 @@ from .models import (
     ExistingMedication,
     Medication,
     MedicationName,
+    MedicationNdc,
     Organization,
     Provider,
-    ProviderMedicationThrough,
+    ProviderMedicationNdcThrough,
     ProviderType,
     ProviderCategory,
     State,
@@ -17,8 +18,8 @@ from .models import (
 )
 
 
-@admin.register(ProviderMedicationThrough)
-class ProviderMedicationThroughAdmin(admin.ModelAdmin):
+@admin.register(ProviderMedicationNdcThrough)
+class ProviderMedicationNDCThroughAdmin(admin.ModelAdmin):
 
     list_display = (
         '__str__',
@@ -35,6 +36,15 @@ class ProviderMedicationThroughAdmin(admin.ModelAdmin):
         'creation_date',
         'last_modified',
     )
+
+    def get_queryset(self, request):
+        return super().get_queryset(
+            request
+        ).select_related(
+            'medication_ndc',
+            'medication_ndc__medication',
+            'provider',
+        )
 
 
 @admin.register(State)
@@ -159,20 +169,32 @@ class ExistingMedicationAdmin(admin.ModelAdmin):
 class MedicationAdmin(admin.ModelAdmin):
     list_display = (
         'name',
-        'ndc',
+        'ndcs',
         'medication_name',
     )
     readonly_fields = (
-        'ndc',
+        'ndcs',
     )
 
     search_fields = (
-        'ndc',
         'name',
+        'ndc_codes__ndc',
     )
     list_filter = (
         'medication_name',
     )
+
+    def ndcs(self, obj):
+        return ", ".join([p.ndc for p in obj.ndc_codes.all()])
+
+    def get_queryset(self, request):
+        return super().get_queryset(
+            request
+        ).select_related(
+            'medication_name',
+        ).prefetch_related(
+            'ndc_codes',
+        )
 
 
 @admin.register(MedicationName)
@@ -182,6 +204,18 @@ class MedicationName(admin.ModelAdmin):
     )
     search_fields = (
         'name',
+    )
+
+
+@admin.register(MedicationNdc)
+class MedicationNDC(admin.ModelAdmin):
+    list_display = (
+        'medication',
+        'ndc',
+    )
+    search_fields = (
+        'medication',
+        'ndc',
     )
 
 
@@ -214,8 +248,15 @@ class ProviderAdmin(admin.ModelAdmin):
         'zip',
         'state',
         'full_address',
+        'active',
+        'last_import_date',
     )
-    readonly_fields = ('related_zipcode', 'full_address',)
+    readonly_fields = (
+        'related_zipcode',
+        'full_address',
+        'active',
+        'last_import_date',
+    )
     list_display_links = (
         'store_number',
         '_name',
@@ -223,6 +264,7 @@ class ProviderAdmin(admin.ModelAdmin):
     list_filter = (
         'type',
         'category',
+        'active',
         'related_zipcode__state',
     )
     search_fields = (
@@ -240,6 +282,8 @@ class ProviderAdmin(admin.ModelAdmin):
                 'name',
                 'type',
                 'category',
+                'active',
+                'last_import_date',
             )
             }
         ),
@@ -286,6 +330,15 @@ class ProviderAdmin(admin.ModelAdmin):
         if obj.name:
             return obj.name
         return obj
+
+    def get_queryset(self, request):
+        return super().get_queryset(
+            request
+        ).select_related(
+            'category',
+            'organization',
+            'type',
+        )
 
 
 admin.site.register(ProviderType)

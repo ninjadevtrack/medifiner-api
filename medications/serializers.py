@@ -88,13 +88,18 @@ class SimpleStateSerializer(serializers.ModelSerializer):
 
 
 class MedicationSerializer(serializers.ModelSerializer):
+    ndc_codes = serializers.SerializerMethodField()
+
     class Meta:
         model = Medication
         fields = (
             'id',
             'name',
-            'ndc',
+            'ndc_codes',
         )
+
+    def get_ndc_codes(self, obj):
+        return [ndc_code.ndc for ndc_code in obj.ndc_codes.all()]
 
 
 class MedicationNameSerializer(serializers.ModelSerializer):

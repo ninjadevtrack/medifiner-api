@@ -1,24 +1,72 @@
 import json
 
+from collections import OrderedDict
 from rest_framework import serializers
 
-from medications.models import ProviderMedicationThrough, Provider
+from medications.models import ProviderMedicationNdcThrough, Provider
 from medications.utils import get_supplies
 
 
 class ProviderMedicationSimpleSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source='medication.name')
-    supply = serializers.SerializerMethodField()
+    id = serializers.IntegerField(source='medication_ndc.medication.id')
+    medication_name = serializers.CharField(
+        source='medication_ndc.medication.medication_name',
+    )
+    name = serializers.CharField(source='medication_ndc.medication.name')
+    drug_type = serializers.SerializerMethodField()
+    supply_level = serializers.SerializerMethodField()
 
     class Meta:
-        model = ProviderMedicationThrough
-        fields = ('name', 'supply')
+        model = ProviderMedicationNdcThrough
+        fields = (
+            'id',
+            'medication_name',
+            'name',
+            'drug_type',
+            'supply_level',
+        )
 
-    def get_supply(self, obj):
-        return get_supplies([obj.level])[1]
+    def get_drug_type(self, obj):
+        return obj.medication_ndc.medication.get_drug_type_display()
+
+    def get_supply_level(self, obj):
+        levels, verbose = get_supplies([obj.level])
+        return {'supplies': levels, 'supply': verbose}
+
+
+class GeoJSONFindProviderListSerializer(serializers.ListSerializer):
+
+    @property
+    def data(self):
+        return super(serializers.ListSerializer, self).data
+
+    def to_representation(self, data):
+        """
+        Add GeoJSON compatible formatting to a serialized queryset list
+        """
+        return OrderedDict((
+            ("type", "FeatureCollection"),
+            ("features", super().to_representation(data))
+        ))
 
 
 class FindProviderSerializer(serializers.ModelSerializer):
+
+    @classmethod
+    def many_init(cls, *args, **kwargs):
+        child_serializer = cls(*args, **kwargs)
+        list_kwargs = {'child': child_serializer}
+        list_kwargs.update(dict([
+            (key, value) for key, value in kwargs.items()
+            if key in serializers.LIST_SERIALIZER_KWARGS
+        ]))
+        meta = getattr(cls, 'Meta', None)
+        list_serializer_class = getattr(
+            meta,
+            'list_serializer_class',
+        )
+        return list_serializer_class(*args, **list_kwargs)
+
     distance = serializers.SerializerMethodField()
     supply = serializers.SerializerMethodField()
     localization = serializers.SerializerMethodField()
@@ -26,39 +74,63 @@ class FindProviderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Provider
-        fields = (
-            'id',
-            'name',
-            'full_address',
-            'phone',
-            'website',
-            'email',
-            'operating_hours',
-            'insurance_accepted',
-            'localization',
-            'supply',
-            'distance',
-            'all_other_medications_provider',
+        list_serializer_class = GeoJSONFindProviderListSerializer
+        exclude = ()
+
+    def get_properties(self, instance):
+        """
+        Get the feature metadata which will be used for the GeoJSON
+        "properties" key.
+
+        """
+        active_provider = instance.active
+        properties = OrderedDict()
+        properties['id'] = instance.id
+        properties['name'] = instance.name
+        properties['address'] = instance.full_address
+        properties['phone'] = instance.phone.as_national
+        properties['website'] = instance.website
+        properties['email'] = instance.email
+        properties['active'] = active_provider
+        properties['operating_hours'] = instance.operating_hours
+        properties['insurance_accepted'] = instance.insurance_accepted
+        properties['distance'] = instance.distance.mi
+        properties['store_number'] = instance.store_number
+        if active_provider:
+            properties['drugs'] = ProviderMedicationSimpleSerializer(
+                instance.provider_medication.all(),
+                many=True,
+            ).data
+        else:
+            properties['drugs'] = []
+
+        return properties
+
+    def to_representation(self, instance):
+        """
+        Serialize objects -> primitives.
+        """
+        # prepare OrderedDict geojson structure
+        feature = OrderedDict()
+
+        # required type attribute
+        # must be "Feature" according to GeoJSON spec
+        feature["type"] = "Feature"
+
+        # required geometry attribute
+        # MUST be present in output according to GeoJSON spec
+        feature["geometry"] = \
+            json.loads(
+                instance.geo_localization.json
+        ) if hasattr(instance, 'geo_localization') else None
+
+        # GeoJSON properties
+
+        feature["properties"] = self.get_properties(
+            instance,
         )
 
-    def get_distance(self, obj):
-        # return distance in miles
-        return obj.distance.mi
-
-    def get_supply(self, obj):
-        # Take only the verbose supply for this serializer
-        return get_supplies(obj.medication_levels)[1]
-
-    def get_all_other_medications_provider(self, obj):
-        return ProviderMedicationSimpleSerializer(
-            obj.provider_medication.all(),
-            many=True,
-        ).data
-
-    def get_localization(self, obj):
-        if hasattr(obj, 'geo_localization'):
-            return json.loads(obj.geo_localization.json)
-        return None
+        return feature
 
 
 class ContactFormSerializer(serializers.Serializer):

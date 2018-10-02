@@ -3,9 +3,12 @@ import csv
 
 from celery import shared_task
 from celery.decorators import task
+from datetime import timedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
+from django.db import IntegrityError
+from django.utils import timezone
 from io import BytesIO
 from urllib.request import urlopen
 from zipfile import ZipFile
@@ -13,9 +16,10 @@ from zipfile import ZipFile
 from .models import (
     ExistingMedication,
     Medication,
+    MedicationNdc,
     Organization,
     Provider,
-    ProviderMedicationThrough,
+    ProviderMedicationNdcThrough,
     ZipCode,
 )
 
@@ -26,14 +30,19 @@ from .models import (
 def generate_medications(cache_key, organization_id):
     # Already checked in serializer validation that this organization exists.
     lost_ndcs = []
+
+    # A list to update the last_import_date field in
+    # all providers during this import
+    updated_providers = []
+
     organization = Organization.objects.get(pk=organization_id)
     existing_ndc_codes = ExistingMedication.objects.values_list(
         'ndc',
         flat=True,
     )
     provider = None
-    medication = None
-    medication_map = {}  # Use this map to save queries to the DB
+    medication_ndc = None
+    medication_ndc_map = {}  # Use this map to save queries to the DB
     csv_file = cache.get(cache_key)
     temporary_file_obj = csv_file.open()
     decoded_file = temporary_file_obj.read().decode('utf-8').splitlines()
@@ -66,7 +75,7 @@ def generate_medications(cache_key, organization_id):
                 except ZipCode.DoesNotExist:
                     zipcode_obj = None
                 # TODO: type and category?
-                provider, _ = Provider.objects.get_or_create(
+                provider, created = Provider.objects.get_or_create(
                     organization=organization,
                     store_number=store_number,
                     address=address,
@@ -76,36 +85,55 @@ def generate_medications(cache_key, organization_id):
                     phone=phone,
                     related_zipcode=zipcode_obj,
                 )
-                # TODO: create and update a last_import_date = Now
-            if not medication or (medication.ndc != ndc_code):
+
+            # TODO: DRUG TYPE? MediationName ForeignKey?
+            medication, _ = Medication.objects.get_or_create(
+                name=med_name,
+            )
+            if not medication_ndc or (medication_ndc.ndc != ndc_code):
                 # Will do the same check as in provider
                 # Second check in the medication_map to lookup if this
                 # medication has been created already from this file
-                medication = medication_map.get(ndc_code, None)
-                if not medication:
-                    # TODO: DRUG TYPE?
-                    medication, _ = Medication.objects.get_or_create(
-                        name=med_name,
-                        ndc=ndc_code,
-                    )
+                medication_ndc = medication_ndc_map.get(ndc_code, None)
+                if not medication_ndc:
+                    try:
+                        medication_ndc, _ = \
+                            MedicationNdc.objects.get_or_create(
+                                ndc=ndc_code,
+                                medication=medication,
+                            )
+                    except IntegrityError:
+                        lost_ndcs.append(ndc_code)
+                        pass
 
-            if medication:
+            if medication_ndc:
                 # Add the actual medication (whatever it is) to the medication
                 # map. We will use as key the ndc which is supossed to be a
                 # real life id which should be unique, the value will be the
                 # object that we can get. Python get from dict uses much
                 # less programmatic time than a SQL get.
-                medication_map[medication.ndc] = medication
-            if provider and medication:
+
+                medication_ndc_map[medication_ndc.ndc] = medication_ndc
+            if provider and medication_ndc:
                 # Create or update the relation object
-                ProviderMedicationThrough.objects.create(
+                ProviderMedicationNdcThrough.objects.create(
                     provider=provider,
-                    medication=medication,
+                    medication_ndc=medication_ndc,
                     supply=row.get('supply_level'),
                     latest=True
                 )
+                if provider not in updated_providers:
+                    updated_providers.append(provider.id)
         else:
             lost_ndcs.append(ndc_code)
+
+    # Finnally update the last_import_date in all the updated_providers
+    if updated_providers:
+        Provider.objects.filter(
+            id__in=updated_providers,
+        ).update(
+            last_import_date=timezone.now(),
+        )
     # Make celery delete the csv file in cache
     if temporary_file_obj:
         cache.delete(cache_key)
@@ -113,7 +141,8 @@ def generate_medications(cache_key, organization_id):
     # Send to sentry not found ndcs
     if lost_ndcs:
         raise ValidationError(
-            'Following ndcs does not exist, therefore they were not imported'
+            'Following ndcs does not exist or exists in the database with '
+            'another medication name, therefore they were not imported'
             ': {}'.format(lost_ndcs)
         )
 
@@ -123,11 +152,11 @@ def generate_medications(cache_key, organization_id):
 def handle_provider_medication_through_post_save_signal(
     instance_pk,
     provider_pk,
-    medication_pk
+    medication_ndc_pk
 ):
-    ProviderMedicationThrough.objects.filter(
+    ProviderMedicationNdcThrough.objects.filter(
         provider__pk=provider_pk,
-        medication__pk=medication_pk,
+        medication_ndc__pk=medication_ndc_pk,
     ).exclude(
         pk=instance_pk,
     ).update(
@@ -166,3 +195,13 @@ def import_existing_medications():
                 )
                 cached_ndc_list.append(ndc)
     cache.set('cached_ndc_list', cached_ndc_list, None)
+
+
+@shared_task
+def mark_inactive_providers():
+    filter_date = timezone.now() - timedelta(days=15)
+    Provider.objects.filter(
+        last_import_date__lte=filter_date,
+    ).update(
+        active=False,
+    )
