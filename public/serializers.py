@@ -83,6 +83,7 @@ class FindProviderSerializer(serializers.ModelSerializer):
         "properties" key.
 
         """
+        active_provider = instance.active
         properties = OrderedDict()
         properties['id'] = instance.id
         properties['name'] = instance.name
@@ -90,14 +91,18 @@ class FindProviderSerializer(serializers.ModelSerializer):
         properties['phone'] = instance.phone.as_national
         properties['website'] = instance.website
         properties['email'] = instance.email
+        properties['active'] = active_provider
         properties['operating_hours'] = instance.operating_hours
         properties['insurance_accepted'] = instance.insurance_accepted
         properties['distance'] = instance.distance.mi
         properties['store_number'] = instance.store_number
-        properties['drugs'] = ProviderMedicationSimpleSerializer(
-            instance.provider_medication.all(),
-            many=True,
-        ).data
+        if active_provider:
+            properties['drugs'] = ProviderMedicationSimpleSerializer(
+                instance.provider_medication.all(),
+                many=True,
+            ).data
+        else:
+            properties['drugs'] = []
 
         return properties
 
