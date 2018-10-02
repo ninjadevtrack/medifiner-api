@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, IntegrityError
 from django.conf import settings
 from django.contrib.gis.db.models import GeometryField, PointField
 from django.contrib.gis.geos import Point
@@ -216,6 +216,14 @@ class ProviderCategory(models.Model):
         return '{} - {}'.format(self.code, self.name)
 
 
+class ActiveProviderManager(models.Manager):
+    """Custom manager to return active providers."""
+
+    def active(self):
+        """Method to return active providers."""
+        return self.get_queryset().filter(active=True)
+
+
 class Provider(models.Model):
     organization = models.ForeignKey(
         Organization,
@@ -340,6 +348,19 @@ class Provider(models.Model):
     walkins_accepted = models.NullBooleanField(
         _('walkins accepted'),
     )
+    last_import_date = models.DateTimeField(
+        _('last import date'),
+        auto_now_add=True,
+        help_text=_(
+            'Last time this provider uploaded new information.'
+        ),
+    )
+    active = models.BooleanField(
+        _('active'),
+        default=True,
+    )
+
+    objects = ActiveProviderManager()
 
     class Meta:
         verbose_name = _('provider')
@@ -429,11 +450,6 @@ class Medication(models.Model):
         _('medication name'),
         max_length=255,
     )
-    ndc = models.CharField(
-        _('national drug code'),
-        max_length=32,
-        unique=True,
-    )
     medication_name = models.ForeignKey(
         MedicationName,
         related_name='medications',
@@ -455,14 +471,34 @@ class Medication(models.Model):
         return self.name
 
 
-class ProviderMedicationThrough(models.Model):
+class MedicationNdc(models.Model):
+    medication = models.ForeignKey(
+        Medication,
+        related_name='ndc_codes',
+        on_delete=models.CASCADE,
+    )
+    ndc = models.CharField(
+        _('national drug code'),
+        max_length=32,
+        unique=True,
+    )
+
+    class Meta:
+        verbose_name = _('medication NDC')
+        verbose_name_plural = _('medication NDCs')
+
+    def __str__(self):
+        return self.ndc
+
+
+class ProviderMedicationNdcThrough(models.Model):
     provider = models.ForeignKey(
         Provider,
         related_name='provider_medication',
         on_delete=models.CASCADE,
     )
-    medication = models.ForeignKey(
-        Medication,
+    medication_ndc = models.ForeignKey(
+        MedicationNdc,
         related_name='provider_medication',
         on_delete=models.CASCADE,
     )
@@ -498,10 +534,16 @@ class ProviderMedicationThrough(models.Model):
         verbose_name_plural = _('provider medication relations')
 
     def __str__(self):
-        return '{} - {}'.format(self.provider, self.medication)
+        if self.medication_ndc and hasattr(self.medication_ndc, 'medication'):
+            medication = self.medication_ndc.medication
+        else:
+            medication = self.medication_ndc
+        return '{} - {}'.format(self.provider, medication)
 
     def save(self, *args, **kwargs):
         # Using a simple map for now, according to the specs
+        if not self.medication_ndc:
+            raise IntegrityError(_('Medication NDC object must be provided'))
         supply_to_level_map = {
             '<24': 1,
             '24': 2,

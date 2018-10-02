@@ -55,7 +55,6 @@ INSTALLED_APPS = (
     'phonenumber_field',
     'rest_registration',
     'rest_framework',
-    'rest_framework.authtoken',
     'rest_framework_swagger',
 ) + LOCAL_APPS
 

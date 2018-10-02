@@ -5,18 +5,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.contrib.gis.geos import Point
-from django.db.models import Q, Prefetch
+from django.db.models import Prefetch
 from django.core.mail import send_mail
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
-from django.contrib.postgres.aggregates import ArrayAgg
 from django.template.loader import render_to_string
 from django.utils.translation import ugettext_lazy as _
 
 
 from epidemic.models import Epidemic
 from medications.models import (
-    ProviderMedicationThrough,
+    ProviderMedicationNdcThrough,
     Provider,
     Medication,
 )
@@ -77,16 +76,15 @@ class FindProviderMedicationView(ListAPIView):
             localization_point = Point(
                 localization[0], localization[1], srid=4326,
             )
-        except (IndexError, ValueError):
+        except (IndexError, ValueError, AttributeError):
             raise BadRequest(
-                'Localization should consist of 2 coordinates'
+                'Localization should be provided and consist of 2 coordinates'
             )
-
         if formulation_ids and med_ids and localization:
-            provider_medication_qs = ProviderMedicationThrough.objects.filter(
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
                 latest=True,
-                medication__medication_name__id__in=med_ids,
-                medication__id__in=formulation_ids,
+                medication_ndc__medication__medication_name__id__in=med_ids,
+                medication_ndc__medication__id__in=formulation_ids,
                 provider__geo_localization__distance_lte=(
                     localization_point,
                     D(mi=distance),
@@ -98,17 +96,25 @@ class FindProviderMedicationView(ListAPIView):
                 try:
                     drug_type_list = drug_type_list.split(',')
                     provider_medication_qs = provider_medication_qs.filter(
-                        medication__drug_type__in=drug_type_list,
+                        medication_ndc__medication__drug_type__in=drug_type_list,
                     )
                 except ValueError:
                     pass
+
+            # Exclude public health medications if epidemic is not active
+            if not Epidemic.objects.first().active:
+                provider_medication_qs = provider_medication_qs.exclude(
+                    medication_ndc__medication__drug_type='p',
+                )
             provider_medication_ids = provider_medication_qs.values_list(
                 'id',
                 flat=True,
             )
         else:
-            return None
-
+            raise BadRequest(
+                'You should provide med_ids, formulations and'
+                ' lozalization params'
+            )
         provider_qs = Provider.objects.filter(
             geo_localization__distance_lte=(
                 localization_point,
@@ -118,26 +124,19 @@ class FindProviderMedicationView(ListAPIView):
             distance=Distance(
                 'geo_localization',
                 localization_point,
-            ),
-            medication_levels=ArrayAgg(
-                'provider_medication__level',
-                filter=Q(
-                    provider_medication__id__in=provider_medication_ids
-                )
-            ),
+            )
         ).prefetch_related(
             Prefetch(
                 'provider_medication',
-                queryset=ProviderMedicationThrough.objects.filter(
+                queryset=ProviderMedicationNdcThrough.objects.filter(
                     latest=True,
-                ).exclude(
                     id__in=provider_medication_ids,
                 ).select_related(
-                    'medication',
-                )
+                    'medication_ndc__medication',
+                    'medication_ndc__medication__medication_name',
+                ).order_by('-medication_ndc__medication__drug_type')
             )
         ).order_by('distance')
-
         # TODO: other medications will be only if there is generoc nad brand
         # no other kind of medications
 
