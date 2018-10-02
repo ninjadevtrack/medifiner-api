@@ -3,7 +3,7 @@ import csv
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError
 
-from medications.models import Medication, MedicationName
+from medications.models import Medication, MedicationName, MedicationNdc
 
 
 class Command(BaseCommand):
@@ -24,10 +24,13 @@ class Command(BaseCommand):
                     name=med_name,
                 )
                 try:
-                    Medication.objects.get_or_create(
+                    medication, created = Medication.objects.get_or_create(
                         name=full_name,
-                        ndc=ndc,
                         medication_name=medication_name,
+                    )
+                    medication_ndc, created = MedicationNdc.objects.get_or_create(
+                        medication=medication,
+                        ndc=ndc
                     )
                 except IntegrityError:
                     pass
