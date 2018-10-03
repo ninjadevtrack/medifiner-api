@@ -74,7 +74,7 @@ def generate_medications(cache_key, organization_id):
                     zipcode_obj = ZipCode.objects.filter(zipcode=zip_code)[0]
                 except ZipCode.DoesNotExist:
                     zipcode_obj = None
-                # TODO: type and category?
+                # TODO: type and category? Home delivery info?
                 provider, created = Provider.objects.get_or_create(
                     organization=organization,
                     store_number=store_number,

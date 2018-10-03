@@ -321,6 +321,8 @@ class ProviderAdmin(admin.ModelAdmin):
                 'start_date',
                 'end_date',
                 'walkins_accepted',
+                'home_delivery',
+                'home_delivery_info_url',
             )
             }
         ),

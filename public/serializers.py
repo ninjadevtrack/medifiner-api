@@ -96,6 +96,8 @@ class FindProviderSerializer(serializers.ModelSerializer):
         properties['insurance_accepted'] = instance.insurance_accepted
         properties['distance'] = instance.distance.mi
         properties['store_number'] = instance.store_number
+        properties['home_delivery'] = instance.home_delivery
+        properties['home_delivery_info_url'] = instance.home_delivery_info_url
         if active_provider:
             properties['drugs'] = ProviderMedicationSimpleSerializer(
                 instance.provider_medication.all(),

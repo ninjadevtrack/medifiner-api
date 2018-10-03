@@ -360,6 +360,17 @@ class Provider(models.Model):
         default=True,
     )
 
+    home_delivery = models.BooleanField(
+        _('home delivery'),
+        default=False,
+    )
+
+    home_delivery_info_url = models.URLField(
+        _('home delivery info url'),
+        max_length=255,
+        blank=True,
+    )
+
     objects = ActiveProviderManager()
 
     class Meta:
@@ -476,6 +487,7 @@ class MedicationNdc(models.Model):
         Medication,
         related_name='ndc_codes',
         on_delete=models.CASCADE,
+        null=True,
     )
     ndc = models.CharField(
         _('national drug code'),
@@ -501,6 +513,7 @@ class ProviderMedicationNdcThrough(models.Model):
         MedicationNdc,
         related_name='provider_medication',
         on_delete=models.CASCADE,
+        null=True,
     )
     supply = models.CharField(
         _('medication supply'),
