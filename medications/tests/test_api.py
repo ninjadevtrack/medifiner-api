@@ -225,7 +225,7 @@ class TestMedicationsPOSTView:
         """
         Ensure POSTing with user without organization is bad request
         """
-        msg = _('This user has not organization related.')
+        msg = _('No linked organization found for user')
         path = '/api/v1/accounts/obtain_token/'
         response = self.factory.post(
             path,
@@ -279,7 +279,7 @@ class TestMedicationsPOSTView:
         Ensure POSTing csv with wrong headers is bad request
         """
         msg = _(
-            'Wrong headers in CSV file, headers must be: {}.'
+            'CSV file header format error, headers must be: {}.'
         ). format(
             ', '.join(field_rows)
         )
@@ -437,7 +437,7 @@ class TestGenerateMedicationTaskTriggered:
             filewriter.writerow(field_rows)
             csv_file.seek(0)
             auth = self.header_prefix + self.token
-            self.factory.post(
+            response = self.factory.post(
                 self.path, {'csv_file': csv_file}, HTTP_AUTHORIZATION=auth
             )
             post_celery_stats = inspect().stats()
