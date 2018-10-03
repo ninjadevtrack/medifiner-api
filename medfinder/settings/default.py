@@ -151,10 +151,10 @@ DATABASES = {
         default='postgis://postgres:postgres@postgres:5432/postgres'),
     'vaccinedb': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': env('VACCINEFINDER_HOST'),
-        'NAME': env('VACCINEFINDER_NAME'),
-        'PASSWORD': env('VACCINEFINDER_PASSWORD'),
-        'USER': env('VACCINEFINDER_USER'),
+        'HOST': env('VACCINEFINDER_HOST', default=''),
+        'NAME': env('VACCINEFINDER_NAME', default=''),
+        'PASSWORD': env('VACCINEFINDER_PASSWORD', default=''),
+        'USER': env('VACCINEFINDER_USER', default=''),
     }
 }
 
