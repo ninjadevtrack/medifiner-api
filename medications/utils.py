@@ -2,6 +2,7 @@ import json as simplejson
 
 from urllib.request import urlopen
 from urllib.parse import quote_plus
+from django.conf import settings
 from django.utils.encoding import smart_str
 
 
@@ -10,7 +11,10 @@ def get_lat_lng(location):
     # Reference: http://djangosnippets.org/snippets/293/
 
     location = quote_plus(smart_str(location))
-    url = 'http://maps.googleapis.com/maps/api/geocode/json?address={}&sensor=false'.format(location)
+    url = 'https://maps.googleapis.com/maps/api/geocode/json?address={}&sensor=false&key={}'.format( # noqa
+        location,
+        settings.GOOGLE_MAP_API_KEY,
+    )
     response = urlopen(url).read()
     result = simplejson.loads(response)
     if result['status'] == 'OK':
