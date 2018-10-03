@@ -19,6 +19,7 @@ class Command(BaseCommand):
             for row in reader:
                 full_name = row.get('name')
                 ndc = row.get('ndc')
+                type = row.get('type').lower()
                 med_name = row.get('medication name')
                 medication_name, _ = MedicationName.objects.get_or_create(
                     name=med_name,
@@ -27,6 +28,7 @@ class Command(BaseCommand):
                     medication, created = Medication.objects.get_or_create(
                         name=full_name,
                         medication_name=medication_name,
+                        drug_type=type
                     )
                     medication_ndc, created = MedicationNdc.objects.get_or_create(
                         medication=medication,
