@@ -86,10 +86,6 @@ def generate_medications(cache_key, organization_id):
                     related_zipcode=zipcode_obj,
                 )
 
-            # TODO: DRUG TYPE? MediationName ForeignKey?
-            medication, _ = Medication.objects.get_or_create(
-                name=med_name,
-            )
             if not medication_ndc or (medication_ndc.ndc != ndc_code):
                 # Will do the same check as in provider
                 # Second check in the medication_map to lookup if this
@@ -97,10 +93,9 @@ def generate_medications(cache_key, organization_id):
                 medication_ndc = medication_ndc_map.get(ndc_code, None)
                 if not medication_ndc:
                     try:
-                        medication_ndc, _ = \
-                            MedicationNdc.objects.get_or_create(
-                                ndc=ndc_code,
-                                medication=medication,
+                        medication_ndc = \
+                            MedicationNdc.objects.get(
+                                ndc=ndc_code
                             )
                     except IntegrityError:
                         lost_ndcs.append(ndc_code)
