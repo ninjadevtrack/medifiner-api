@@ -89,6 +89,8 @@ class FindProviderSerializer(serializers.ModelSerializer):
         properties['address'] = instance.full_address
         properties['distance'] = instance.distance.mi
         properties['email'] = instance.email
+        properties['home_delivery'] = instance.home_delivery
+        properties['home_delivery_info_url'] = instance.home_delivery_info_url
         properties['id'] = instance.id
         properties['insurance_accepted'] = instance.insurance_accepted
         properties['last_import_date'] = instance.last_import_date
@@ -97,7 +99,6 @@ class FindProviderSerializer(serializers.ModelSerializer):
         properties['phone'] = instance.phone.as_national
         properties['store_number'] = instance.store_number
         properties['website'] = instance.website
-
         if active_provider:
             properties['drugs'] = ProviderMedicationSimpleSerializer(
                 instance.provider_medication.all(),

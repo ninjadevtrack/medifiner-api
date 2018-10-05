@@ -51,7 +51,7 @@ class Command(BaseCommand):
                 email=walgreen.email,
                 end_date=walgreen.end_date,
                 home_delivery=walgreen.home_delivery,
-                home_delivery_site=walgreen.home_delivery_site,
+                home_delivery_info_url=walgreen.home_delivery_site,
                 insurance_accepted=(
                     True if walgreen.insurance_accepted == 'Y' else False),
                 lat=walgreen.lat,
