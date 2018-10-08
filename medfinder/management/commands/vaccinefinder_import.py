@@ -1,11 +1,6 @@
-import csv
-import requests
+from django.core.management.base import BaseCommand
 
-from pathlib import Path
-
-from django.core.management.base import BaseCommand, CommandError
-
-from medications.models import Organization, Provider, ProviderType, ZipCode
+from medications.models import Organization, Provider, ProviderType
 from vaccinefinder.models import Organization as VFOrg
 
 
@@ -45,7 +40,7 @@ class Command(BaseCommand):
         )
 
         for walgreen in walgreens_org.providers.all():
-            provider = Provider.objects.create(
+            Provider.objects.create(
                 address=walgreen.address,
                 city=walgreen.city,
                 email=walgreen.email,

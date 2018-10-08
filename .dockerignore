@@ -4,3 +4,4 @@ media/
 static/
 celerybeat.pid
 celerybeat-schedule
+medfinder/settings/local.py
