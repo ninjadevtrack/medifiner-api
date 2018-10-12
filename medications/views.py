@@ -22,6 +22,7 @@ from rest_framework.generics import (
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import HttpResponse
 
+from epidemic.models import Epidemic
 from medications.tasks import generate_medications
 from .serializers import (
     CSVUploadSerializer,
@@ -503,12 +504,13 @@ class MedicationTypesView(views.APIView):
         med_id = self.request.query_params.get('med_id')
         state_id = self.request.query_params.get('state_id')
         zipcode = self.request.query_params.get('zipcode')
-        values = [
+        returning_values = [
             {'drug_type': 'b', 'count': 0},
-            {'drug_type': 'p', 'count': 0},
             {'drug_type': 'g', 'count': 0},
         ]
-        for drug_type in values:
+        if Epidemic.objects.first().active:
+            returning_values.append({'drug_type': 'p', 'count': 0})
+        for drug_type in returning_values:
             drug_type['drug_type_verbose'] = dict(
                 Medication.DRUG_TYPE_CHOICES
             ).get(drug_type['drug_type'])
@@ -519,9 +521,9 @@ class MedicationTypesView(views.APIView):
                 'id',
                 flat=True,
             ):
-                return Response(values)
+                return Response(returning_values)
         except ValueError:
-            return Response(values)
+            return Response(returning_values)
 
         provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
             latest=True,
@@ -595,11 +597,14 @@ class MedicationTypesView(views.APIView):
         values = Medication.objects.filter(
             ndc_codes__provider_medication__id__in=provider_medication_ids,
         ).values('drug_type').annotate(count=Count('drug_type'))
-        for drug_type in values:
-            drug_type['drug_type_verbose'] = dict(
-                Medication.DRUG_TYPE_CHOICES
-            ).get(drug_type['drug_type'])
-        return Response(values)
+        for default_value in returning_values:
+            default_drug_type = default_value.get('drug_type')
+            for value in values:
+                drug_type = value.get('drug_type')
+                if default_drug_type == drug_type:
+                    default_value['count'] = value['count']
+
+        return Response(returning_values)
 
 
 class CSVExportView(GenericAPIView):
