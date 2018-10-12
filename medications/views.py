@@ -143,6 +143,10 @@ def get_provider_medicatiopn_id(query_params):
         'formulations',
     )
     formulation_ids = []
+    if not formulation_ids_raw and formulation_ids_raw is not None:
+        # Catch the case when in url we have &formulations=
+        # meaning the user unchecked all formulations
+        return ProviderMedicationNdcThrough.objects.none()
     if formulation_ids_raw:
         try:
             formulation_ids = list(

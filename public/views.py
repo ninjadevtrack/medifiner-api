@@ -115,6 +115,10 @@ class FindProviderMedicationView(ListAPIView):
                 'You should provide med_ids, formulations and'
                 ' lozalization params'
             )
+        if not formulation_ids_raw and formulation_ids_raw is not None:
+            # Catch the case when in url we have &formulations=
+            # meaning the user unchecked all formulations
+            provider_medication_ids = []
         provider_qs = Provider.objects.filter(
             geo_localization__distance_lte=(
                 localization_point,
