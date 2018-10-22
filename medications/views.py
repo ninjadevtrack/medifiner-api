@@ -818,10 +818,10 @@ class CSVExportView(GenericAPIView):
                     instance.provider.zip,
                     instance.provider.type,
                     instance.provider.category,
-                    instance.medication.medication_name,
-                    instance.medication,
+                    instance.medication_ndc.medication.medication_name,
+                    instance.medication_ndc.medication.name,
                     dict(Medication.DRUG_TYPE_CHOICES).get(
-                        instance.medication.drug_type
+                        instance.medication_ndc.medication.drug_type
                     ),
                     instance.supply,
                     instance.last_modified.ctime(),
