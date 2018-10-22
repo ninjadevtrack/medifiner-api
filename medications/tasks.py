@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
+from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.utils import timezone
 from io import BytesIO
@@ -15,7 +16,6 @@ from zipfile import ZipFile
 
 from .models import (
     ExistingMedication,
-    Medication,
     MedicationNdc,
     Organization,
     Provider,
@@ -27,7 +27,7 @@ from .models import (
 @shared_task
 # This task can't be atomic because we need to run a post_save signal for
 # every ProviderMedicationThrough object created
-def generate_medications(cache_key, organization_id):
+def generate_medications(cache_key, organization_id, email_to):
     # Already checked in serializer validation that this organization exists.
     lost_ndcs = []
 
@@ -98,7 +98,7 @@ def generate_medications(cache_key, organization_id):
                                 ndc=ndc_code
                             )
                     except IntegrityError:
-                        lost_ndcs.append(ndc_code)
+                        lost_ndcs.append((med_name, ndc_code))
                         pass
 
             if medication_ndc:
@@ -120,7 +120,7 @@ def generate_medications(cache_key, organization_id):
                 if provider not in updated_providers:
                     updated_providers.append(provider.id)
         else:
-            lost_ndcs.append(ndc_code)
+            lost_ndcs.append((med_name, ndc_code))
 
     # Finnally update the last_import_date in all the updated_providers
     if updated_providers:
@@ -135,6 +135,21 @@ def generate_medications(cache_key, organization_id):
 
     # Send to sentry not found ndcs
     if lost_ndcs:
+        if email_to:
+            msg_plain = 'Lost medications during import:\n'
+            for medication, ndc in lost_ndcs:
+                msg_plain += '{}. ndc: {}\n'.format(medication, ndc)
+            msg_plain += (
+                '\nPlease check if the provided NDCs are correct. If you are '
+                'sure they are correct and the problem persists, '
+                'please, contact someone from the MedFinder staff.'
+            )
+            send_mail(
+                'MedFinder: lost medications during import',
+                msg_plain,
+                settings.FROM_EMAIL,
+                [email_to],
+            )
         raise ValidationError(
             'Following ndcs does not exist or exists in the database with '
             'another medication name, therefore they were not imported'

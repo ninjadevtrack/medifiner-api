@@ -68,6 +68,7 @@ class CSVUploadView(GenericAPIView):
         generate_medications.delay(
             cache_key,
             organization_id,
+            request.user.email,
         )
         return Response(
             {'status': _('Supply level import process has been queued')},
