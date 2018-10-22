@@ -39,12 +39,16 @@ class SignInSerializer(serializers.ModelSerializer):
             )
         return organization
 
+    def validate_email(self, email):
+        return email.lower()
+
 
 class JSONWebTokenSerializer(JSONWebTokenSerializer):
 
     def validate(self, attrs):
+        lower_username_field = attrs.get(self.username_field).lower()
         credentials = {
-            self.username_field: attrs.get(self.username_field),
+            self.username_field: lower_username_field,
             'password': attrs.get('password')
         }
 

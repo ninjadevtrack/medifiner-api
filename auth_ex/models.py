@@ -7,6 +7,7 @@ from django.core.mail import send_mail
 
 from medications.models import State
 
+
 class UserManager(BaseUserManager):
     """Manager for User."""
 
@@ -130,3 +131,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     def email_user(self, subject, message, from_email=None, **kwargs):
         """Send an email to this User."""
         send_mail(subject, message, from_email, [self.email], **kwargs)
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.lower()
+        return super().save(*args, **kwargs)
