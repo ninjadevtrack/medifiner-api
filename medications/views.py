@@ -2,7 +2,7 @@ import csv
 
 from datetime import datetime, timedelta
 
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Prefetch
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
 from django.core.cache import cache
@@ -85,16 +85,49 @@ class MedicationNameViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         medications_qs = MedicationName.objects.all()
         ordering = self.request.query_params.get('ordering')
+        medications_related_qs = Medication.objects.all()
+        drug_type_list = self.request.query_params.get(
+            'drug_type',
+            [],
+        )
+        provider_type_list = self.request.query_params.get(
+            'provider_type',
+            [],
+        )
+
+        provider_category_list = self.request.query_params.get(
+            'provider_category',
+            [],
+        )
+        if drug_type_list:
+            medications_related_qs = medications_related_qs.filter(
+                drug_type__in=drug_type_list,
+            )
+        if provider_type_list:
+            medications_related_qs = medications_related_qs.filter(
+                ndc_codes__provider_medication__provider__type__in=provider_type_list,  # noqa
+            )
+        if provider_category_list:
+            medications_related_qs = medications_related_qs.filter(
+                ndc_codes__provider_medication__provider__category__in=provider_category_list,  # noqa
+            )
+
+        medications_qs = medications_qs.prefetch_related(
+            Prefetch(
+                'medications',
+                queryset=medications_related_qs.prefetch_related(
+                    'ndc_codes',
+                )
+            )
+        )
+
         if ordering and ('name' == ordering.replace('-', '')):
             if ordering.startswith('-'):
                 medications_qs = medications_qs.order_by('-name')
             else:
                 medications_qs = medications_qs.order_by('name')
 
-        return medications_qs.prefetch_related(
-            'medications',
-            'medications__ndc_codes',
-        )
+        return medications_qs
 
 
 class StateViewSet(viewsets.ModelViewSet):
