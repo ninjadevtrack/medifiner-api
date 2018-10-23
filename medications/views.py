@@ -126,7 +126,7 @@ class StateViewSet(viewsets.ModelViewSet):
         )
 
 
-def get_provider_medicatiopn_id(query_params):
+def get_provider_medication_id(query_params):
     # Method use to save many line codes in the geo_stats views
 
     med_id = query_params.get('med_id')
@@ -237,7 +237,7 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
                 return State.objects.none()
         except ValueError:
             return State.objects.none()
-        provider_medication_ids = get_provider_medicatiopn_id(
+        provider_medication_ids = get_provider_medication_id(
             self.request.query_params,
         )
         qs = State.objects.all().annotate(
@@ -292,7 +292,7 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
                 centroid=AsGeoJSON(Centroid('state__geometry')),
             )
 
-        provider_medication_ids = get_provider_medicatiopn_id(
+        provider_medication_ids = get_provider_medication_id(
             self.request.query_params,
         )
         qs = County.objects.filter(
@@ -337,7 +337,7 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
             return ZipCode.objects.filter(zipcode=zipcode).annotate(
                 centroid=AsGeoJSON(Centroid('geometry')),
             )
-        provider_medication_ids = get_provider_medicatiopn_id(
+        provider_medication_ids = get_provider_medication_id(
             self.request.query_params,
         )
         if state_id:
@@ -660,19 +660,19 @@ class CSVExportView(GenericAPIView):
         # First we take list of provider medication for this med, we will
         # use it for future filters
         if zipcode:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
                 medication_ndc__medication__medication_name__id=med_id,
                 provider__related_zipcode__zipcode=zipcode,
                 provider__active=True,
             )
         elif not zipcode and state_id:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
                 medication_ndc__medication__medication_name__id=med_id,
                 provider__related_zipcode__state=state_id,
                 provider__active=True,
             )
         else:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter( # noqa
+            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
                 medication_ndc__medication__medication_name__id=med_id,
                 provider__active=True,
             )
