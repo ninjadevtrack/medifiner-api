@@ -410,8 +410,8 @@ class Provider(models.Model):
             self.lat, self.lng = get_lat_lng(location)
             if self.lat and self.lng:
                 self.geo_localization = Point(
-                    float(self.lat),
                     float(self.lng),
+                    float(self.lat),
                 )
             self.change_coordinates = False
         if self.relate_related_zipcode and self.zip:
