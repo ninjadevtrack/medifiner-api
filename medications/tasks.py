@@ -136,7 +136,9 @@ def generate_medications(cache_key, organization_id, email_to):
     # Send to sentry not found ndcs
     if lost_ndcs:
         if email_to:
-            msg_plain = 'Lost medications during import:\n'
+            msg_plain = 'Lost medications during import on {}:\n'.format(
+                timezone.now().strftime('%Y-%m-%d %H:%M')
+            )
             for medication, ndc in lost_ndcs:
                 msg_plain += '{}. ndc: {}\n'.format(medication, ndc)
             msg_plain += (
@@ -145,7 +147,7 @@ def generate_medications(cache_key, organization_id, email_to):
                 'please, contact someone from the MedFinder staff.'
             )
             send_mail(
-                'MedFinder: lost medications during import',
+                'MedFinder Import',
                 msg_plain,
                 settings.FROM_EMAIL,
                 [email_to],
@@ -155,6 +157,17 @@ def generate_medications(cache_key, organization_id, email_to):
             'another medication name, therefore they were not imported'
             ': {}'.format(lost_ndcs)
         )
+    else:
+        if email_to:
+            msg_plain = 'All CSV rows correctly imported on {}'.format(
+                timezone.now().strftime('%Y-%m-%d %H:%M')
+            )
+            send_mail(
+                'MedFinder Import',
+                msg_plain,
+                settings.FROM_EMAIL,
+                [email_to],
+            )
 
 
 # Task that handles the post_save signal asynchronously
