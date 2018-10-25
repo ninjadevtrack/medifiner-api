@@ -128,6 +128,7 @@ def generate_medications(cache_key, organization_id, email_to):
             id__in=updated_providers,
         ).update(
             last_import_date=timezone.now(),
+            active=True,
         )
     # Make celery delete the csv file in cache
     if temporary_file_obj:
