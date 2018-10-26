@@ -183,8 +183,9 @@ def handle_provider_medication_through_post_save_signal(
     medication_ndc_pk
 ):
     ProviderMedicationNdcThrough.objects.filter(
-        provider__pk=provider_pk,
-        medication_ndc__pk=medication_ndc_pk,
+        provider_id=provider_pk,
+        medication_ndc_id=medication_ndc_pk,
+        latest=True,
     ).exclude(
         pk=instance_pk,
     ).update(

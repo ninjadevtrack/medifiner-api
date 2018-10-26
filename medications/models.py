@@ -538,6 +538,9 @@ class ProviderMedicationNdcThrough(models.Model):
     class Meta:
         verbose_name = _('provider medication relation')
         verbose_name_plural = _('provider medication relations')
+        indexes = [
+            models.Index(fields=['provider_id', 'medication_ndc_id', 'latest'])
+        ]
 
     def __str__(self):
         if self.medication_ndc and hasattr(self.medication_ndc, 'medication'):
