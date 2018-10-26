@@ -25,6 +25,11 @@ from .models import (
 
 
 @shared_task
+def test(email):
+    send_mail('test', 'test', settings.FROM_EMAIL, [email])
+
+
+@shared_task
 # This task can't be atomic because we need to run a post_save signal for
 # every ProviderMedicationThrough object created
 def generate_medications(cache_key, organization_id, email_to):
