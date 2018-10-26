@@ -41,7 +41,7 @@ services:
       - redis
   celery:
     image: medfinder-api_django
-    command: celery -A medfinder worker -l debug -E -Q celery,signals
+    command: celery -A medfinder worker -E -Q celery,signals
     volumes:
       - media:/media
     depends_on:

@@ -491,6 +491,9 @@ class MedicationNdc(models.Model):
     class Meta:
         verbose_name = _('medication NDC')
         verbose_name_plural = _('medication NDCs')
+        indexes = [
+            models.Index(fields=['ndc'])
+        ]
 
     def __str__(self):
         return self.ndc

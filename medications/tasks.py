@@ -1,12 +1,14 @@
 import re
 import csv
 
+from time import sleep
+
 from celery import shared_task
 from celery.decorators import task
 from datetime import timedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.core.exceptions import MultipleObjectsReturned, ValidationError
+from django.core.exceptions import MultipleObjectsReturned
 from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.utils import timezone
@@ -28,6 +30,7 @@ from .models import (
 # This task can't be atomic because we need to run a post_save signal for
 # every ProviderMedicationThrough object created
 def generate_medications(cache_key, organization_id, email_to):
+    beginning_time = timezone.now()
     # Already checked in serializer validation that this organization exists.
     lost_ndcs = []
 
@@ -47,8 +50,11 @@ def generate_medications(cache_key, organization_id, email_to):
     temporary_file_obj = csv_file.open()
     decoded_file = temporary_file_obj.read().decode('utf-8').splitlines()
     reader = csv.DictReader(decoded_file)
-
+    index = 0
     for row in reader:
+        index += 1
+        if index == 30000:
+            sleep(30)
         # Iterate through the rows to get the neccessary information
         store_number = row.get('store #')
         address = row.get('address')
@@ -111,15 +117,11 @@ def generate_medications(cache_key, organization_id, email_to):
                 medication_ndc_map[medication_ndc.ndc] = medication_ndc
             if provider and medication_ndc:
                 # Create or update the relation object
-                provider_ndc = ProviderMedicationNdcThrough.objects.create(
+                ProviderMedicationNdcThrough.objects.create(
                     provider=provider,
                     medication_ndc=medication_ndc,
                     supply=row.get('supply_level'),
                     latest=True
-                )
-                print(
-                    'Created provider medication relation '
-                    'with id: {}'.format(provider_ndc.id)
                 )
                 if provider not in updated_providers:
                     updated_providers.append(provider.id)
@@ -138,11 +140,20 @@ def generate_medications(cache_key, organization_id, email_to):
     if temporary_file_obj:
         cache.delete(cache_key)
 
-    # Send to sentry not found ndcs
+    # Send mail not found ndcs
+    finnish_time = timezone.now()
+    duration = finnish_time - beginning_time
+    duration_minutes = duration.seconds * 60
     if lost_ndcs:
         if email_to:
-            msg_plain = 'Lost medications during import on {}:\n'.format(
-                timezone.now().strftime('%Y-%m-%d %H:%M')
+            msg_plain = (
+                'Status: Lost medications during import. Imported {} rows.\n'
+                'Completion date time: {}\n'
+                'Duration: {} minutes'
+            ).format(
+                index,
+                finnish_time.strftime('%Y-%m-%d %H:%M'),
+                duration_minutes,
             )
             for medication, ndc in lost_ndcs:
                 msg_plain += '{}. ndc: {}\n'.format(medication, ndc)
@@ -157,15 +168,16 @@ def generate_medications(cache_key, organization_id, email_to):
                 settings.FROM_EMAIL,
                 [email_to],
             )
-        raise ValidationError(
-            'Following ndcs does not exist or exists in the database with '
-            'another medication name, therefore they were not imported'
-            ': {}'.format(lost_ndcs)
-        )
     else:
         if email_to:
-            msg_plain = 'All CSV rows correctly imported on {}'.format(
-                timezone.now().strftime('%Y-%m-%d %H:%M')
+            msg_plain = (
+                'Status: {} CSV rows correctly imported.\n'
+                'Completion date time: {}\n'
+                'Duration: {} minutes'
+            ).format(
+                index,
+                finnish_time.strftime('%Y-%m-%d %H:%M'),
+                duration_minutes,
             )
             send_mail(
                 'MedFinder Import',

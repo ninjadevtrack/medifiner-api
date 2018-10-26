@@ -66,7 +66,7 @@ class CSVUploadView(GenericAPIView):
         organization_id = serializer.validated_data.pop('organization_id')
         cache_key = '{}_{}'.format('csv_uploaded_file', request.user.id)
         cache.set(cache_key, csv_file, None)
-        generate_medications.delay(
+        generate_medications(
             cache_key,
             organization_id,
             request.user.email,
