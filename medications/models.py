@@ -21,13 +21,6 @@ COUNTRY = 'United States'
 
 
 class Organization(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        related_name='organization',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
     contact_name = models.CharField(
         _('contact name'),
         max_length=255,

@@ -52,9 +52,8 @@ def testuser(organization):
         password,
     )
     user.permission_level = User.NATIONAL_LEVEL
+    user.organization = organization
     user.save()
-    organization.user = user
-    organization.save()
     return user
 
 

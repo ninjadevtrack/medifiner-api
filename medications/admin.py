@@ -228,14 +228,12 @@ class OrganizationAdmin(admin.ModelAdmin):
     list_display = (
         'organization_name',
         'phone',
-        'user',
         'registration_date'
     )
 
     search_fields = (
         'organization_name',
         'contact_name',
-        'user__email',
     )
 
 
