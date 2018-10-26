@@ -111,11 +111,15 @@ def generate_medications(cache_key, organization_id, email_to):
                 medication_ndc_map[medication_ndc.ndc] = medication_ndc
             if provider and medication_ndc:
                 # Create or update the relation object
-                ProviderMedicationNdcThrough.objects.create(
+                provider_ndc = ProviderMedicationNdcThrough.objects.create(
                     provider=provider,
                     medication_ndc=medication_ndc,
                     supply=row.get('supply_level'),
                     latest=True
+                )
+                print(
+                    'Created provider medication relation '
+                    'with id: {}'.format(provider_ndc.id)
                 )
                 if provider not in updated_providers:
                     updated_providers.append(provider.id)
