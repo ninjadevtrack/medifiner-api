@@ -189,7 +189,7 @@ def handle_provider_medication_through_post_save_signal(
 
 
 @shared_task
-def import_existing_medications():
+def import_existing_medications(soft_time_limit=60 * 60 * 12):
     # create a pattern to validate ndc's
     pattern = re.compile(
         '\d{4}-\d{4}-\d{2}|\d{5}-\d{3}-\d{2}|\d{5}-\d{4}-\d{1}|\d{5}-\*\d{3}-\d{2}'

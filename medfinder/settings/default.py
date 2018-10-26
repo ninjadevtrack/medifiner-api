@@ -201,6 +201,8 @@ REGISTRATION_AUTO_LOGIN = False
 # --- CELERY ---
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/')
 
+CELERYD_TASK_SOFT_TIME_LIMIT = 60 * 60
+
 # --- CACHE ---
 CACHES = {
     "default": {
@@ -401,7 +403,7 @@ if RAVEN_DSN:
                 'propagate': False,
             },
             'celery': {
-                'level': 'WARNING',
+                'level': 'ERROR',
                 'handlers': ['sentry', 'console'],
                 'propagate': False,
             },
