@@ -53,7 +53,7 @@ def generate_medications(cache_key, organization_id, email_to):
     index = 0
     for row in reader:
         index += 1
-        if index % 30000:
+        if index % 30000 == 0:
             sleep(30)
         # Iterate through the rows to get the neccessary information
         store_number = row.get('store #')
