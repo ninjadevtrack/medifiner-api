@@ -143,7 +143,7 @@ def generate_medications(cache_key, organization_id, email_to):
     # Send mail not found ndcs
     finnish_time = timezone.now()
     duration = finnish_time - beginning_time
-    duration_minutes = duration.seconds * 60
+    duration_minutes = duration.seconds / 60
     if lost_ndcs:
         if email_to:
             msg_plain = (
