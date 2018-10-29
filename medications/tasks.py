@@ -1,6 +1,7 @@
 import re
 import csv
 
+from datetime import datetime
 from time import sleep
 
 from celery import shared_task
@@ -144,6 +145,8 @@ def generate_medications(cache_key, organization_id, email_to):
     finnish_time = timezone.now()
     duration = finnish_time - beginning_time
     duration_minutes = duration.seconds / 60
+    tz = timezone.pytz.timezone('EST')
+    est_finnish_time = datetime.now(tz)
     if lost_ndcs:
         if email_to:
             msg_plain = (
@@ -152,7 +155,7 @@ def generate_medications(cache_key, organization_id, email_to):
                 'Duration: {} minutes'
             ).format(
                 index,
-                finnish_time.strftime('%Y-%m-%d %H:%M'),
+                est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
             )
             for medication, ndc in lost_ndcs:
@@ -176,7 +179,7 @@ def generate_medications(cache_key, organization_id, email_to):
                 'Duration: {} minutes'
             ).format(
                 index,
-                finnish_time.strftime('%Y-%m-%d %H:%M'),
+                est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
             )
             send_mail(
