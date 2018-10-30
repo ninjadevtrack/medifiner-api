@@ -179,7 +179,8 @@ class TestTokenAuth:
 
     @classmethod
     def teardown_class(cls):
-        os.remove('temporal.csv')
+        if os.path.exists('temporal.csv'):
+            os.remove('temporal.csv')
 
 
 class TestMedicationsPOSTView:
@@ -301,8 +302,10 @@ class TestMedicationsPOSTView:
 
     @classmethod
     def teardown_class(cls):
-        os.remove('temporal.csv')
-        os.remove('temporal_2.txt')
+        if os.path.exists('temporal.csv'):
+            os.remove('temporal.csv')
+        if os.path.exists('temporal_2.txt'):
+            os.remove('temporal_2.txt')
 
 
 class TestMedicationNamesGETView:
@@ -418,7 +421,6 @@ class TestGenerateMedicationTaskTriggered:
         TODO: Search a better way to do this.
         """
         pre_celery_stats = inspect().stats()
-        import pdb; pdb.set_trace()
         pre_celery_key = [key for key in pre_celery_stats.keys()][0]
         pre_task_count = pre_celery_stats.get(
             pre_celery_key
