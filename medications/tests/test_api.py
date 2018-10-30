@@ -418,6 +418,7 @@ class TestGenerateMedicationTaskTriggered:
         TODO: Search a better way to do this.
         """
         pre_celery_stats = inspect().stats()
+        import pdb; pdb.set_trace()
         pre_celery_key = [key for key in pre_celery_stats.keys()][0]
         pre_task_count = pre_celery_stats.get(
             pre_celery_key
@@ -452,7 +453,8 @@ class TestGenerateMedicationTaskTriggered:
 
     @classmethod
     def teardown_class(cls):
-        os.remove('temporal.csv')
+        if os.path.exists('temporal.csv'):
+            os.remove('temporal.csv')
 
 
 class TestGeoStatsStateGETView:

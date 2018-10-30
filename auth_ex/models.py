@@ -140,5 +140,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         send_mail(subject, message, from_email, [self.email], **kwargs)
 
     def save(self, *args, **kwargs):
-        self.email = self.email.lower()
+        if self.email and (type(self.email) == str):
+            self.email = self.email.lower()
         return super().save(*args, **kwargs)

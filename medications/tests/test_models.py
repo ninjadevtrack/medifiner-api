@@ -125,15 +125,15 @@ class TestOrganization:
             OrganizationFactory()
 
     def test_user(self, django_user_model):
+        organization = OrganizationFactory(
+            organization_name=ORGANIZATION_NAME,
+        )
         user = django_user_model.objects.create(
             email=factory.Faker('email'),
             password=factory.Faker('password'),
+            organization=organization,
         )
-        organization = OrganizationFactory(
-            user=user,
-            organization_name=ORGANIZATION_NAME,
-        )
-        assert isinstance(organization.user, get_user_model())
+        assert isinstance(organization.users.get(id=user.id), get_user_model())
 
     def test_phone(self):
         # Test that only US phone are valid
@@ -206,16 +206,15 @@ class TestProvider:
         assert provider.store_number == store_number
         assert str(provider) == obj_str
 
-    # TODO not working because google api key is not working
-    # def test_coordinates_being_generated(self):
-    #     provider = Provider(
-    #         address=REAL_STREET,
-    #         city=REAL_CITY,
-    #         state=REAL_STATE,
-    #     )
-    #     provider.change_coordinates = True
-    #     provider.save()
-    #     assert provider.lng and provider.lat
+    def test_coordinates_being_generated(self):
+        provider = Provider(
+            address=REAL_STREET,
+            city=REAL_CITY,
+            state=REAL_STATE,
+        )
+        provider.change_coordinates = True
+        provider.save()
+        assert provider.lng and provider.lat
 
     def test_name_max_lenght(self, long_str):
         with pytest.raises(DataError):
@@ -277,26 +276,25 @@ class TestProvider:
                     email=email,
                 )
 
-# TODO not working because google api key is not working
-    # def test_coordenates_change_in_new_address(self):
-    #     #  Create the provider and get its coordinates
-    #     provider = Provider(
-    #         address=REAL_STREET,
-    #         city=REAL_CITY,
-    #         state=REAL_STATE,
-    #     )
-    #     provider.change_coordinates = True
-    #     provider.save()
-    #     lat, lng = provider.lat, provider.lng
-    #     #  Change the provider address and check the change coordinates bool
-    #     provider.address = '2802  West Fork Street'
-    #     provider.change_coordinates = True
-    #     provider.save()
-    #     lat_2, lng_2 = provider.lat, provider.lng
-    #     #  Now assert that coordinates are different and check that the flag
-    #     # 'change_coordinates' is back to False (it should)
-    #     assert lat != lat_2 and lng != lng_2
-    #     assert not provider.change_coordinates
+    def test_coordenates_change_in_new_address(self):
+        #  Create the provider and get its coordinates
+        provider = Provider(
+            address=REAL_STREET,
+            city=REAL_CITY,
+            state=REAL_STATE,
+        )
+        provider.change_coordinates = True
+        provider.save()
+        lat, lng = provider.lat, provider.lng
+        #  Change the provider address and check the change coordinates bool
+        provider.address = '2802  West Fork Street'
+        provider.change_coordinates = True
+        provider.save()
+        lat_2, lng_2 = provider.lat, provider.lng
+        #  Now assert that coordinates are different and check that the flag
+        # 'change_coordinates' is back to False (it should)
+        assert lat != lat_2 and lng != lng_2
+        assert not provider.change_coordinates
 
     def test_phone(self):
         # Test that only US phone are valid
@@ -367,27 +365,26 @@ class TestProvider:
             )
             provider.full_clean()
 
-# TODO not working because google api key is not working
-    # def test_zip_code_valid(self, provider_category, provider_type):
-    #     organization = OrganizationFactory(
-    #         organization_name=ORGANIZATION_NAME,
-    #     )
-    #     state = StateFactory()
-    #     zipcode = ZipCodeFactory(state=state)
-    #     provider = ProviderFactory(
-    #         organization=organization,
-    #         name=factory.Faker('name'),
-    #         address=REAL_STREET,
-    #         city=REAL_CITY,
-    #         state=REAL_STATE,
-    #         zip=f'{randrange(1, 10**5):05}',
-    #         phone='202-555-0178',
-    #         email=factory.Faker('email'),
-    #         category=provider_category,
-    #         type=provider_type,
-    #         related_zipcode=zipcode,
-    #     )
-    #     provider.full_clean()
+    def test_zip_code_valid(self, provider_category, provider_type):
+        organization = OrganizationFactory(
+            organization_name=ORGANIZATION_NAME,
+        )
+        state = StateFactory()
+        zipcode = ZipCodeFactory(state=state)
+        provider = ProviderFactory(
+            organization=organization,
+            name=factory.Faker('name'),
+            address=REAL_STREET,
+            city=REAL_CITY,
+            state=REAL_STATE,
+            zip=f'{randrange(1, 10**5):05}',
+            phone='202-555-0178',
+            email=factory.Faker('email'),
+            category=provider_category,
+            type=provider_type,
+            related_zipcode=zipcode,
+        )
+        provider.full_clean()
 
 
 class TestState:
