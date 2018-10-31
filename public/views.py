@@ -5,7 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.contrib.gis.geos import Point
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum, Count, Q
+from django.db.models.functions import Coalesce
 from django.core.mail import send_mail
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
@@ -128,6 +129,25 @@ class FindProviderMedicationView(ListAPIView):
             distance=Distance(
                 'geo_localization',
                 localization_point,
+            ),
+            total_supply=Coalesce(
+                Sum(
+                    'provider_medication__level',
+                    filter=Q(
+                        provider_medication__id__in=provider_medication_ids,
+                        provider_medication__latest=True,
+                        active=True,
+                    ),
+                ),
+                0,
+            ),
+            amount_medications=Count(
+                'provider_medication',
+                filter=Q(
+                    provider_medication__id__in=provider_medication_ids,
+                    provider_medication__latest=True,
+                    active=True,
+                ),
             )
         ).prefetch_related(
             Prefetch(
@@ -138,9 +158,9 @@ class FindProviderMedicationView(ListAPIView):
                 ).select_related(
                     'medication_ndc__medication',
                     'medication_ndc__medication__medication_name',
-                ).order_by('-medication_ndc__medication__drug_type')
+                ).order_by('-level', '-medication_ndc__medication__drug_type')
             )
-        ).order_by('distance')
+        ).order_by('-total_supply', '-active', '-amount_medications')
         # TODO: other medications will be only if there is generoc nad brand
         # no other kind of medications
 
@@ -150,7 +170,6 @@ class FindProviderMedicationView(ListAPIView):
 
         # TODO in simple search if the same medication is brand an generic show
         # the generic
-
         return provider_qs
 
 
