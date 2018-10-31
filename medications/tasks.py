@@ -104,7 +104,10 @@ def generate_medications(cache_key, organization_id, email_to):
                             MedicationNdc.objects.get(
                                 ndc=ndc_code
                             )
-                    except IntegrityError:
+                    except (
+                        IntegrityError,
+                        MedicationNdc.DoesNotExist,
+                    ):
                         lost_ndcs.append((med_name, ndc_code))
                         pass
 
