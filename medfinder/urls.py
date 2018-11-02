@@ -69,6 +69,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/swagger/', schema_view, name='swagger'),
     path('api/v1/', include(api_urlpatterns)),
+    path('health/', include('health_check.urls')),
 ]
 
 if settings.DEBUG:

@@ -21,13 +21,6 @@ COUNTRY = 'United States'
 
 
 class Organization(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        related_name='organization',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
     contact_name = models.CharField(
         _('contact name'),
         max_length=255,
@@ -410,8 +403,8 @@ class Provider(models.Model):
             self.lat, self.lng = get_lat_lng(location)
             if self.lat and self.lng:
                 self.geo_localization = Point(
-                    float(self.lat),
                     float(self.lng),
+                    float(self.lat),
                 )
             self.change_coordinates = False
         if self.relate_related_zipcode and self.zip:
@@ -498,6 +491,9 @@ class MedicationNdc(models.Model):
     class Meta:
         verbose_name = _('medication NDC')
         verbose_name_plural = _('medication NDCs')
+        indexes = [
+            models.Index(fields=['ndc'])
+        ]
 
     def __str__(self):
         return self.ndc
@@ -545,6 +541,9 @@ class ProviderMedicationNdcThrough(models.Model):
     class Meta:
         verbose_name = _('provider medication relation')
         verbose_name_plural = _('provider medication relations')
+        indexes = [
+            models.Index(fields=['provider_id', 'medication_ndc_id', 'latest'])
+        ]
 
     def __str__(self):
         if self.medication_ndc and hasattr(self.medication_ndc, 'medication'):

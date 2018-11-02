@@ -36,6 +36,10 @@ class ProviderMedicationNDCThroughAdmin(admin.ModelAdmin):
         'creation_date',
         'last_modified',
     )
+    search_fields = (
+        'provider__name',
+        'medication_ndc__ndc'
+    )
 
     def get_queryset(self, request):
         return super().get_queryset(
@@ -214,7 +218,7 @@ class MedicationNDC(admin.ModelAdmin):
         'ndc',
     )
     search_fields = (
-        'medication',
+        'medication__name',
         'ndc',
     )
 
@@ -224,14 +228,12 @@ class OrganizationAdmin(admin.ModelAdmin):
     list_display = (
         'organization_name',
         'phone',
-        'user',
         'registration_date'
     )
 
     search_fields = (
         'organization_name',
         'contact_name',
-        'user',
     )
 
 
@@ -270,8 +272,10 @@ class ProviderAdmin(admin.ModelAdmin):
     search_fields = (
         'name',
         'store_number',
-        'organization',
-        'full_address',
+        'address',
+        'city',
+        'zip',
+        'organization__organization_name',
     )
     fieldsets = (
         (

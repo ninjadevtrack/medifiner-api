@@ -62,6 +62,7 @@ class UserAdmin(UserAdmin):
         (_('Personal info'), {'fields': (
             'first_name',
             'last_name',
+            'organization',
             'organization_link',
             'role',
             'state',
@@ -115,7 +116,7 @@ class UserAdmin(UserAdmin):
             )
         return None
 
-    organization_link.short_description = _('Organization')
+    organization_link.short_description = _('Organization link')
 
     def get_actions(self, request):
         actions = super().get_actions(request)

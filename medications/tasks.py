@@ -1,12 +1,16 @@
 import re
 import csv
 
+from datetime import datetime
+from time import sleep
+
 from celery import shared_task
 from celery.decorators import task
 from datetime import timedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.core.exceptions import MultipleObjectsReturned, ValidationError
+from django.core.exceptions import MultipleObjectsReturned
+from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.utils import timezone
 from io import BytesIO
@@ -15,7 +19,6 @@ from zipfile import ZipFile
 
 from .models import (
     ExistingMedication,
-    Medication,
     MedicationNdc,
     Organization,
     Provider,
@@ -27,7 +30,8 @@ from .models import (
 @shared_task
 # This task can't be atomic because we need to run a post_save signal for
 # every ProviderMedicationThrough object created
-def generate_medications(cache_key, organization_id):
+def generate_medications(cache_key, organization_id, email_to):
+    beginning_time = timezone.now()
     # Already checked in serializer validation that this organization exists.
     lost_ndcs = []
 
@@ -47,8 +51,11 @@ def generate_medications(cache_key, organization_id):
     temporary_file_obj = csv_file.open()
     decoded_file = temporary_file_obj.read().decode('utf-8').splitlines()
     reader = csv.DictReader(decoded_file)
-
+    index = 0
     for row in reader:
+        index += 1
+        if index % 30000 == 0:
+            sleep(30)
         # Iterate through the rows to get the neccessary information
         store_number = row.get('store #')
         address = row.get('address')
@@ -97,8 +104,11 @@ def generate_medications(cache_key, organization_id):
                             MedicationNdc.objects.get(
                                 ndc=ndc_code
                             )
-                    except IntegrityError:
-                        lost_ndcs.append(ndc_code)
+                    except (
+                        IntegrityError,
+                        MedicationNdc.DoesNotExist,
+                    ):
+                        lost_ndcs.append((med_name, ndc_code))
                         pass
 
             if medication_ndc:
@@ -120,7 +130,7 @@ def generate_medications(cache_key, organization_id):
                 if provider not in updated_providers:
                     updated_providers.append(provider.id)
         else:
-            lost_ndcs.append(ndc_code)
+            lost_ndcs.append((med_name, ndc_code))
 
     # Finnally update the last_import_date in all the updated_providers
     if updated_providers:
@@ -128,18 +138,59 @@ def generate_medications(cache_key, organization_id):
             id__in=updated_providers,
         ).update(
             last_import_date=timezone.now(),
+            active=True,
         )
     # Make celery delete the csv file in cache
     if temporary_file_obj:
         cache.delete(cache_key)
 
-    # Send to sentry not found ndcs
+    # Send mail not found ndcs
+    finnish_time = timezone.now()
+    duration = finnish_time - beginning_time
+    duration_minutes = duration.seconds / 60
+    tz = timezone.pytz.timezone('EST')
+    est_finnish_time = datetime.now(tz)
     if lost_ndcs:
-        raise ValidationError(
-            'Following ndcs does not exist or exists in the database with '
-            'another medication name, therefore they were not imported'
-            ': {}'.format(lost_ndcs)
-        )
+        if email_to:
+            msg_plain = (
+                'Status: Lost medications during import. Imported {} rows.\n'
+                'Completion date time: {}\n'
+                'Duration: {} minutes'
+            ).format(
+                index,
+                est_finnish_time.strftime('%Y-%m-%d %H:%M'),
+                duration_minutes,
+            )
+            for medication, ndc in lost_ndcs:
+                msg_plain += '{}. ndc: {}\n'.format(medication, ndc)
+            msg_plain += (
+                '\nPlease check if the provided NDCs are correct. If you are '
+                'sure they are correct and the problem persists, '
+                'please, contact someone from the MedFinder staff.'
+            )
+            send_mail(
+                'MedFinder Import',
+                msg_plain,
+                settings.FROM_EMAIL,
+                [email_to],
+            )
+    else:
+        if email_to:
+            msg_plain = (
+                'Status: {} CSV rows correctly imported.\n'
+                'Completion date time: {}\n'
+                'Duration: {} minutes'
+            ).format(
+                index,
+                est_finnish_time.strftime('%Y-%m-%d %H:%M'),
+                duration_minutes,
+            )
+            send_mail(
+                'MedFinder Import',
+                msg_plain,
+                settings.FROM_EMAIL,
+                [email_to],
+            )
 
 
 # Task that handles the post_save signal asynchronously
@@ -150,8 +201,9 @@ def handle_provider_medication_through_post_save_signal(
     medication_ndc_pk
 ):
     ProviderMedicationNdcThrough.objects.filter(
-        provider__pk=provider_pk,
-        medication_ndc__pk=medication_ndc_pk,
+        provider_id=provider_pk,
+        medication_ndc_id=medication_ndc_pk,
+        latest=True,
     ).exclude(
         pk=instance_pk,
     ).update(

@@ -4,6 +4,7 @@ Django default settings for medfinder project.
 Crate a local.py in this same folder to set your local settings.
 
 """
+import requests
 
 from os import path
 from django.utils.translation import ugettext_lazy as _
@@ -22,6 +23,18 @@ BASE_DIR = dirname(dirname(dirname(path.abspath(__file__))))
 DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', [])
+
+# Healthcheck for the django app
+EC2_PRIVATE_IP = None
+try:
+    EC2_PRIVATE_IP = requests.get(
+        'http://169.254.169.254/latest/meta-data/local-ipv4',
+        timeout=0.01
+    ).text
+except requests.exceptions.RequestException:
+    pass
+if EC2_PRIVATE_IP:
+    ALLOWED_HOSTS.append(EC2_PRIVATE_IP)
 
 SECRET_KEY = env('SECRET_KEY')
 
@@ -51,6 +64,7 @@ INSTALLED_APPS = (
     'corsheaders',
     'django_celery_beat',
     'django_s3_storage',
+    'health_check',
     'localflavor',
     'phonenumber_field',
     'rest_registration',
@@ -201,6 +215,8 @@ REGISTRATION_AUTO_LOGIN = False
 # --- CELERY ---
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/')
 
+CELERYD_TASK_SOFT_TIME_LIMIT = 60 * 60 * 24
+
 # --- CACHE ---
 CACHES = {
     "default": {
@@ -266,14 +282,25 @@ REST_REGISTRATION = {
     ),
 }
 
+
+# EMAIL information
+EMAIL_ENABLE = env.bool('EMAIL_ENABLE', default=True)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_HOST = env('EMAIL_HOST', default='')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+EMAIL_PORT = env('EMAIL_PORT', default=587)
 EMAIL_BACKEND = env(
     'EMAIL_BACKEND',
     default='django.core.mail.backends.smtp.EmailBackend',
 )
-
 FROM_EMAIL = env(
     'FROM_EMAIL',
     default='no-reply@example.com'
+)
+DEFAULT_FROM_EMAIL = env(
+    'DEFAULT_FROM_EMAIL',
+    default='webmaster@localhost',
 )
 
 if ENABLE_DEBUG_TOOLBAR:
@@ -390,7 +417,7 @@ if RAVEN_DSN:
                 'propagate': False,
             },
             'celery': {
-                'level': 'WARNING',
+                'level': 'ERROR',
                 'handlers': ['sentry', 'console'],
                 'propagate': False,
             },

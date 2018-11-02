@@ -25,13 +25,20 @@ class UserCreationForm(UserCreationForm):
                     _('You have to set a state for that permission level'),
                 }
             )
+        email = self.cleaned_data.get('email')
+        if email:
+            self.cleaned_data['email'] = email.lower()
         return self.cleaned_data
 
 
 class UserChangeForm(UserChangeForm):
     """Uses the original change form. Change it as you wish to customize it."""
 
-    pass
+    def clean(self):
+        email = self.cleaned_data.get('email')
+        if email:
+            self.cleaned_data['email'] = email.lower()
+        return self.cleaned_data
 
 
 class UserAuthenticationForm(forms.Form):
@@ -52,7 +59,7 @@ class UserAuthenticationForm(forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean(self):
-        email = self.cleaned_data.get('email')
+        email = self.cleaned_data.get('email').lower()
         password = self.cleaned_data.get('password')
 
         if email and password:

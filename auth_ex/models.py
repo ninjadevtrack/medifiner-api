@@ -5,7 +5,8 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django.core.mail import send_mail
 
-from medications.models import State
+from medications.models import State, Organization
+
 
 class UserManager(BaseUserManager):
     """Manager for User."""
@@ -70,6 +71,13 @@ class User(AbstractBaseUser, PermissionsMixin):
             'Unselect this instead of deleting accounts.'
         ),
     )
+    organization = models.ForeignKey(
+        Organization,
+        related_name='users',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     role = models.CharField(
         _('role in organization'),
@@ -130,3 +138,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     def email_user(self, subject, message, from_email=None, **kwargs):
         """Send an email to this User."""
         send_mail(subject, message, from_email, [self.email], **kwargs)
+
+    def save(self, *args, **kwargs):
+        if self.email and (type(self.email) == str):
+            self.email = self.email.lower()
+        return super().save(*args, **kwargs)

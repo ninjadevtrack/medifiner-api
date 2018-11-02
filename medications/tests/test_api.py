@@ -52,9 +52,8 @@ def testuser(organization):
         password,
     )
     user.permission_level = User.NATIONAL_LEVEL
+    user.organization = organization
     user.save()
-    organization.user = user
-    organization.save()
     return user
 
 
@@ -180,7 +179,8 @@ class TestTokenAuth:
 
     @classmethod
     def teardown_class(cls):
-        os.remove('temporal.csv')
+        if os.path.exists('temporal.csv'):
+            os.remove('temporal.csv')
 
 
 class TestMedicationsPOSTView:
@@ -302,8 +302,10 @@ class TestMedicationsPOSTView:
 
     @classmethod
     def teardown_class(cls):
-        os.remove('temporal.csv')
-        os.remove('temporal_2.txt')
+        if os.path.exists('temporal.csv'):
+            os.remove('temporal.csv')
+        if os.path.exists('temporal_2.txt'):
+            os.remove('temporal_2.txt')
 
 
 class TestMedicationNamesGETView:
@@ -453,7 +455,8 @@ class TestGenerateMedicationTaskTriggered:
 
     @classmethod
     def teardown_class(cls):
-        os.remove('temporal.csv')
+        if os.path.exists('temporal.csv'):
+            os.remove('temporal.csv')
 
 
 class TestGeoStatsStateGETView:

@@ -2,7 +2,7 @@ import csv
 
 from datetime import datetime, timedelta
 
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Prefetch
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
 from django.core.cache import cache
@@ -22,6 +22,7 @@ from rest_framework.generics import (
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import HttpResponse
 
+from auth_ex.models import User
 from epidemic.models import Epidemic
 from medications.tasks import generate_medications
 from .serializers import (
@@ -68,6 +69,7 @@ class CSVUploadView(GenericAPIView):
         generate_medications.delay(
             cache_key,
             organization_id,
+            request.user.email,
         )
         return Response(
             {'status': _('Supply level import process has been queued')},
@@ -83,16 +85,49 @@ class MedicationNameViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         medications_qs = MedicationName.objects.all()
         ordering = self.request.query_params.get('ordering')
+        medications_related_qs = Medication.objects.all()
+        drug_type_list = self.request.query_params.get(
+            'drug_type',
+            [],
+        )
+        provider_type_list = self.request.query_params.get(
+            'provider_type',
+            [],
+        )
+
+        provider_category_list = self.request.query_params.get(
+            'provider_category',
+            [],
+        )
+        if drug_type_list:
+            medications_related_qs = medications_related_qs.filter(
+                drug_type__in=drug_type_list,
+            )
+        if provider_type_list:
+            medications_related_qs = medications_related_qs.filter(
+                ndc_codes__provider_medication__provider__type__in=provider_type_list,  # noqa
+            )
+        if provider_category_list:
+            medications_related_qs = medications_related_qs.filter(
+                ndc_codes__provider_medication__provider__category__in=provider_category_list,  # noqa
+            )
+
+        medications_qs = medications_qs.prefetch_related(
+            Prefetch(
+                'medications',
+                queryset=medications_related_qs.prefetch_related(
+                    'ndc_codes',
+                )
+            )
+        )
+
         if ordering and ('name' == ordering.replace('-', '')):
             if ordering.startswith('-'):
                 medications_qs = medications_qs.order_by('-name')
             else:
                 medications_qs = medications_qs.order_by('name')
 
-        return medications_qs.prefetch_related(
-            'medications',
-            'medications__ndc_codes',
-        )
+        return medications_qs
 
 
 class StateViewSet(viewsets.ModelViewSet):
@@ -612,7 +647,7 @@ class MedicationTypesView(views.APIView):
 
 
 class CSVExportView(GenericAPIView):
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
 
     def dispatch(self, request, *args, **kwargs):
@@ -753,6 +788,8 @@ class CSVExportView(GenericAPIView):
         med_id = request.query_params.get('med_id')
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
+        national_level_permission = \
+            request.user.permission_level == User.NATIONAL_LEVEL
         if med_id and start_date and end_date:
             qs = self.get_queryset(
                 state_id,
@@ -785,47 +822,78 @@ class CSVExportView(GenericAPIView):
             response['Content-Disposition'] = 'attachment; filename={}'.format(
                 filename,
             )
-            header = [
-                'Date',
-                'Organization',
-                'Provider ID',
-                'Provider Name',
-                'Provider Address',
-                'Provider City',
-                'Provider State',
-                'Provider Zip',
-                'Provider Type',
-                'Pharmacy Category',
-                'Medication Name',
-                'Med ID',
-                'Product Type',
-                'Inventory',
-                'Last Updated',
-                'Latest',
-            ]
+            if national_level_permission:
+                header = [
+                    'Date',
+                    'Organization',
+                    'Provider ID',
+                    'Provider Name',
+                    'Provider Address',
+                    'Provider City',
+                    'Provider State',
+                    'Provider Zip',
+                    'Provider Type',
+                    'Pharmacy Category',
+                    'Medication Name',
+                    'Med ID',
+                    'Product Type',
+                    'Inventory',
+                    'Last Updated',
+                    'Latest',
+                ]
+            else:
+                header = [
+                    'Date',
+                    'Provider City',
+                    'Provider State',
+                    'Provider Zip',
+                    'Medication Name',
+                    'Med ID',
+                    'Product Type',
+                    'Inventory',
+                    'Last Updated',
+                    'Latest',
+                ]
             writer = csv.DictWriter(response, fieldnames=header)
             writer.writeheader()
             for instance in qs:
-                data_row = (
-                    instance.creation_date.date().isoformat(),
-                    instance.provider.organization,
-                    instance.provider.store_number,
-                    instance.provider.name,
-                    instance.provider.address,
-                    instance.provider.city,
-                    instance.provider.state,
-                    instance.provider.zip,
-                    instance.provider.type,
-                    instance.provider.category,
-                    instance.medication.medication_name,
-                    instance.medication,
-                    dict(Medication.DRUG_TYPE_CHOICES).get(
-                        instance.medication.drug_type
-                    ),
-                    instance.supply,
-                    instance.last_modified.ctime(),
-                    instance.latest,
-                )
+                if national_level_permission:
+                    data_row = (
+                        instance.creation_date.date().isoformat(),
+                        instance.provider.organization,
+                        instance.provider.store_number,
+                        instance.provider.name,
+                        instance.provider.address,
+                        instance.provider.city,
+                        instance.provider.state,
+                        instance.provider.zip,
+                        instance.provider.type,
+                        instance.provider.category,
+                        instance.medication_ndc.medication.medication_name,
+                        instance.medication_ndc.medication.name,
+                        dict(Medication.DRUG_TYPE_CHOICES).get(
+                            instance.medication_ndc.medication.drug_type
+                        ),
+                        instance.supply,
+                        instance.last_modified.ctime(),
+                        instance.latest,
+                    )
+                else:
+                    data_row = (
+                        instance.creation_date.date().isoformat(),
+
+                        instance.provider.city,
+                        instance.provider.state,
+                        instance.provider.zip,
+                        instance.medication_ndc.medication.medication_name,
+                        instance.medication_ndc.medication.name,
+                        dict(Medication.DRUG_TYPE_CHOICES).get(
+                            instance.medication_ndc.medication.drug_type
+                        ),
+                        instance.supply,
+                        instance.last_modified.ctime(),
+                        instance.latest,
+                    )
                 writer.writerow(dict(zip(header, data_row)))
             return response
         raise BadRequest('No med_id start_date or end_date in request')
