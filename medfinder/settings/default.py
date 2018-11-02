@@ -11,6 +11,7 @@ from django.utils.translation import ugettext_lazy as _
 
 import environ
 import datetime
+import django_heroku
 
 root = environ.Path(__file__) - 3
 env = environ.Env(DEBUG=(bool, False), )
@@ -23,18 +24,6 @@ BASE_DIR = dirname(dirname(dirname(path.abspath(__file__))))
 DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', [])
-
-# Healthcheck for the django app
-EC2_PRIVATE_IP = None
-try:
-    EC2_PRIVATE_IP = requests.get(
-        'http://169.254.169.254/latest/meta-data/local-ipv4',
-        timeout=0.01
-    ).text
-except requests.exceptions.RequestException:
-    pass
-if EC2_PRIVATE_IP:
-    ALLOWED_HOSTS.append(EC2_PRIVATE_IP)
 
 SECRET_KEY = env('SECRET_KEY')
 
@@ -144,13 +133,6 @@ GOOGLE_MAP_API_KEY = env('GOOGLE_MAP_API_KEY', default='')
 USE_I18N = True
 USE_L10N = True
 LANGUAGE_CODE = 'en-us'
-# LANGUAGES = (
-#     ('en', _('English')),
-#     ('pl', _('Polish')),
-# )
-# LOCALE_PATHS = (
-#     path.join(BASE_DIR, 'locale'),
-# )
 
 # --- FILE UPLOAD ---
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 * 1024 * 1024  # i.e. 100 MB
@@ -423,3 +405,8 @@ if RAVEN_DSN:
             },
         },
     }
+
+# Activate Django-Heroku.
+django_heroku.settings(locals())
+
+DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'

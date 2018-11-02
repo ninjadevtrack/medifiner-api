@@ -150,7 +150,6 @@ class ZipCode(models.Model):
     counties = models.ManyToManyField(
         County,
         related_name='county_zipcodes',
-        null=True,
     )
     population = models.PositiveIntegerField(
         _('population'),

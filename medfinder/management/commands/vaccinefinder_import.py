@@ -40,13 +40,11 @@ class Command(BaseCommand):
         )
 
         for walgreen in walgreens_org.providers.all():
-            Provider.objects.create(
+            provider = Provider.objects.create(
                 address=walgreen.address,
                 city=walgreen.city,
                 email=walgreen.email,
                 end_date=walgreen.end_date,
-                home_delivery=walgreen.home_delivery,
-                home_delivery_info_url=walgreen.home_delivery_site,
                 insurance_accepted=(
                     True if walgreen.insurance_accepted == 'Y' else False),
                 lat=walgreen.lat,
@@ -66,3 +64,4 @@ class Command(BaseCommand):
                     True if walgreen.walkins_accepted == 'Y' else False),
                 zip=walgreen.zip,
             )
+            print(provider.pk)

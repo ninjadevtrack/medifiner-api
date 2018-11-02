@@ -163,7 +163,6 @@ class StateViewSet(viewsets.ModelViewSet):
 
 def get_provider_medication_id(query_params):
     # Method use to save many line codes in the geo_stats views
-
     med_id = query_params.get('med_id')
 
     # First we take list of provider medication for this med, we will

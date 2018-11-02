@@ -137,14 +137,14 @@ class Provider(models.Model):
     walkins_accepted = models.NullBooleanField(
         _('walkins accepted'),
     )
-    home_delivery = models.NullBooleanField(
-        _('home delivery'),
-    )
-    home_delivery_site = models.CharField(
-        blank=True,
-        null=True,
-        max_length=250,
-    )
+    # home_delivery = models.NullBooleanField(
+    #     _('home delivery'),
+    # )
+    # home_delivery_site = models.CharField(
+    #     blank=True,
+    #     null=True,
+    #     max_length=250,
+    # )
 
     class Meta:
         db_table = 'provider'

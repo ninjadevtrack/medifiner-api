@@ -54,8 +54,6 @@ def generate_medications(cache_key, organization_id, email_to):
     index = 0
     for row in reader:
         index += 1
-        if index % 30000 == 0:
-            sleep(30)
         # Iterate through the rows to get the neccessary information
         store_number = row.get('store #')
         address = row.get('address')
@@ -145,40 +143,37 @@ def generate_medications(cache_key, organization_id, email_to):
         cache.delete(cache_key)
 
     # Send mail not found ndcs
-    finnish_time = timezone.now()
-    duration = finnish_time - beginning_time
-    duration_minutes = duration.seconds / 60
-    tz = timezone.pytz.timezone('EST')
-    est_finnish_time = datetime.now(tz)
-    if lost_ndcs:
-        if email_to:
+    if email_to:
+        finnish_time = timezone.now()
+        duration = finnish_time - beginning_time
+        duration_minutes = duration.seconds / 60
+        tz = timezone.pytz.timezone('EST')
+        est_finnish_time = datetime.now(tz)
+
+        if lost_ndcs:
+
             msg_plain = (
-                'Status: Lost medications during import. Imported {} rows.\n'
-                'Completion date time: {}\n'
-                'Duration: {} minutes'
+                'Completion date time: {}<br>'
+                'Duration: {} minutes<br>'
+                'Status: {} rows processed. Following CSV entries were not imported:<br>'
             ).format(
-                index,
                 est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
+                index,
             )
             for medication, ndc in lost_ndcs:
-                msg_plain += '{}. ndc: {}\n'.format(medication, ndc)
-            msg_plain += (
-                '\nPlease check if the provided NDCs are correct. If you are '
-                'sure they are correct and the problem persists, '
-                'please, contact someone from the MedFinder staff.'
-            )
+                msg_plain += 'Med Name: {} -- Med Code: {}<br>'.format(
+                    medication, ndc)
             send_mail(
-                'MedFinder Import',
+                'MedFinder Import Status',
                 msg_plain,
                 settings.FROM_EMAIL,
                 [email_to],
             )
-    else:
-        if email_to:
+        else:
             msg_plain = (
-                'Status: {} CSV rows correctly imported.\n'
-                'Completion date time: {}\n'
+                'Status: {} CSV rows correctly imported.<br>'
+                'Completion date time: {}<br>'
                 'Duration: {} minutes'
             ).format(
                 index,
@@ -186,7 +181,7 @@ def generate_medications(cache_key, organization_id, email_to):
                 duration_minutes,
             )
             send_mail(
-                'MedFinder Import',
+                'MedFinder Import Status',
                 msg_plain,
                 settings.FROM_EMAIL,
                 [email_to],
