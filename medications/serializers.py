@@ -46,15 +46,11 @@ class CSVUploadSerializer(serializers.Serializer):
         import_date = data.get('import_date', False)
         if import_date:
             try:
-                import_date = datetime.strptime(import_date, '%Y%m%d')
+                import_date = datetime.strptime(
+                    import_date, '%Y%m%d %H:%M:%S %z')
             except ValueError:
                 raise serializers.ValidationError(
-                    {
-                        'import_date':
-                        _(
-                            'Import date format invalid'
-                        )
-                    }
+                    {'import_date': _('Import date format invalid')}
                 )
 
         file = data.get('csv_file')
