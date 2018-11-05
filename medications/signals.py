@@ -12,11 +12,12 @@ def provider_medication_through_post_save(sender, instance, **kwargs):
     # generate medications. The task that handles the post_save process
     # has to be triggered on_commit because we have to wait until the object
     # is created.
-    transaction.on_commit(
-        lambda:
-        handle_provider_medication_through_post_save_signal.apply_async(
-            args=(instance.pk, instance.provider.pk,
-                  instance.medication_ndc.pk, instance.latest),
-            queue='signals',
+    if instance.latest:
+        transaction.on_commit(
+            lambda:
+            handle_provider_medication_through_post_save_signal.apply_async(
+                args=(instance.pk, instance.provider.pk,
+                      instance.medication_ndc.pk, instance.latest),
+                queue='signals',
+            )
         )
-    )

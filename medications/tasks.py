@@ -206,18 +206,16 @@ def handle_provider_medication_through_post_save_signal(
     instance_pk,
     provider_pk,
     medication_ndc_pk,
-    latest,
 ):
-    if latest:
-        ProviderMedicationNdcThrough.objects.filter(
-            provider_id=provider_pk,
-            medication_ndc_id=medication_ndc_pk,
-            latest=True,
-        ).exclude(
-            pk=instance_pk,
-        ).update(
-            latest=False,
-        )
+    ProviderMedicationNdcThrough.objects.filter(
+        provider_id=provider_pk,
+        medication_ndc_id=medication_ndc_pk,
+        latest=True,
+    ).exclude(
+        pk=instance_pk,
+    ).update(
+        latest=False,
+    )
 
 
 @shared_task
