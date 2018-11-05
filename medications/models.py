@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.db import models, IntegrityError
 from django.conf import settings
 from django.contrib.gis.db.models import GeometryField, PointField
@@ -524,12 +525,10 @@ class ProviderMedicationNdcThrough(models.Model):
     )
     creation_date = models.DateTimeField(
         _('creation date'),
-        auto_now_add=True,
         help_text=_('Creation date'),
     )
     last_modified = models.DateTimeField(
         _('last modified date'),
-        auto_now=True,
         help_text=_('Last modification date'),
     )
     latest = models.BooleanField(
@@ -555,6 +554,10 @@ class ProviderMedicationNdcThrough(models.Model):
         # Using a simple map for now, according to the specs
         if not self.medication_ndc:
             raise IntegrityError(_('Medication NDC object must be provided'))
+        if self.creation_date is None:
+            self.creation_date = datetime.datetime.now()
+        if self.last_modified is None:
+            self.last_modified = datetime.datetime.now()
         supply_to_level_map = {
             '<24': 1,
             '24': 2,
