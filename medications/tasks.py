@@ -30,7 +30,7 @@ from .models import (
 @shared_task
 # This task can't be atomic because we need to run a post_save signal for
 # every ProviderMedicationThrough object created
-def generate_medications(cache_key, organization_id, email_to):
+def generate_medications(cache_key, organization_id, email_to, import_date=False):
     beginning_time = timezone.now()
     # Already checked in serializer validation that this organization exists.
     lost_ndcs = []
@@ -54,6 +54,8 @@ def generate_medications(cache_key, organization_id, email_to):
     index = 0
     for row in reader:
         index += 1
+        if index % 30000 == 0:
+            sleep(30)
         # Iterate through the rows to get the neccessary information
         store_number = row.get('store #')
         address = row.get('address')
@@ -119,12 +121,22 @@ def generate_medications(cache_key, organization_id, email_to):
                 medication_ndc_map[medication_ndc.ndc] = medication_ndc
             if provider and medication_ndc:
                 # Create or update the relation object
-                ProviderMedicationNdcThrough.objects.create(
-                    provider=provider,
-                    medication_ndc=medication_ndc,
-                    supply=row.get('supply_level'),
-                    latest=True
-                )
+                if import_date:
+                    ProviderMedicationNdcThrough.objects.create(
+                        provider=provider,
+                        medication_ndc=medication_ndc,
+                        supply=row.get('supply_level'),
+                        latest=False,
+                        creation_date=import_date,
+                        last_modified=import_date,
+                    )
+                else:
+                    ProviderMedicationNdcThrough.objects.create(
+                        provider=provider,
+                        medication_ndc=medication_ndc,
+                        supply=row.get('supply_level'),
+                        latest=True
+                    )
                 if provider not in updated_providers:
                     updated_providers.append(provider.id)
         else:
@@ -193,17 +205,19 @@ def generate_medications(cache_key, organization_id, email_to):
 def handle_provider_medication_through_post_save_signal(
     instance_pk,
     provider_pk,
-    medication_ndc_pk
+    medication_ndc_pk,
+    latest,
 ):
-    ProviderMedicationNdcThrough.objects.filter(
-        provider_id=provider_pk,
-        medication_ndc_id=medication_ndc_pk,
-        latest=True,
-    ).exclude(
-        pk=instance_pk,
-    ).update(
-        latest=False,
-    )
+    if latest:
+        ProviderMedicationNdcThrough.objects.filter(
+            provider_id=provider_pk,
+            medication_ndc_id=medication_ndc_pk,
+            latest=True,
+        ).exclude(
+            pk=instance_pk,
+        ).update(
+            latest=False,
+        )
 
 
 @shared_task

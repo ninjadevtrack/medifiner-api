@@ -6,6 +6,7 @@ from collections import OrderedDict
 from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 
+from datetime import datetime
 from rest_framework import serializers
 
 from .constants import field_rows
@@ -23,10 +24,12 @@ from .utils import get_supplies
 
 class CSVUploadSerializer(serializers.Serializer):
     csv_file = serializers.FileField()
+    import_date = serializers.CharField()
 
     class Meta:
         fields = (
             'csv_file',
+            'import_date',
         )
 
     def validate(self, data):
@@ -39,6 +42,21 @@ class CSVUploadSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {'csv_file': _('No linked organization found for user')}
             )
+
+        import_date = data.get('import_date', False)
+        if import_date:
+            try:
+                import_date = datetime.strptime(import_date, '%Y%m%d')
+            except ValueError:
+                raise serializers.ValidationError(
+                    {
+                        'import_date':
+                        _(
+                            'Import date format invalid'
+                        )
+                    }
+                )
+
         file = data.get('csv_file')
         if not file.name.endswith('.csv'):
             raise serializers.ValidationError(
@@ -54,8 +72,10 @@ class CSVUploadSerializer(serializers.Serializer):
                         'CSV file header format error, headers must be: {}.'
                     ). format(', '.join(field_rows))}
             )
+
         data['csv_file'] = file
         data['organization_id'] = organization.id
+        data['import_date'] = import_date
 
         return data
 

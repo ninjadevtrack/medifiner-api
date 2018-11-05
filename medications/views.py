@@ -64,12 +64,14 @@ class CSVUploadView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         csv_file = serializer.validated_data.pop('csv_file')
         organization_id = serializer.validated_data.pop('organization_id')
+        import_date = serializer.validated_data.pop('import_date')
         cache_key = '{}_{}'.format('csv_uploaded_file', request.user.id)
         cache.set(cache_key, csv_file, None)
         generate_medications.delay(
             cache_key,
             organization_id,
             request.user.email,
+            import_date,
         )
         return Response(
             {'status': _('Supply level import process has been queued')},
