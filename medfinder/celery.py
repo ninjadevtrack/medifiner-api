@@ -9,7 +9,7 @@ class Celery(Celery):
 
     def on_configure(self):
         client = raven.Client(
-        	'https://e538805d79de4617925990bf8968a662:7a48ee6019ff4feeb5177e9ee04080cb@sentry.io/1241649' # noqa
+                'https://cea486b768ce40f4908c2814f06763f0:702d98f0d3e54e099fda62ff73ab6662@sentry.io/1314513'  # noqa
         )
 
         # register a custom filter to filter out duplicate logs
