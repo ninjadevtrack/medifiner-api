@@ -21,4 +21,4 @@ RUN pip install -r dev.txt
 ADD . /code/
 WORKDIR /code
 
-CMD gunicorn --bind 0.0.0.0:$PORT medfinder.wsgi:application --workers 3 --timeout 9000
+CMD gunicorn --bind 0.0.0.0:$PORT medfinder.wsgi:application --workers 5 --timeout 9000
