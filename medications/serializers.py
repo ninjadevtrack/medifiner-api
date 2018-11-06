@@ -43,15 +43,16 @@ class CSVUploadSerializer(serializers.Serializer):
                 {'csv_file': _('No linked organization found for user')}
             )
 
-        import_date = data.get('import_date', False)
-        if import_date:
-            try:
-                import_date = datetime.strptime(
-                    import_date, '%Y%m%d %H:%M:%S %z')
-            except ValueError:
-                raise serializers.ValidationError(
-                    {'import_date': _('Invalid Import date format')}
-                )
+        if 'import_date' in data:
+            import_date = data.get('import_date', False)
+            if import_date:
+                try:
+                    import_date = datetime.strptime(
+                        import_date, '%Y%m%d %H:%M:%S %z')
+                except ValueError:
+                    raise serializers.ValidationError(
+                        {'import_date': _('Invalid Import date format')}
+                    )
 
         file = data.get('csv_file')
         if not file.name.endswith('.csv'):
