@@ -24,7 +24,7 @@ from .utils import get_supplies
 
 class CSVUploadSerializer(serializers.Serializer):
     csv_file = serializers.FileField()
-    import_date = serializers.CharField()
+    import_date = serializers.CharField(required=False)
 
     class Meta:
         fields = (
@@ -33,6 +33,7 @@ class CSVUploadSerializer(serializers.Serializer):
         )
 
     def validate(self, data):
+        print('gnagma?')
         user = self.context.get('request').user
         if hasattr(user, 'organization'):
             organization = user.organization
@@ -43,16 +44,16 @@ class CSVUploadSerializer(serializers.Serializer):
                 {'csv_file': _('No linked organization found for user')}
             )
 
-        if 'import_date' in data:
-            import_date = data.get('import_date', False)
-            if import_date:
-                try:
-                    import_date = datetime.strptime(
-                        import_date, '%Y%m%d %H:%M:%S %z')
-                except ValueError:
-                    raise serializers.ValidationError(
-                        {'import_date': _('Invalid Import date format')}
-                    )
+        import_date = data.get('import_date', False)
+        if import_date:
+            try:
+                import_date = datetime.strptime(
+                    import_date, '%Y%m%d %H:%M:%S %z')
+            except ValueError:
+                print('gna?')
+                raise serializers.ValidationError(
+                    {'import_date': _('Invalid Import date format')}
+                )
 
         file = data.get('csv_file')
         if not file.name.endswith('.csv'):
@@ -73,7 +74,6 @@ class CSVUploadSerializer(serializers.Serializer):
         data['csv_file'] = file
         data['organization_id'] = organization.id
         data['import_date'] = import_date
-
         return data
 
 
