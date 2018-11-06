@@ -29,12 +29,17 @@ class Command(BaseCommand):
                 no_name_provider.related_zipcode_id = provider.related_zipcode_id
                 no_name_provider.start_date = provider.start_date
                 no_name_provider.state = provider.state
-                no_name_provider.store_number = provider.store_number
                 no_name_provider.type_id = provider.type_id
                 no_name_provider.website = provider.website
                 no_name_provider.walkins_accepted = provider.walkins_accepted
                 no_name_provider.zip = provider.zip
                 no_name_provider.save()
+
+                ProviderMedicationNdcThrough.objects.filter(
+                    provider_id=provider.pk).update(provider_id=no_name_provider.pk)
+
+                provider.active = False
+                provider.save()
 
             elif len(no_name_providers) > 1:
                 print("WILL NOT PROCESS PROVIDER ID")
