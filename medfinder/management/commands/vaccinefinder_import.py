@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.core.management.base import BaseCommand
 
 from medications.models import Organization, Provider, ProviderType
@@ -12,56 +14,59 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.import_providers_from_remote_db()
-        self.relate_related_zipcode()
 
-    def relate_related_zipcode(self):
-        organization = Organization.objects.filter(
-            organization_name='Walgreens',
-        )[0]
-        for provider in organization.providers.all():
-            provider.relate_related_zipcode = True
-            provider.save()
+    # def relate_related_zipcode(self, organization):
+    #     organization = Organization.objects.filter(
+    #         organization_name='Walgreens',
+    #     )[0]
+    #     for provider in organization.providers.all():
+    #         provider.relate_related_zipcode = True
+    #         provider.save()
 
     def import_providers_from_remote_db(self):
-        org_id = 102
+        walgreens_id = 102
+        present = datetime.now().replace(tzinfo=None)
 
         provider_type, created = ProviderType.objects.get_or_create(
             code='CO',
             name='Commercial',
         )
 
-        walgreens_org = VFOrg.objects.using('vaccinedb').get(pk=org_id)
+        vaccine_finder_orgs = VFOrg.objects.using(
+            'vaccinedb').exclude(pk=walgreens_id).all()
 
-        organization = Organization.objects.create(
-            contact_name=walgreens_org.contact_name,
-            organization_name=walgreens_org.organization_name,
-            phone=walgreens_org.phone,
-            website=walgreens_org.website
-        )
-
-        for walgreen in walgreens_org.providers.all():
-            provider = Provider.objects.create(
-                address=walgreen.address,
-                city=walgreen.city,
-                email=walgreen.email,
-                end_date=walgreen.end_date,
-                insurance_accepted=(
-                    True if walgreen.insurance_accepted == 'Y' else False),
-                lat=walgreen.lat,
-                lng=walgreen.lon,
-                name=walgreen.name,
-                notes=walgreen.notes,
-                operating_hours=walgreen.operating_hours,
-                organization=organization,
-                phone=walgreen.phone,
-                relate_related_zipcode=True,
-                start_date=walgreen.start_date,
-                state=walgreen.state,
-                store_number=walgreen.store_number,
-                type=provider_type,
-                website=walgreen.website,
-                walkins_accepted=(
-                    True if walgreen.walkins_accepted == 'Y' else False),
-                zip=walgreen.zip,
+        for vaccine_finder_org in vaccine_finder_orgs:
+            organization = Organization.objects.create(
+                contact_name=vaccine_finder_org.contact_name,
+                organization_name=vaccine_finder_org.organization_name,
+                phone=vaccine_finder_org.phone,
+                website=vaccine_finder_org.website
             )
-            print(provider.pk)
+
+            for vaccine_finder_provider in vaccine_finder_org.providers.all():
+                provider = Provider.objects.create(
+                    address=vaccine_finder_provider.address,
+                    city=vaccine_finder_provider.city,
+                    email=vaccine_finder_provider.email,
+                    end_date=vaccine_finder_provider.end_date,
+                    insurance_accepted=(
+                        True if vaccine_finder_provider.insurance_accepted == 'Y' else False),
+                    lat=vaccine_finder_provider.lat,
+                    lng=vaccine_finder_provider.lon,
+                    name=vaccine_finder_provider.name,
+                    notes=vaccine_finder_provider.notes,
+                    operating_hours=vaccine_finder_provider.operating_hours,
+                    organization=organization,
+                    phone=vaccine_finder_provider.phone,
+                    relate_related_zipcode=True,
+                    start_date=vaccine_finder_provider.start_date,
+                    state=vaccine_finder_provider.state,
+                    store_number=vaccine_finder_provider.store_number,
+                    type=provider_type,
+                    website=vaccine_finder_provider.website,
+                    active=(present < vaccine_finder_provider.end_date),
+                    walkins_accepted=(
+                        True if vaccine_finder_provider.walkins_accepted == 'Y' else False),
+                    zip=vaccine_finder_provider.zip,
+                )
+                print(provider.pk)

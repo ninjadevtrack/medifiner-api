@@ -160,6 +160,10 @@ class ZipCode(models.Model):
     class Meta:
         verbose_name = _('zip code')
         verbose_name_plural = _('zip codes')
+        indexes = [
+            models.Index(fields=['zipcode']),
+            models.Index(fields=['state_id']),
+        ]
 
     def __str__(self):
         return '{} - {}'.format(self.zipcode, self.state)
@@ -369,6 +373,10 @@ class Provider(models.Model):
     class Meta:
         verbose_name = _('provider')
         verbose_name_plural = _('providers')
+        indexes = [
+            models.Index(fields=['address', 'city', 'organization_id', 'phone',
+                                 'related_zipcode_id', 'state', 'store_number', 'zip'])
+        ]
 
     def __str__(self):
         return '{} - store number: {}'.format(

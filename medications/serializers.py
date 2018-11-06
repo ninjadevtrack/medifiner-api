@@ -50,7 +50,7 @@ class CSVUploadSerializer(serializers.Serializer):
                     import_date, '%Y%m%d %H:%M:%S %z')
             except ValueError:
                 raise serializers.ValidationError(
-                    {'import_date': _('Import date format invalid')}
+                    {'import_date': _('Invalid Import date format')}
                 )
 
         file = data.get('csv_file')
