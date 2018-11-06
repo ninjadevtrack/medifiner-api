@@ -33,7 +33,6 @@ class CSVUploadSerializer(serializers.Serializer):
         )
 
     def validate(self, data):
-        print('gnagma?')
         user = self.context.get('request').user
         if hasattr(user, 'organization'):
             organization = user.organization
@@ -50,7 +49,6 @@ class CSVUploadSerializer(serializers.Serializer):
                 import_date = datetime.strptime(
                     import_date, '%Y%m%d %H:%M:%S %z')
             except ValueError:
-                print('gna?')
                 raise serializers.ValidationError(
                     {'import_date': _('Invalid Import date format')}
                 )

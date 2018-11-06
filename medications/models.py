@@ -563,9 +563,9 @@ class ProviderMedicationNdcThrough(models.Model):
         if not self.medication_ndc:
             raise IntegrityError(_('Medication NDC object must be provided'))
         if self.creation_date is None:
-            self.creation_date = datetime.datetime.now()
+            self.creation_date = datetime.now()
         if self.last_modified is None:
-            self.last_modified = datetime.datetime.now()
+            self.last_modified = datetime.now()
         supply_to_level_map = {
             '<24': 1,
             '24': 2,

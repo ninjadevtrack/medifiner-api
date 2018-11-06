@@ -17,7 +17,7 @@ def provider_medication_through_post_save(sender, instance, **kwargs):
             lambda:
             handle_provider_medication_through_post_save_signal.apply_async(
                 args=(instance.pk, instance.provider.pk,
-                      instance.medication_ndc.pk, instance.latest),
+                      instance.medication_ndc.pk),
                 queue='signals',
             )
         )
