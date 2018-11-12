@@ -562,10 +562,12 @@ class ProviderMedicationNdcThrough(models.Model):
         # Using a simple map for now, according to the specs
         if not self.medication_ndc:
             raise IntegrityError(_('Medication NDC object must be provided'))
-        if self.creation_date is None:
-            self.creation_date = datetime.now()
-        if self.last_modified is None:
-            self.last_modified = datetime.now()
+        if self.creation_date is None or self.last_modified is None:
+            now = timezone.now()
+            if self.creation_date is None:
+                self.creation_date = now
+            if self.last_modified is None:
+                self.last_modified = now
         supply_to_level_map = {
             '<24': 1,
             '24': 2,

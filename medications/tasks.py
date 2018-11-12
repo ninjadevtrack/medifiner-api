@@ -82,16 +82,10 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
                 except ZipCode.DoesNotExist:
                     zipcode_obj = None
                 # TODO: type and category? Home delivery info?
+                default_provider_data = {'phone': phone, 'city': city, 'state': state,
+                                         'address': address, 'zip': zip_code, 'related_zipcode': zipcode_obj}
                 provider, created = Provider.objects.get_or_create(
-                    organization=organization,
-                    store_number=store_number,
-                    address=address,
-                    city=city,
-                    zip=zip_code,
-                    state=state,
-                    phone=phone,
-                    related_zipcode=zipcode_obj,
-                )
+                    organization=organization, store_number=store_number, active=True, defaults=default_provider_data)
 
             if not medication_ndc or (medication_ndc.ndc != ndc_code):
                 # Will do the same check as in provider
