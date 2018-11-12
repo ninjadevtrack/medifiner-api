@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Count
+from rest_framework.response import Response
 from django.utils.translation import ugettext_lazy as _
 
 from rest_registration.exceptions import BadRequest
 
+from rest_framework.views import APIView
 from rest_framework.generics import (
     ListAPIView,
 )
@@ -113,12 +115,12 @@ def get_provider_medication_queryset(query_params, state_id=None, zipcode=None):
     return provider_medication_ids
 
 
-class HistoricAverageNationalLevelView(ListAPIView):
-    serializer_class = AverageSupplyLevelSerializer
+class HistoricAverageNationalLevelView(APIView):
+    # serializer_class = AverageSupplyLevelSerializer
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
 
-    def get_queryset(self):
+    def get(self, request):
         '''
         query_params:
             - med_id: MedicationName id
@@ -129,10 +131,10 @@ class HistoricAverageNationalLevelView(ListAPIView):
             - provider_type: list of ProviderType ids
             - drug_type: list of 1 character str, for drug_type in Medication
         '''
-        med_id = self.request.query_params.get('med_id')
-        query_params = self.request.query_params
-        start_date = self.request.query_params.get('start_date')
-        end_date = self.request.query_params.get('end_date')
+        med_id = request.query_params.get('med_id')
+        query_params = request.query_params
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
 
         try:
             if not med_id or int(
@@ -155,21 +157,19 @@ class HistoricAverageNationalLevelView(ListAPIView):
         provider_medication_ids = get_provider_medication_queryset(
             query_params,
         )
-        qs = Medication.objects.filter(
-            ndc_codes__provider_medication__id__in=provider_medication_ids,
-        ).prefetch_related(
-            Prefetch(
-                'ndc_codes__provider_medication',
-                queryset=ProviderMedicationNdcThrough.objects.filter(
-                    creation_date__gte=start_date,
-                    creation_date__lte=end_date + timedelta(days=1),
-                    # We add 1 day cause we want to check the medications
-                    # supplies in end_date until 23:59:59 which in practice
-                    # is next day 00:00:00
-                ),
-            )
-        ).distinct()
-        return qs
+        qs = ProviderMedicationNdcThrough.objects.filter(
+            id__in=provider_medication_ids,
+            creation_date__gte=start_date,
+            creation_date__lte=end_date + timedelta(days=1),
+        ).values(
+            'medication_ndc_id',
+            'medication_ndc__medication__name',
+            'level',
+            'creation_date',
+        )
+        context = {'request': request}
+        data = AverageSupplyLevelSerializer(context=context).to_representation(qs)
+        return Response(data)
 
 
 class HistoricAverageStateLevelView(ListAPIView):
@@ -227,7 +227,7 @@ class HistoricAverageStateLevelView(ListAPIView):
                 queryset=ProviderMedicationNdcThrough.objects.filter(
                     creation_date__gte=start_date,
                     creation_date__lte=end_date + timedelta(days=1),
-                )
+                ).only('creation_date', 'level'),
             )
         ).distinct()
         return qs
