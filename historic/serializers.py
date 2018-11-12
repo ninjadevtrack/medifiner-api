@@ -39,12 +39,34 @@ class AverageSupplyLevelSerializer(serializers.Serializer):
 
             aggregated_data[medication_name][creation_date][level] += count_for_level
 
+        date_format = '%Y-%m-%d'
+
+        start_date = self.context[
+            'request'
+        ].query_params.get('start_date')
+        start_date = datetime.datetime.strptime(
+            start_date,
+            date_format,
+        )
+
+        end_date = self.context[
+            'request'
+        ].query_params.get('end_date')
+        end_date = datetime.datetime.strptime(
+            end_date,
+            date_format,
+        )
+
         api_data = []
         for med_name, med_data in aggregated_data.items():
             formatted_data = {}
             formatted_data["name"] = med_name
             formatted_data["average_supply_per_day"] = []
-            for date, supply_levels in med_data.items():
+            for date in daterange(start_date, end_date, inclusive=True):
+                formatted_date = date.strftime(
+                    '%Y-%m-%d')
+                supply_levels = med_data[formatted_date] if formatted_date in med_data else {
+                }
                 no_supply = supply_levels[0] if 0 in supply_levels else 0
                 low = supply_levels[1] if 1 in supply_levels else 0
                 medium = supply_levels[3] if 3 in supply_levels else 0
@@ -209,13 +231,38 @@ class OverallSupplyLevelSerializer(serializers.Serializer):
 
             aggregated_data[creation_date][level] = count_for_level
 
+        date_format = '%Y-%m-%d'
+
+        start_date = self.context[
+            'request'
+        ].query_params.get('start_date')
+        start_date = datetime.datetime.strptime(
+            start_date,
+            date_format,
+        )
+
+        end_date = self.context[
+            'request'
+        ].query_params.get('end_date')
+        end_date = datetime.datetime.strptime(
+            end_date,
+            date_format,
+        )
+
         api_data = []
-        for date, date_data in aggregated_data.items():
+
+        for date in daterange(start_date, end_date, inclusive=True):
             formatted_data = {}
-            formatted_data["day"] = date
-            low = date_data[1]
-            medium = date_data[3]
-            high = date_data[4]
+            formatted_date = date.strftime(
+                '%Y-%m-%d')
+            formatted_data["day"] = formatted_date
+
+            date_data = aggregated_data[formatted_date] if formatted_date in aggregated_data else {
+            }
+
+            low = date_data[1] if 1 in date_data else 0
+            medium = date_data[3] if 3 in date_data else 0
+            high = date_data[4] if 4 in date_data else 0
             total = low + medium + high
             formatted_data["supply"] = {
                 "low": percentage(low, total),
