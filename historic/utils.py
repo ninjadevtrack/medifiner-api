@@ -15,8 +15,8 @@ def daterange(start, stop, step=timedelta(days=1), inclusive=False):
         yield start
 
 
-def percentage(part, whole):
-    return 100 * float(part) / float(whole)
+def percentage(part, total):
+    return 100 * float(part) / float(total) if total > 0 else 0
 
 
 def get_overall(supply_levels):
