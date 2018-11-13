@@ -150,12 +150,12 @@ class HistoricAverageNationalLevelView(APIView):
                 'id',
                 flat=True,
             ):
-                raise BadRequest(_('Wrong med_id in the request.'))
+                raise BadRequest(_('med_id not found'))
         except ValueError:
-            raise BadRequest(_('Wrong med_id in the request.'))
+            raise BadRequest(_('med_id not found'))
 
         if not (start_date and end_date):
-            raise BadRequest(_('You must provide start_date and end_date.'))
+            raise BadRequest(_('start_date and end_date required'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
@@ -220,7 +220,7 @@ class HistoricAverageStateLevelView(APIView):
         if not state_id:
             raise BadRequest(_('No state_id in the request'))
         try:
-                State.objects.get(id=state_id)
+            State.objects.get(id=state_id)
         except State.DoesNotExist:
             raise BadRequest(_('The state_id in the request does not exist'))
 
@@ -236,12 +236,12 @@ class HistoricAverageStateLevelView(APIView):
                 'id',
                 flat=True,
             ):
-                raise BadRequest(_('Wrong med_id in the request.'))
+                raise BadRequest(_('med_id not found'))
         except ValueError:
-            raise BadRequest(_('Wrong med_id in the request.'))
+            raise BadRequest(_('med_id not found'))
 
         if not (start_date and end_date):
-            raise BadRequest(_('You must provide start_date and end_date.'))
+            raise BadRequest(_('start_date and end_date required'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
@@ -307,7 +307,7 @@ class HistoricAverageZipCodeLevelView(APIView):
         if not zipcode:
             raise BadRequest(_('No zipcode in the request.'))
         try:
-                ZipCode.objects.get(zipcode=zipcode)
+            ZipCode.objects.get(zipcode=zipcode)
         except ZipCode.DoesNotExist:
             raise BadRequest(_('The zipcode in the request does not exist.'))
 
@@ -328,7 +328,7 @@ class HistoricAverageZipCodeLevelView(APIView):
             raise BadRequest(_('Wrong med_id in the request'))
 
         if not (start_date and end_date):
-            raise BadRequest(_('You must provide start_date and end_date.'))
+            raise BadRequest(_('start_date and end_date required'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
@@ -402,12 +402,12 @@ class HistoricOverallNationalLevelView(APIView):
                 'id',
                 flat=True,
             ):
-                raise BadRequest(_('Wrong med_id in the request.'))
+                raise BadRequest(_('med_id not found'))
         except ValueError:
-            raise BadRequest(_('Wrong med_id in the request.'))
+            raise BadRequest(_('med_id not found'))
 
         if not (start_date and end_date):
-            raise BadRequest(_('You must provide start_date and end_date.'))
+            raise BadRequest(_('start_date and end_date required'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
@@ -464,7 +464,7 @@ class HistoricOverallStateLevelView(APIView):
         if not state_id:
             raise BadRequest(_('No state_id in the request'))
         try:
-                State.objects.get(id=state_id)
+            State.objects.get(id=state_id)
         except State.DoesNotExist:
             raise BadRequest(_('The state_id in the request does not exist'))
 
@@ -480,12 +480,12 @@ class HistoricOverallStateLevelView(APIView):
                 'id',
                 flat=True,
             ):
-                raise BadRequest(_('Wrong med_id in the request.'))
+                raise BadRequest(_('med_id not found'))
         except ValueError:
-            raise BadRequest(_('Wrong med_id in the request.'))
+            raise BadRequest(_('med_id not found'))
 
         if not (start_date and end_date):
-            raise BadRequest(_('You must provide start_date and end_date.'))
+            raise BadRequest(_('start_date and end_date required'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
@@ -543,7 +543,7 @@ class HistoricOverallZipCodeLevelView(APIView):
         if not zipcode:
             raise BadRequest(_('No zipcode in the request.'))
         try:
-                ZipCode.objects.get(zipcode=zipcode)
+            ZipCode.objects.get(zipcode=zipcode)
         except ZipCode.DoesNotExist:
             raise BadRequest(_('The zipcode in the request does not exist.'))
 
@@ -559,12 +559,12 @@ class HistoricOverallZipCodeLevelView(APIView):
                 'id',
                 flat=True,
             ):
-                raise BadRequest(_('Wrong med_id in the request.'))
+                raise BadRequest(_('med_id not found'))
         except ValueError:
-            raise BadRequest(_('Wrong med_id in the request.'))
+            raise BadRequest(_('med_id not found'))
 
         if not (start_date and end_date):
-            raise BadRequest(_('You must provide start_date and end_date.'))
+            raise BadRequest(_('start_date and end_date required'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
