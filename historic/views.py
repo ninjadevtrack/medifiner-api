@@ -1,22 +1,18 @@
 from datetime import datetime, timedelta
 
-from django.db.models import Prefetch, Count, DateField
+from django.db.models import Count, DateField
 from rest_framework.response import Response
 from django.utils.translation import ugettext_lazy as _
 
-from django.db.models import Avg, Count, Sum
 from django.db.models.functions import Cast
 
 from rest_registration.exceptions import BadRequest
 
 from rest_framework.views import APIView
-from rest_framework.generics import (
-    ListAPIView,
-)
+
 from rest_framework.permissions import IsAuthenticated
 
 from medications.models import (
-    Medication,
     MedicationName,
     MedicationNdc,
     Provider,
@@ -27,7 +23,6 @@ from medications.models import (
 from .serializers import (
     AverageSupplyLevelSerializer,
     OverallSupplyLevelSerializer,
-    OverallSupplyLevelZipCodeSerializer,
 )
 
 
@@ -293,7 +288,7 @@ class HistoricAverageStateLevelView(APIView):
         return Response({"medication_supplies": data})
 
 
-class HistoricAverageZipCodeLevelView(ListAPIView):
+class HistoricAverageZipCodeLevelView(APIView):
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
     lookup_field = 'zipcode'
@@ -381,7 +376,6 @@ class HistoricAverageZipCodeLevelView(ListAPIView):
 
 
 class HistoricOverallNationalLevelView(APIView):
-    # serializer_class = OverallSupplyLevelSerializer
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
 
@@ -401,25 +395,27 @@ class HistoricOverallNationalLevelView(APIView):
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
 
-        # TODO: FIX THIS
-        # try:
-        #     if not med_id or int(
-        #         med_id
-        #     ) not in MedicationName.objects.values_list(
-        #         'id',
-        #         flat=True,
-        #     ):
-        #         return MedicationName.objects.none()
-        # except ValueError:
-        #     return MedicationName.objects.none()
-        # if not (start_date and end_date):
-        #     return MedicationName.objects.none()
+        try:
+            if not med_id or int(
+                med_id
+            ) not in MedicationName.objects.values_list(
+                'id',
+                flat=True,
+            ):
+                raise BadRequest(_('Wrong med_id in the request.'))
+        except ValueError:
+            raise BadRequest(_('Wrong med_id in the request.'))
 
+        if not (start_date and end_date):
+            raise BadRequest(_('You must provide start_date and end_date.'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
         except ValueError as e:
             raise BadRequest(_('Incorrect date: {}').format(e))
+
+        if end_date <= start_date:
+            raise BadRequest(_('start_date must precede end_date.'))
 
         # 1 - Find list of medication_ndc_ids
         medication_ndc_ids = get_medication_ndc_ids(query_params)
@@ -427,7 +423,8 @@ class HistoricOverallNationalLevelView(APIView):
         # 2 - Find list of provider_ids
         provider_ids = get_provider_ids(query_params)
 
-        # 3 - Query ProviderMedicationNdcThrough to find count of supply levels per date
+        # 3 - Query ProviderMedicationNdcThrough to
+        # find count of supply levels per date
         provider_medication_ndcs = ProviderMedicationNdcThrough.objects.filter(
             medication_ndc_id__in=medication_ndc_ids,
             provider_id__in=provider_ids,
@@ -444,18 +441,17 @@ class HistoricOverallNationalLevelView(APIView):
         context = {'request': request}
         data = OverallSupplyLevelSerializer(
             context=context).to_representation(provider_medication_ndcs)
-        return Response({"medication_supplies": [{'overall_supply_per_day': data}]})
+        return Response(
+            {"medication_supplies": [{'overall_supply_per_day': data}]}
+        )
 
 
-class HistoricOverallStateLevelView(ListAPIView):
-    serializer_class = OverallSupplyLevelSerializer
+class HistoricOverallStateLevelView(APIView):
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
 
-    def get_queryset(self):
+    def get(self, request, state_id=None):
         '''
-        kwargs: state_id
-
         query_params:
             - med_id: MedicationName id
             - start_date: Date str to start filter
@@ -465,11 +461,18 @@ class HistoricOverallStateLevelView(ListAPIView):
             - provider_type: list of ProviderType ids
             - drug_type: list of 1 character str, for drug_type in Medication
         '''
-        state_id = self.kwargs.get('state_id')
+        if not state_id:
+            raise BadRequest(_('No state_id in the request'))
+        try:
+                State.objects.get(id=state_id)
+        except State.DoesNotExist:
+            raise BadRequest(_('The state_id in the request does not exist'))
+
         query_params = self.request.query_params
         med_id = self.request.query_params.get('med_id')
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
+
         try:
             if not med_id or int(
                 med_id
@@ -477,54 +480,57 @@ class HistoricOverallStateLevelView(ListAPIView):
                 'id',
                 flat=True,
             ):
-                return MedicationName.objects.none()
+                raise BadRequest(_('Wrong med_id in the request.'))
         except ValueError:
-            return MedicationName.objects.none()
-        if not (start_date and end_date):
-            return MedicationName.objects.none()
+            raise BadRequest(_('Wrong med_id in the request.'))
 
+        if not (start_date and end_date):
+            raise BadRequest(_('You must provide start_date and end_date.'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
         except ValueError as e:
             raise BadRequest(_('Incorrect date: {}').format(e))
 
-        provider_medication_ids = get_provider_medication_queryset(
-            query_params,
-            state_id=state_id,
+        if end_date <= start_date:
+            raise BadRequest(_('start_date must precede end_date.'))
+
+        # 1 - Find list of medication_ndc_ids
+        medication_ndc_ids = get_medication_ndc_ids(query_params)
+
+        # 2 - Find list of provider_ids
+        provider_ids = get_provider_ids(query_params, state_id=state_id)
+
+        # 3 - Query ProviderMedicationNdcThrough to
+        # find count of supply levels per date
+        provider_medication_ndcs = ProviderMedicationNdcThrough.objects.filter(
+            medication_ndc_id__in=medication_ndc_ids,
+            provider_id__in=provider_ids,
+            creation_date__gte=start_date,
+            creation_date__lte=end_date + timedelta(days=1),
+        ).distinct(
+        ).values(
+            'level'
+        ).annotate(
+            count_for_level=Count('level'),
+            creation_date_only=Cast('creation_date', DateField())
+        ).order_by('creation_date_only')
+
+        context = {'request': request}
+        data = OverallSupplyLevelSerializer(
+            context=context).to_representation(provider_medication_ndcs)
+        return Response(
+            {"medication_supplies": [{'overall_supply_per_day': data}]}
         )
-        qs = MedicationName.objects.filter(
-            id=med_id,
-        ).prefetch_related(
-            Prefetch(
-                'medications',
-                queryset=Medication.objects.filter(
-                    ndc_codes__provider_medication__id__in=provider_medication_ids,  # noqa
-                ).prefetch_related(
-                    Prefetch(
-                        'ndc_codes__provider_medication',
-                        queryset=ProviderMedicationNdcThrough.objects.filter(
-                            id__in=provider_medication_ids,
-                            creation_date__gte=start_date,
-                            creation_date__lte=end_date + timedelta(days=1),
-                        )
-                    )
-                ).distinct()
-            ),
-        )
-        return qs
 
 
-class HistoricOverallZipCodeLevelView(ListAPIView):
-    serializer_class = OverallSupplyLevelZipCodeSerializer
+class HistoricOverallZipCodeLevelView(APIView):
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
     lookup_field = 'zipcode'
 
-    def get_queryset(self):
+    def get(self, request, zipcode=None):
         '''
-        kwargs: zipcode
-
         query_params:
             - med_id: MedicationName id
             - start_date: Date str to start filter
@@ -534,12 +540,18 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
             - provider_type: list of ProviderType ids
             - drug_type: list of 1 character str, for drug_type in Medication
         '''
-        zipcode = self.kwargs.get('zipcode')
-        self.request.data['zipcode'] = zipcode
+        if not zipcode:
+            raise BadRequest(_('No zipcode in the request.'))
+        try:
+                ZipCode.objects.get(zipcode=zipcode)
+        except ZipCode.DoesNotExist:
+            raise BadRequest(_('The zipcode in the request does not exist.'))
+
         query_params = self.request.query_params
         med_id = self.request.query_params.get('med_id')
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
+
         try:
             if not med_id or int(
                 med_id
@@ -547,41 +559,45 @@ class HistoricOverallZipCodeLevelView(ListAPIView):
                 'id',
                 flat=True,
             ):
-                return MedicationName.objects.none()
+                raise BadRequest(_('Wrong med_id in the request.'))
         except ValueError:
-            return MedicationName.objects.none()
-        if not (start_date and end_date):
-            return MedicationName.objects.none()
+            raise BadRequest(_('Wrong med_id in the request.'))
 
+        if not (start_date and end_date):
+            raise BadRequest(_('You must provide start_date and end_date.'))
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').astimezone()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').astimezone()
         except ValueError as e:
             raise BadRequest(_('Incorrect date: {}').format(e))
 
-        provider_medication_ids = get_provider_medication_queryset(
-            query_params,
-            zipcode=zipcode,
-        )
+        if end_date <= start_date:
+            raise BadRequest(_('start_date must precede end_date.'))
 
-        qs = MedicationName.objects.filter(
-            id=med_id,
-        ).prefetch_related(
-            Prefetch(
-                'medications',
-                queryset=Medication.objects.filter(
-                    ndc_codes__provider_medication__id__in=provider_medication_ids,  # noqa
-                ).prefetch_related(
-                    Prefetch(
-                        'ndc_codes__provider_medication',
-                        queryset=ProviderMedicationNdcThrough.objects.filter(
-                            id__in=provider_medication_ids,
-                            creation_date__gte=start_date,
-                            creation_date__lte=end_date + timedelta(days=1),
-                        )
-                    )
-                ).distinct()
-            ),
-        )
+        # 1 - Find list of medication_ndc_ids
+        medication_ndc_ids = get_medication_ndc_ids(query_params)
 
-        return qs
+        # 2 - Find list of provider_ids
+        provider_ids = get_provider_ids(query_params, zipcode=zipcode)
+
+        # 3 - Query ProviderMedicationNdcThrough to
+        # find count of supply levels per date
+        provider_medication_ndcs = ProviderMedicationNdcThrough.objects.filter(
+            medication_ndc_id__in=medication_ndc_ids,
+            provider_id__in=provider_ids,
+            creation_date__gte=start_date,
+            creation_date__lte=end_date + timedelta(days=1),
+        ).distinct(
+        ).values(
+            'level'
+        ).annotate(
+            count_for_level=Count('level'),
+            creation_date_only=Cast('creation_date', DateField())
+        ).order_by('creation_date_only')
+
+        context = {'request': request}
+        data = OverallSupplyLevelSerializer(
+            context=context).to_representation(provider_medication_ndcs)
+        return Response(
+            {"medication_supplies": [{'overall_supply_per_day': data}]}
+        )
