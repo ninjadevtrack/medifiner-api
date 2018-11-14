@@ -1,5 +1,7 @@
 from rest_framework import permissions
 
+from .models import ZipCode
+
 
 class NationalLevel(permissions.BasePermission):
     message = 'This user has not national level permission'
@@ -44,10 +46,10 @@ class SelfZipCodePermissionLevel(permissions.BasePermission):
                 request.user.permission_level == request.user.NATIONAL_LEVEL
             )
         )
-        user_state = getattr(request.user, 'state', None)
+        user_state_id = getattr(request.user, 'state_id', None)
         user_zipcodes = []
-        if user_state:
-            user_zipcodes = user_state.state_zipcodes.values_list(
+        if user_state_id:
+            user_zipcodes = ZipCode.objects.filter(state_id=user_state_id).values_list(
                 'zipcode',
                 flat=True,
             )
