@@ -4,7 +4,7 @@ from .models import ZipCode
 
 
 class NationalLevel(permissions.BasePermission):
-    message = 'This user has not national level permission'
+    message = 'National level permission required'
 
     def has_permission(self, request, view):
         return (
@@ -17,7 +17,7 @@ class NationalLevel(permissions.BasePermission):
 
 
 class SelfStatePermissionLevel(permissions.BasePermission):
-    message = 'This user has not state level permission for this state'
+    message = 'State level permission required for state'
 
     def has_permission(self, request, view):
         super_permission = (
@@ -36,7 +36,7 @@ class SelfStatePermissionLevel(permissions.BasePermission):
 
 
 class SelfZipCodePermissionLevel(permissions.BasePermission):
-    message = 'This user has no permission to check this zipcode'
+    message = 'State level permission required for zipcode'
 
     def has_permission(self, request, view):
         super_permission = (
