@@ -141,26 +141,26 @@ class StateViewSet(viewsets.ModelViewSet):
     allowed_methods = ['GET']
 
     def get_queryset(self):
-        user_state = getattr(self.request.user, 'state', None)
-        if user_state and \
-           self.request.user.permission_level == self.request.user.STATE_LEVEL:
-            states_qs = State.objects.filter(id=user_state.id)
-        elif not user_state and \
-            self.request.user.permission_level == \
-                self.request.user.STATE_LEVEL:
-            msg = _(
-                'This user has not national level permission '
-                'and no attached state'
-            )
-            raise BadRequest(msg)
-        else:
-            states_qs = State.objects.all()
+        states_qs = State.objects.all()
+
+        if self.request.user.permission_level == self.request.user.STATE_LEVEL:
+            user_state = getattr(self.request.user, 'state', None)
+            if user_state:
+                states_qs = State.objects.filter(id=user_state.id)
+            else:
+                msg = _(
+                    'This user has not national level permission '
+                    'and no attached state'
+                )
+                raise BadRequest(msg)
+
         ordering = self.request.query_params.get('ordering')
         if ordering and ('name' == ordering.replace('-', '')):
             if ordering.startswith('-'):
                 states_qs = states_qs.order_by('-state_name')
             else:
                 states_qs = states_qs.order_by('state_name')
+
         return states_qs.annotate(
             county_list=ArrayAgg('counties__county_name'),
         )
