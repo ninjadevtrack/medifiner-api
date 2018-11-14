@@ -43,6 +43,7 @@ class Command(BaseCommand):
                 website=vaccine_finder_org.website
             )
 
+            count = 0
             for vaccine_finder_provider in vaccine_finder_org.providers.all():
                 provider = Provider.objects.create(
                     address=vaccine_finder_provider.address,
@@ -64,9 +65,14 @@ class Command(BaseCommand):
                     store_number=vaccine_finder_provider.store_number,
                     type=provider_type,
                     website=vaccine_finder_provider.website,
-                    active=(present < vaccine_finder_provider.end_date),
+                    active=False,
                     walkins_accepted=(
                         True if vaccine_finder_provider.walkins_accepted == 'Y' else False),
                     zip=vaccine_finder_provider.zip,
                 )
-                print(provider.pk)
+                count += 1
+
+            print("------------------------------------")
+            print("Imported")
+            print(vaccine_finder_org.organization_name)
+            print(count)
