@@ -163,41 +163,33 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
         est_finnish_time = datetime.now(tz)
 
         if lost_ndcs:
-
             msg_plain = (
-                'Completion date time: {}<br>'
-                'Duration: {} minutes<br>'
-                'Status: {} rows processed. Following CSV entries were not imported:<br>'
+                'Completion date time: {}\n'
+                'Duration: {} minutes\n'
+                'Status: {} rows processed\n',
+                '{} CSV entries were not imported\n',
             ).format(
                 est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
                 index,
-            )
-            for medication, ndc in lost_ndcs:
-                msg_plain += 'Med Name: {} -- Med Code: {}<br>'.format(
-                    medication, ndc)
-            send_mail(
-                'MedFinder Import Status',
-                msg_plain,
-                settings.FROM_EMAIL,
-                [email_to],
+                len(lost_ndcs),
             )
         else:
             msg_plain = (
-                'Status: {} CSV rows correctly imported.<br>'
-                'Completion date time: {}<br>'
-                'Duration: {} minutes'
+                'Completion date time: {}\n'
+                'Duration: {} minutes\n'
+                'Status: {} CSV rows correctly imported.\n',
             ).format(
-                index,
                 est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
+                index,
             )
-            send_mail(
-                'MedFinder Import Status',
-                msg_plain,
-                settings.FROM_EMAIL,
-                [email_to],
-            )
+        send_mail(
+            'MedFinder Import Status',
+            msg_plain,
+            settings.FROM_EMAIL,
+            [email_to],
+        )
 
 
 # Task that handles the post_save signal asynchronously
