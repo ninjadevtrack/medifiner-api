@@ -157,8 +157,15 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         """
         Add GeoJSON compatible formatting to a serialized queryset list
         """
-        if not hasattr(data[0], 'medication_levels'):
-            state_obj = data[0].state
+
+        if data:
+            state_data = data[0]
+            center = json.loads(state_data.centroid) if data else ''
+        else:
+            center = ''
+
+        if not hasattr(state_data, 'medication_levels'):
+            state_obj = state_data.state
             state = {
                 'name': state_obj.state_name,
                 'id': state_obj.id,
@@ -168,19 +175,17 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
             return OrderedDict((
                 ("type", "FeatureCollection"),
                 ("zoom", settings.ZOOM_STATE),
-                ("center", json.loads(data[0].centroid) if data else ''),
+                ("center", center),
                 ("state", state),
                 ("features", [])
             ))
-        medication_levels_list = data.values_list(
-            'medication_levels',
-            flat=True,
-        )
+
         flatten_medications_levels = [
-            item for sublist in medication_levels_list for item in sublist
+            item for entry in data for item in entry.medication_levels
         ]
+
         supplies, supply = get_supplies(flatten_medications_levels)
-        state_obj = data[0].state
+        state_obj = state_data.state
         state = {
             'name': state_obj.state_name,
             'id': state_obj.id,
@@ -192,7 +197,7 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         return OrderedDict((
             ("type", "FeatureCollection"),
             ("zoom", settings.ZOOM_STATE),
-            ("center", json.loads(data[0].centroid) if data else ''),
+            ("center", center),
             ("state", state),
             ("features", super().to_representation(data))
         ))
@@ -262,9 +267,8 @@ class GeoJSONWithMedicationsSerializer(serializers.ModelSerializer):
         # required geometry attribute
         # MUST be present in output according to GeoJSON spec
 
-        feature["geometry"] = \
-            json.loads(
-                instance.geometry.geojson
+        feature["geometry"] = json.loads(
+            instance.geometry.geojson
         ) if instance.geometry else None
 
         # GeoJSON properties
