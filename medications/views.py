@@ -7,7 +7,6 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
 from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned
-from django.db.models import IntegerField, Case, When, Sum, Count, Value as V
 
 from django.utils.translation import ugettext_lazy as _
 
@@ -40,7 +39,6 @@ from .models import (
     County,
     MedicationName,
     Organization,
-    Provider,
     ProviderMedicationNdcThrough,
     ProviderType,
     ProviderCategory,
@@ -516,11 +514,9 @@ class ProviderTypesView(ListAPIView):
             qs = qs.filter(
                 providers__zip=zipcode,
             )
-
-        qs = qs.annotate(
-            providers_count=Count('providers')
+        qs = qs.distinct().annotate(
+            providers_count=Count('providers'),
         )
-
         return qs
 
 

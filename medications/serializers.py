@@ -347,17 +347,6 @@ class ProviderTypesAndCategoriesSerializer(serializers.ModelSerializer):
         return obj.providers_count
 
 
-class ProviderCategoriesSerializer(serializers.ModelSerializer):
-    providers_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ProviderType
-        fields = ('id', 'code', 'name', 'providers_count')
-
-    def get_providers_count(self, obj):
-        return obj.providers_count
-
-
 class OrganizationSerializer(serializers.ModelSerializer):
 
     class Meta:
