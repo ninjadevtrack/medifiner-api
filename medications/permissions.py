@@ -25,11 +25,11 @@ class SelfStatePermissionLevel(permissions.BasePermission):
                 request.user.permission_level == request.user.NATIONAL_LEVEL
             )
         )
-        user_state = getattr(request.user, 'state', None)
+        user_state_id = getattr(request.user, 'state_id', None)
         view_state = view.kwargs.get('state_id')
         state_permission = False
-        if user_state:
-            state_permission = user_state.id == view_state
+        if user_state_id:
+            state_permission = user_state_id == view_state
         return super_permission or state_permission
 
 
