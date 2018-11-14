@@ -7,7 +7,7 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
 from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned
-from django.db.models import IntegerField, Case, When, Sum, Value as V
+from django.db.models import IntegerField, Case, When, Sum, Count, Value as V
 
 from django.utils.translation import ugettext_lazy as _
 
@@ -40,12 +40,14 @@ from .models import (
     County,
     MedicationName,
     Organization,
+    Provider,
     ProviderMedicationNdcThrough,
     ProviderType,
     ProviderCategory,
     State,
     ZipCode,
     Medication,
+    MedicationNdc,
 )
 
 from .permissions import (
@@ -445,24 +447,11 @@ class ProviderTypesView(ListAPIView):
         except ValueError:
             return None
 
-        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
-            latest=True,
-            medication_ndc__medication__medication_name__id=med_id,
-            provider__active=True,
-        )
+        med_ndc_qs = MedicationNdc.objects.all()
 
-        if state_id and not zipcode:
-            # If we have zipcode we dont take into account the state
-            try:
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__related_zipcode__state__id=int(state_id),
-                )
-            except ValueError:
-                pass
-
-        if zipcode:
-            provider_medication_qs = provider_medication_qs.filter(
-                provider__zip=zipcode,
+        if med_id:
+            med_ndc_qs = med_ndc_qs.filter(
+                medication__medication_name__id=med_id,
             )
 
         # We take the formulation ids and transform them to use like filter
@@ -478,8 +467,8 @@ class ProviderTypesView(ListAPIView):
             except ValueError:
                 pass
         if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication_ndc__medication__id__in=formulation_ids,
+            med_ndc_qs = med_ndc_qs.filter(
+                medication__id__in=formulation_ids,
             )
 
         # Now we check if there is a list of drug types to filter
@@ -490,28 +479,48 @@ class ProviderTypesView(ListAPIView):
         if drug_type_list:
             try:
                 drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication_ndc__medication__drug_type__in=drug_type_list,
+                med_ndc_qs = med_ndc_qs.filter(
+                    medication__drug_type__in=drug_type_list,
                 )
             except ValueError:
                 pass
 
-        provider_medication_ids = provider_medication_qs.values_list(
+        med_ndc_ids = med_ndc_qs.values_list(
             'id',
             flat=True,
         )
-        qs = self.Meta.model.objects.all().annotate(
-            providers_count=Sum(
-                Case(
-                    When(
-                        providers__provider_medication__id__in=provider_medication_ids,  # noqa
-                        then=V(1),
-                    ),
-                    output_field=IntegerField(),
-                    default=V(0)
-                ),
-            ),
+
+        provider_ids = ProviderMedicationNdcThrough.objects.filter(
+            latest=True,
+            medication_ndc_id__in=med_ndc_ids,
+        ).distinct().values('provider_id').values_list(
+            'provider_id',
+            flat=True,
         )
+
+        qs = self.Meta.model.objects.filter(
+            providers__id__in=provider_ids,
+            providers__active=True,
+        )
+
+        if state_id and not zipcode:
+            # If we have zipcode we dont take into account the state
+            try:
+                qs = qs.filter(
+                    providers__related_zipcode__state__id=int(state_id),
+                )
+            except ValueError:
+                pass
+
+        if zipcode:
+            qs = qs.filter(
+                providers__zip=zipcode,
+            )
+
+        qs = qs.annotate(
+            providers_count=Count('providers')
+        )
+
         return qs
 
 
@@ -546,11 +555,11 @@ class MedicationTypesView(views.APIView):
         state_id = self.request.query_params.get('state_id')
         zipcode = self.request.query_params.get('zipcode')
         returning_values = [
-            {'drug_type': 'b', 'count': 0},
-            {'drug_type': 'g', 'count': 0},
+            {'drug_type': 'b', 'count': 1},
+            {'drug_type': 'g', 'count': 1},
         ]
         if Epidemic.objects.first().active:
-            returning_values.append({'drug_type': 'p', 'count': 0})
+            returning_values.append({'drug_type': 'p', 'count': 1})
         for drug_type in returning_values:
             drug_type['drug_type_verbose'] = dict(
                 Medication.DRUG_TYPE_CHOICES
@@ -566,85 +575,85 @@ class MedicationTypesView(views.APIView):
         except ValueError:
             return Response(returning_values)
 
-        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
-            latest=True,
-            medication_ndc__medication__medication_name__id=med_id,
-            provider__active=True,
-        )
-
-        if state_id and not zipcode:
-            # If we have zipcode we dont take into account the state
-            try:
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__related_zipcode__state__id=int(state_id),
-                )
-            except ValueError:
-                pass
-
-        if zipcode:
-            provider_medication_qs = provider_medication_qs.filter(
-                provider__zip=zipcode,
-            )
-
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication_ndc__medication__id__in=formulation_ids,
-            )
-
-        # Now we check if there is a list of type of providers to filter
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-        if provider_type_list:
-            try:
-                provider_type_list = provider_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__type__in=provider_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of category of providers to filter
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if provider_category_list:
-            try:
-                provider_category_list = provider_category_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__category__in=provider_category_list,
-                )
-            except ValueError:
-                pass
-
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
-        )
-        values = Medication.objects.filter(
-            ndc_codes__provider_medication__id__in=provider_medication_ids,
-        ).values('drug_type').annotate(count=Count('drug_type'))
-        for default_value in returning_values:
-            default_drug_type = default_value.get('drug_type')
-            for value in values:
-                drug_type = value.get('drug_type')
-                if default_drug_type == drug_type:
-                    default_value['count'] = value['count']
-
+        # provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+        #     latest=True,
+        #     medication_ndc__medication__medication_name__id=med_id,
+        #     provider__active=True,
+        # )
+        #
+        # if state_id and not zipcode:
+        #     # If we have zipcode we dont take into account the state
+        #     try:
+        #         provider_medication_qs = provider_medication_qs.filter(
+        #             provider__related_zipcode__state__id=int(state_id),
+        #         )
+        #     except ValueError:
+        #         pass
+        #
+        # if zipcode:
+        #     provider_medication_qs = provider_medication_qs.filter(
+        #         provider__zip=zipcode,
+        #     )
+        #
+        # # We take the formulation ids and transform them to use like filter
+        # formulation_ids_raw = self.request.query_params.get(
+        #     'formulations',
+        # )
+        # formulation_ids = []
+        # if formulation_ids_raw:
+        #     try:
+        #         formulation_ids = list(
+        #             map(int, formulation_ids_raw.split(','))
+        #         )
+        #     except ValueError:
+        #         pass
+        # if formulation_ids:
+        #     provider_medication_qs = provider_medication_qs.filter(
+        #         medication_ndc__medication__id__in=formulation_ids,
+        #     )
+        #
+        # # Now we check if there is a list of type of providers to filter
+        # provider_type_list = self.request.query_params.get(
+        #     'provider_type',
+        #     [],
+        # )
+        # if provider_type_list:
+        #     try:
+        #         provider_type_list = provider_type_list.split(',')
+        #         provider_medication_qs = provider_medication_qs.filter(
+        #             provider__type__in=provider_type_list,
+        #         )
+        #     except ValueError:
+        #         pass
+        #
+        # # Now we check if there is a list of category of providers to filter
+        # provider_category_list = self.request.query_params.get(
+        #     'provider_category',
+        #     [],
+        # )
+        # if provider_category_list:
+        #     try:
+        #         provider_category_list = provider_category_list.split(',')
+        #         provider_medication_qs = provider_medication_qs.filter(
+        #             provider__category__in=provider_category_list,
+        #         )
+        #     except ValueError:
+        #         pass
+        #
+        # provider_medication_ids = provider_medication_qs.values_list(
+        #     'id',
+        #     flat=True,
+        # )
+        # values = Medication.objects.filter(
+        #     ndc_codes__provider_medication__id__in=provider_medication_ids,
+        # ).values('drug_type').annotate(count=Count('drug_type'))
+        # for default_value in returning_values:
+        #     default_drug_type = default_value.get('drug_type')
+        #     for value in values:
+        #         drug_type = value.get('drug_type')
+        #         if default_drug_type == drug_type:
+        #             default_value['count'] = value['count']
+        #
         return Response(returning_values)
 
 
