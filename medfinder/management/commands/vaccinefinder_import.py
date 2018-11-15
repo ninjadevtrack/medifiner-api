@@ -53,32 +53,33 @@ class Command(BaseCommand):
 
             count = 0
             for vaccine_finder_provider in vaccine_finder_org.vfproviders.exclude(store_number__in=already_imported_store_numbers):
-                provider = Provider.objects.create(
-                    address=vaccine_finder_provider.address,
-                    city=vaccine_finder_provider.city,
-                    email=vaccine_finder_provider.email,
-                    end_date=vaccine_finder_provider.end_date,
-                    insurance_accepted=(
-                        True if vaccine_finder_provider.insurance_accepted == 'Y' else False),
-                    lat=vaccine_finder_provider.lat,
-                    lng=vaccine_finder_provider.lon,
-                    name=vaccine_finder_provider.name,
-                    notes=vaccine_finder_provider.notes,
-                    operating_hours=vaccine_finder_provider.operating_hours,
-                    organization=organization,
-                    phone=vaccine_finder_provider.phone,
-                    relate_related_zipcode=True,
-                    start_date=vaccine_finder_provider.start_date,
-                    state=vaccine_finder_provider.state,
-                    store_number=vaccine_finder_provider.store_number,
-                    type=provider_type,
-                    website=vaccine_finder_provider.website,
-                    active=False,
-                    walkins_accepted=(
-                        True if vaccine_finder_provider.walkins_accepted == 'Y' else False),
-                    zip=vaccine_finder_provider.zip,
-                )
-                count += 1
+                if vaccine_finder_provider.store_number and vaccine_finder_provider.store_number != '':
+                    provider = Provider.objects.create(
+                        address=vaccine_finder_provider.address,
+                        city=vaccine_finder_provider.city,
+                        email=vaccine_finder_provider.email,
+                        end_date=vaccine_finder_provider.end_date,
+                        insurance_accepted=(
+                            True if vaccine_finder_provider.insurance_accepted == 'Y' else False),
+                        lat=vaccine_finder_provider.lat,
+                        lng=vaccine_finder_provider.lon,
+                        name=vaccine_finder_provider.name,
+                        notes=vaccine_finder_provider.notes,
+                        operating_hours=vaccine_finder_provider.operating_hours,
+                        organization=organization,
+                        phone=vaccine_finder_provider.phone,
+                        relate_related_zipcode=True,
+                        start_date=vaccine_finder_provider.start_date,
+                        state=vaccine_finder_provider.state,
+                        store_number=vaccine_finder_provider.store_number,
+                        type=provider_type,
+                        website=vaccine_finder_provider.website,
+                        active=False,
+                        walkins_accepted=(
+                            True if vaccine_finder_provider.walkins_accepted == 'Y' else False),
+                        zip=vaccine_finder_provider.zip,
+                    )
+                    count += 1
 
             print("------------------------------------")
             print("Imported")
