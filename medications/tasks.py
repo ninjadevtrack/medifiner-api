@@ -81,16 +81,19 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
                     zipcode_obj = ZipCode.objects.filter(zipcode=zip_code)[0]
                 except ZipCode.DoesNotExist:
                     zipcode_obj = None
+
                 # TODO: type and category? Home delivery info?
                 provider, created = Provider.objects.get_or_create(
                     organization=organization,
                     store_number=store_number,
-                    address=address,
-                    city=city,
-                    zip=zip_code,
-                    state=state,
-                    phone=phone,
                     related_zipcode=zipcode_obj,
+                    defaults={
+                        'address': address,
+                        'city': city,
+                        'phone': phone,
+                        'state': state,
+                        'zip': zip_code,
+                    }
                 )
 
             if not medication_ndc or (medication_ndc.ndc != ndc_code):
@@ -163,41 +166,33 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
         est_finnish_time = datetime.now(tz)
 
         if lost_ndcs:
-
             msg_plain = (
-                'Completion date time: {}<br>'
-                'Duration: {} minutes<br>'
-                'Status: {} rows processed. Following CSV entries were not imported:<br>'
+                'Completion date time: {}\n'
+                'Duration: {} minutes\n'
+                'Status: {} rows processed\n',
+                '{} CSV entries were not imported\n',
             ).format(
                 est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
                 index,
-            )
-            for medication, ndc in lost_ndcs:
-                msg_plain += 'Med Name: {} -- Med Code: {}<br>'.format(
-                    medication, ndc)
-            send_mail(
-                'MedFinder Import Status',
-                msg_plain,
-                settings.FROM_EMAIL,
-                [email_to],
+                len(lost_ndcs),
             )
         else:
             msg_plain = (
-                'Status: {} CSV rows correctly imported.<br>'
-                'Completion date time: {}<br>'
-                'Duration: {} minutes'
+                'Completion date time: {}\n'
+                'Duration: {} minutes\n'
+                'Status: {} CSV rows correctly imported.\n',
             ).format(
-                index,
                 est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
+                index,
             )
-            send_mail(
-                'MedFinder Import Status',
-                msg_plain,
-                settings.FROM_EMAIL,
-                [email_to],
-            )
+        send_mail(
+            'MedFinder Import Status',
+            msg_plain,
+            settings.FROM_EMAIL,
+            [email_to],
+        )
 
 
 # Task that handles the post_save signal asynchronously
