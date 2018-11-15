@@ -3,7 +3,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand
 
 from medications.models import Organization, Provider, ProviderType
-from vaccinefinder.models import Organization as VFOrg
+from vaccinefinder.models import VFOrganization, VFProvider
 
 
 class Command(BaseCommand):
@@ -32,19 +32,27 @@ class Command(BaseCommand):
             name='Commercial',
         )
 
-        vaccine_finder_orgs = VFOrg.objects.using(
+        vaccine_finder_orgs = VFOrganization.objects.using(
             'vaccinedb').exclude(pk=walgreens_id).all()
 
         for vaccine_finder_org in vaccine_finder_orgs:
-            organization = Organization.objects.create(
+            organization, created = Organization.objects.using(
+                'default').get_or_create(
                 contact_name=vaccine_finder_org.contact_name,
                 organization_name=vaccine_finder_org.organization_name,
                 phone=vaccine_finder_org.phone,
                 website=vaccine_finder_org.website
             )
 
+            already_imported_store_numbers = list(organization.providers.values_list(
+                'store_number',
+                flat=True,
+            ))
+
+            print(already_imported_store_numbers)
+
             count = 0
-            for vaccine_finder_provider in vaccine_finder_org.providers.all():
+            for vaccine_finder_provider in vaccine_finder_org.vfproviders.exclude(store_number__in=already_imported_store_numbers):
                 provider = Provider.objects.create(
                     address=vaccine_finder_provider.address,
                     city=vaccine_finder_provider.city,
