@@ -28,17 +28,14 @@ jobs:
       RAVEN_DSN: ''
 
     steps:
-      - checkout:
-          post:
-              *****
-              - pip install -U pip setuptools virtualenv
+      - checkout
 
-      # # Download and cache dependencies
-      # - restore_cache:
-      #     keys:
-      #     - v1-dependencies-{{ checksum "requirements/dev.txt" }}
-      #     # fallback to using the latest cache if no exact match is found
-      #     - v1-dependencies-
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "requirements/dev.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
 
       - run:
           name: install dependencies
@@ -46,8 +43,10 @@ jobs:
             sudo apt-get update && sudo apt-get install -y gettext build-essential binutils libproj-dev libgdal-dev libgdal1h gdal-bin python-gdal
             export CPLUS_INCLUDE_PATH=/usr/include/gdal
             export C_INCLUDE_PATH=/usr/include/gdal
+            pip install -U pip setuptools virtualenv
             python3 -m venv venv
             . venv/bin/activate
+            pip install -U pip setuptools virtualenv
             pip install --upgrade pip
             pip install -r requirements/dev.txt
 
