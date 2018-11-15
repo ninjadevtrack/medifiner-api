@@ -51,7 +51,7 @@ class FindProviderMedicationView(ListAPIView):
                 pass
 
         med_ids = []
-        if med_ids_raw:
+        if med_ids_raw and not med_ids_raw == 'all':
             try:
                 med_ids = list(
                     map(int, med_ids_raw.split(','))
@@ -95,10 +95,10 @@ class FindProviderMedicationView(ListAPIView):
                 medication_ndc__medication__medication_name__id__in=med_ids,
             )
 
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication_ndc__medication__id__in=formulation_ids,
-            )
+            if formulation_ids:
+                provider_medication_qs = provider_medication_qs.filter(
+                    medication_ndc__medication__id__in=formulation_ids,
+                )
 
         # Check the list of drug types to filter
         if drug_type_list:
@@ -120,10 +120,11 @@ class FindProviderMedicationView(ListAPIView):
             flat=True,
         )
 
-        if not formulation_ids_raw and formulation_ids_raw is not None:
+        if not formulation_ids_raw and formulation_ids_raw is not None and not med_ids_raw == 'all':
             # Catch the case when in url we have &formulations=
             # meaning the user unchecked all formulations
             provider_medication_ids = []
+
         provider_qs = Provider.objects.filter(
             geo_localization__distance_lte=(
                 localization_point,
