@@ -28,10 +28,10 @@ jobs:
       RAVEN_DSN: ''
 
     steps:
-      checkout:
-        post:
-            *****
-            - pip install -U pip setuptools virtualenv
+      - checkout:
+          post:
+              *****
+              - pip install -U pip setuptools virtualenv
 
       # # Download and cache dependencies
       # - restore_cache:
