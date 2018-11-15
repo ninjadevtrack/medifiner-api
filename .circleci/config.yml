@@ -20,6 +20,8 @@ jobs:
     working_directory: ~/repo
 
     environment:
+      CPLUS_INCLUDE_PATH: /usr/include/gdal
+      C_INCLUDE_PATH: /usr/include/gdal
       DEBUG: 'True'
       SECRET_KEY: 'secretkey'
       ALLOWED_HOSTS: '127.0.0.1,0.0.0.0,localhost'
