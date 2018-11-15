@@ -1,8 +1,10 @@
 from rest_framework import permissions
 
+from .models import ZipCode
+
 
 class NationalLevel(permissions.BasePermission):
-    message = 'This user has not national level permission'
+    message = 'National level permission required'
 
     def has_permission(self, request, view):
         return (
@@ -15,7 +17,7 @@ class NationalLevel(permissions.BasePermission):
 
 
 class SelfStatePermissionLevel(permissions.BasePermission):
-    message = 'This user has not state level permission for this state'
+    message = 'State level permission required for state'
 
     def has_permission(self, request, view):
         super_permission = (
@@ -25,16 +27,16 @@ class SelfStatePermissionLevel(permissions.BasePermission):
                 request.user.permission_level == request.user.NATIONAL_LEVEL
             )
         )
-        user_state = getattr(request.user, 'state', None)
+        user_state_id = getattr(request.user, 'state_id', None)
         view_state = view.kwargs.get('state_id')
         state_permission = False
-        if user_state:
-            state_permission = user_state.id == view_state
+        if user_state_id:
+            state_permission = user_state_id == view_state
         return super_permission or state_permission
 
 
 class SelfZipCodePermissionLevel(permissions.BasePermission):
-    message = 'This user has no permission to check this zipcode'
+    message = 'State level permission required for zipcode'
 
     def has_permission(self, request, view):
         super_permission = (
@@ -44,10 +46,10 @@ class SelfZipCodePermissionLevel(permissions.BasePermission):
                 request.user.permission_level == request.user.NATIONAL_LEVEL
             )
         )
-        user_state = getattr(request.user, 'state', None)
+        user_state_id = getattr(request.user, 'state_id', None)
         user_zipcodes = []
-        if user_state:
-            user_zipcodes = user_state.state_zipcodes.values_list(
+        if user_state_id:
+            user_zipcodes = ZipCode.objects.filter(state_id=user_state_id).values_list(
                 'zipcode',
                 flat=True,
             )

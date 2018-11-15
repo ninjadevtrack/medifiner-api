@@ -51,7 +51,7 @@ class FindProviderMedicationView(ListAPIView):
                 pass
 
         med_ids = []
-        if med_ids_raw:
+        if med_ids_raw and not med_ids_raw == 'all':
             try:
                 med_ids = list(
                     map(int, med_ids_raw.split(','))
@@ -81,45 +81,50 @@ class FindProviderMedicationView(ListAPIView):
             raise BadRequest(
                 'Localization should be provided and consist of 2 coordinates'
             )
-        if formulation_ids and med_ids and localization:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
-                latest=True,
+
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+            latest=True,
+            provider__geo_localization__distance_lte=(
+                localization_point,
+                D(mi=distance),
+            ),
+        )
+
+        if med_ids:
+            provider_medication_qs = provider_medication_qs.filter(
                 medication_ndc__medication__medication_name__id__in=med_ids,
-                medication_ndc__medication__id__in=formulation_ids,
-                provider__geo_localization__distance_lte=(
-                    localization_point,
-                    D(mi=distance),
-                ),
             )
 
-            # Check the list of drug types to filter
-            if drug_type_list:
-                try:
-                    drug_type_list = drug_type_list.split(',')
-                    provider_medication_qs = provider_medication_qs.filter(
-                        medication_ndc__medication__drug_type__in=drug_type_list,
-                    )
-                except ValueError:
-                    pass
-
-            # Exclude public health medications if epidemic is not active
-            if not Epidemic.objects.first().active:
-                provider_medication_qs = provider_medication_qs.exclude(
-                    medication_ndc__medication__drug_type='p',
+            if formulation_ids:
+                provider_medication_qs = provider_medication_qs.filter(
+                    medication_ndc__medication__id__in=formulation_ids,
                 )
-            provider_medication_ids = provider_medication_qs.values_list(
-                'id',
-                flat=True,
+
+        # Check the list of drug types to filter
+        if drug_type_list:
+            try:
+                drug_type_list = drug_type_list.split(',')
+                provider_medication_qs = provider_medication_qs.filter(
+                    medication_ndc__medication__drug_type__in=drug_type_list,
+                )
+            except ValueError:
+                pass
+
+        # Exclude public health medications if epidemic is not active
+        if not Epidemic.objects.first().active:
+            provider_medication_qs = provider_medication_qs.exclude(
+                medication_ndc__medication__drug_type='p',
             )
-        else:
-            raise BadRequest(
-                'You should provide med_ids, formulations and'
-                ' lozalization params'
-            )
-        if not formulation_ids_raw and formulation_ids_raw is not None:
+        provider_medication_ids = provider_medication_qs.values_list(
+            'id',
+            flat=True,
+        )
+
+        if not formulation_ids_raw and formulation_ids_raw is not None and not med_ids_raw == 'all':
             # Catch the case when in url we have &formulations=
             # meaning the user unchecked all formulations
             provider_medication_ids = []
+
         provider_qs = Provider.objects.filter(
             geo_localization__distance_lte=(
                 localization_point,

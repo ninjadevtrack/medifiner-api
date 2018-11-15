@@ -3,7 +3,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand
 
 from medications.models import Organization, Provider, ProviderType
-from vaccinefinder.models import Organization as VFOrg
+from vaccinefinder.models import VFOrganization, VFProvider
 
 
 class Command(BaseCommand):
@@ -32,18 +32,27 @@ class Command(BaseCommand):
             name='Commercial',
         )
 
-        vaccine_finder_orgs = VFOrg.objects.using(
+        vaccine_finder_orgs = VFOrganization.objects.using(
             'vaccinedb').exclude(pk=walgreens_id).all()
 
         for vaccine_finder_org in vaccine_finder_orgs:
-            organization = Organization.objects.create(
+            organization, created = Organization.objects.using(
+                'default').get_or_create(
                 contact_name=vaccine_finder_org.contact_name,
                 organization_name=vaccine_finder_org.organization_name,
                 phone=vaccine_finder_org.phone,
                 website=vaccine_finder_org.website
             )
 
-            for vaccine_finder_provider in vaccine_finder_org.providers.all():
+            already_imported_store_numbers = list(organization.providers.values_list(
+                'store_number',
+                flat=True,
+            ))
+
+            print(already_imported_store_numbers)
+
+            count = 0
+            for vaccine_finder_provider in vaccine_finder_org.vfproviders.exclude(store_number__in=already_imported_store_numbers):
                 provider = Provider.objects.create(
                     address=vaccine_finder_provider.address,
                     city=vaccine_finder_provider.city,
@@ -64,9 +73,14 @@ class Command(BaseCommand):
                     store_number=vaccine_finder_provider.store_number,
                     type=provider_type,
                     website=vaccine_finder_provider.website,
-                    active=(present < vaccine_finder_provider.end_date),
+                    active=False,
                     walkins_accepted=(
                         True if vaccine_finder_provider.walkins_accepted == 'Y' else False),
                     zip=vaccine_finder_provider.zip,
                 )
-                print(provider.pk)
+                count += 1
+
+            print("------------------------------------")
+            print("Imported")
+            print(vaccine_finder_org.organization_name)
+            print(count)

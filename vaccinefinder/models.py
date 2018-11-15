@@ -12,7 +12,7 @@ from localflavor.us.models import USStateField, USZipCodeField
 from phonenumber_field.modelfields import PhoneNumberField
 
 
-class Organization(models.Model):
+class VFOrganization(models.Model):
     organization_id = models.AutoField(
         primary_key=True
     )
@@ -49,13 +49,13 @@ class Organization(models.Model):
         return self.organization_name
 
 
-class Provider(models.Model):
+class VFProvider(models.Model):
     provider_id = models.AutoField(
         primary_key=True
     )
     organization = models.ForeignKey(
-        Organization,
-        related_name='providers',
+        VFOrganization,
+        related_name='vfproviders',
         on_delete=models.SET_NULL,
         null=True,
     )
