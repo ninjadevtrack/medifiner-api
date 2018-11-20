@@ -96,7 +96,8 @@ class FindProviderSerializer(serializers.ModelSerializer):
         properties['last_import_date'] = instance.last_import_date
         properties['name'] = instance.name
         properties['operating_hours'] = instance.operating_hours
-        properties['phone'] = instance.phone.as_national
+        properties['phone'] = instance.phone if type(
+            instance.phone) is str else instance.phone.as_national
         properties['store_number'] = instance.store_number
         properties['website'] = instance.website
         if active_provider:
