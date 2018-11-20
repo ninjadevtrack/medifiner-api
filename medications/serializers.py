@@ -334,17 +334,46 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
         return json.loads(obj.geometry.geojson)
 
 
-class ProviderTypesAndCategoriesSerializer(serializers.ModelSerializer):
-    # We can use this serializer for categories as well even if model is
-    # ProviderType since they have the same fields
-    providers_count = serializers.SerializerMethodField()
+class ProviderCategoriesSerializer(serializers.Serializer):
 
-    class Meta:
-        model = ProviderType
-        fields = ('id', 'code', 'name', 'providers_count')
+    def to_representation(self, organization_categories):
+        """
 
-    def get_providers_count(self, obj):
-        return obj.providers_count
+        """
+        categories = {}
+        for organization_category in organization_categories:
+            category_id = organization_category['category__id']
+            category = categories[category_id] if category_id in categories else {
+            }
+            category['id'] = category_id
+            category['name'] = organization_category['category__name']
+            category['organizations'] = category['organizations'] if 'organizations' in category else []
+            category['organizations'].append({
+                'organization_id': organization_category['organization__id'],
+                'organization_name': organization_category['organization__organization_name'],
+                'providers_count': organization_category['providers_count']
+            })
+            category['providers_count'] = category['providers_count'] if 'providers_count' in category else 0
+            category['providers_count'] += organization_category['providers_count']
+            categories[category['id']] = category
+
+        return categories.values()
+
+
+class ProviderTypesSerializer(serializers.Serializer):
+
+    def to_representation(self, organization_types):
+        """
+
+        """
+        types = []
+        for organization_type in organization_types:
+            types.append({
+                'id': organization_type['type__id'],
+                'name': organization_type['type__name'],
+                'providers_count': organization_type['providers_count'],
+            })
+        return types
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
