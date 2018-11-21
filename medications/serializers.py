@@ -337,9 +337,6 @@ class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
 class ProviderCategoriesSerializer(serializers.Serializer):
 
     def to_representation(self, organization_categories):
-        """
-
-        """
         categories = {}
         for organization_category in organization_categories:
             category_id = organization_category['category__id']
@@ -363,9 +360,6 @@ class ProviderCategoriesSerializer(serializers.Serializer):
 class ProviderTypesSerializer(serializers.Serializer):
 
     def to_representation(self, organization_types):
-        """
-
-        """
         types = []
         for organization_type in organization_types:
             types.append({
