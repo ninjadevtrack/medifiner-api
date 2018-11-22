@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 
 from django.core.management.base import BaseCommand
@@ -44,14 +45,20 @@ class Command(BaseCommand):
                 website=vaccine_finder_org.website
             )
 
+            if vaccine_finder_org.vfproviders.exclude(store_number__isnull=True).count() == organization.providers.count():
+                print(organization.organization_name + " already imported")
+                continue
+
             already_imported_store_numbers = list(organization.providers.values_list(
                 'store_number',
                 flat=True,
             ))
 
-            print(already_imported_store_numbers)
-
             count = 0
+            if vaccine_finder_org.vfproviders.exclude(store_number__in=already_imported_store_numbers).count() == 0:
+                print(organization.organization_name + " already imported")
+                continue
+
             for vaccine_finder_provider in vaccine_finder_org.vfproviders.exclude(store_number__in=already_imported_store_numbers):
                 if vaccine_finder_provider.store_number and vaccine_finder_provider.store_number != '':
                     provider = Provider.objects.create(
@@ -80,8 +87,10 @@ class Command(BaseCommand):
                         zip=vaccine_finder_provider.zip,
                     )
                     count += 1
+                    print(count)
 
             print("------------------------------------")
             print("Imported")
             print(vaccine_finder_org.organization_name)
             print(count)
+            time.sleep(5)
