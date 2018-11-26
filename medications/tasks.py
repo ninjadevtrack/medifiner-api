@@ -164,8 +164,8 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
             msg_plain = (
                 'Completion date time: {}\n'
                 'Duration: {} minutes\n'
-                'Status: {} rows processed\n',
-                '{} CSV entries were not imported\n',
+                'Status: {} rows processed\n'
+                '{} CSV entries were not imported\n'
             ).format(
                 est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
@@ -176,7 +176,7 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
             msg_plain = (
                 'Completion date time: {}\n'
                 'Duration: {} minutes\n'
-                'Status: {} CSV rows correctly imported.\n',
+                'Status: {} CSV rows correctly imported.\n'
             ).format(
                 est_finnish_time.strftime('%Y-%m-%d %H:%M'),
                 duration_minutes,
