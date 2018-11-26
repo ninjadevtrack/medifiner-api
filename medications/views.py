@@ -430,16 +430,17 @@ def get_provider_category_or_type(request):
     med_id = request.query_params.get('med_id')
     state_id = request.query_params.get('state_id')
     zipcode = request.query_params.get('zipcode')
-    try:
-        if not med_id or int(
-            med_id
-        ) not in MedicationName.objects.values_list(
-            'id',
-            flat=True,
-        ):
-            return None
-    except ValueError:
-        return None
+    # skipping this to speed things up - trusting ids from frontend
+    # try:
+    #     if not med_id or int(
+    #         med_id
+    #     ) not in MedicationName.objects.values_list(
+    #         'id',
+    #         flat=True,
+    #     ):
+    #         return None
+    # except ValueError:
+    #     return None
 
     med_ndc_qs = MedicationNdc.objects.all()
 
