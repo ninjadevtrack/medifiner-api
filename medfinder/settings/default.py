@@ -251,7 +251,7 @@ REST_REGISTRATION = {
     'VERIFICATION_FROM_EMAIL': 'no-reply@example.com',
 
     'RESET_PASSWORD_VERIFICATION_URL':
-    'https://{}/reset-password'.format(FRONTEND_URL),
+    '{}/reset-password'.format(FRONTEND_URL),
 
     'USER_HIDDEN_FIELDS': (
         'is_active',
