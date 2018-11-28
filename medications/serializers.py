@@ -233,6 +233,9 @@ def get_properties(instance, geographic_type=None):
     properties['supplies'] = supplies
     properties['supply'] = supply
     properties['population'] = instance.population
+    properties['total_provider_count'] = instance.total_provider_count
+    properties['active_provider_count'] = instance.active_provider_count
+
     return properties
 
 
@@ -266,7 +269,6 @@ class GeoJSONWithMedicationsSerializer(serializers.ModelSerializer):
 
         # required geometry attribute
         # MUST be present in output according to GeoJSON spec
-
         feature["geometry"] = json.loads(
             instance.geometry.geojson
         ) if instance.geometry else None

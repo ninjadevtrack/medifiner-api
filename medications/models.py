@@ -79,6 +79,14 @@ class State(models.Model):
         _('population'),
         null=True,
     )
+    active_provider_count = models.PositiveIntegerField(
+        _('active provider count'),
+        null=True,
+    )
+    total_provider_count = models.PositiveIntegerField(
+        _('active provider count'),
+        null=True,
+    )
 
     class Meta:
         verbose_name = _('state')
@@ -120,6 +128,14 @@ class County(models.Model):
         _('population'),
         null=True,
     )
+    active_provider_count = models.PositiveIntegerField(
+        _('active provider count'),
+        null=True,
+    )
+    total_provider_count = models.PositiveIntegerField(
+        _('active provider count'),
+        null=True,
+    )
 
     class Meta:
         verbose_name = _('county')
@@ -154,6 +170,14 @@ class ZipCode(models.Model):
     )
     population = models.PositiveIntegerField(
         _('population'),
+        null=True,
+    )
+    active_provider_count = models.PositiveIntegerField(
+        _('active provider count'),
+        null=True,
+    )
+    total_provider_count = models.PositiveIntegerField(
+        _('active provider count'),
         null=True,
     )
 

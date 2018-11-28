@@ -12,17 +12,20 @@ from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned
 from django.core.mail import send_mail
 from django.db import IntegrityError
+from django.db.models import Count
 from django.utils import timezone
 from io import BytesIO
 from urllib.request import urlopen
 from zipfile import ZipFile
 
 from .models import (
+    County,
     ExistingMedication,
     MedicationNdc,
     Organization,
     Provider,
     ProviderMedicationNdcThrough,
+    State,
     ZipCode,
 )
 
@@ -249,3 +252,65 @@ def mark_inactive_providers():
     ).update(
         active=False,
     )
+
+
+@shared_task
+def state_cache_provider_count():
+    cache_provider_count(State, 'state_zipcodes__providers')
+
+
+@shared_task
+def county_cache_provider_count():
+    cache_provider_count(County, 'county_zipcodes__providers')
+
+
+@shared_task
+def zipcode_cache_provider_count():
+    cache_provider_count(ZipCode, 'providers')
+
+
+def cache_provider_count(model, count_entities):
+    cached_counts = {}
+
+    total_provider_count = model.objects.annotate(
+        calculated_total_provider_count=Count(count_entities)
+    ).values('id', 'calculated_total_provider_count').distinct()
+
+    if model == ZipCode:
+        active_provider_count = model.objects.filter(
+            providers__active=True,
+        )
+    if model == State:
+        active_provider_count = model.objects.filter(
+            state_zipcodes__providers__active=True,
+        )
+    if model == County:
+        active_provider_count = model.objects.filter(
+            county_zipcodes__providers__active=True,
+        )
+
+    active_provider_count = active_provider_count.annotate(
+        calculated_active_provider_count=Count(count_entities)
+    ).values('id', 'calculated_active_provider_count').distinct()
+
+    for provider_count in total_provider_count:
+        if not provider_count['id'] in cached_counts:
+            cached_counts[provider_count['id']] = {}
+        cached_counts[provider_count['id']
+                      ]['calculated_total_provider_count'] = provider_count['calculated_total_provider_count']
+
+    for provider_count in active_provider_count:
+        if not provider_count['id'] in cached_counts:
+            cached_counts[provider_count['id']] = {}
+        cached_counts[provider_count['id']
+                      ]['calculated_active_provider_count'] = provider_count['calculated_active_provider_count']
+
+    for entity in model.objects.all():
+        if entity.pk in cached_counts:
+            entity.active_provider_count = cached_counts[entity.pk][
+                'calculated_active_provider_count'] if 'calculated_active_provider_count' in cached_counts[entity.pk] else 0
+            entity.total_provider_count = cached_counts[entity.pk][
+                'calculated_total_provider_count'] if 'calculated_total_provider_count' in cached_counts[entity.pk] else 0
+        else:
+            print('State cache count not found for ' + str(entity))
+        entity.save()
