@@ -86,6 +86,8 @@ class StateSerializer(serializers.ModelSerializer):
             'state_code',
             'population',
             'county_list',
+            'active_provider_count',
+            'total_provider_count',
         )
 
     def get_county_list(self, obj):
@@ -171,6 +173,8 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
                 'id': state_obj.id,
                 'code': state_obj.state_code,
                 'population': state_obj.population,
+                'active_provider_count': state_obj.active_provider_count,
+                'total_provider_count': state_obj.total_provider_count,
             }
             return OrderedDict((
                 ("type", "FeatureCollection"),
@@ -193,6 +197,9 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
             'supplies': supplies,
             'supply': supply,
             'population': state_obj.population,
+            'active_provider_count': state_obj.active_provider_count,
+            'total_provider_count': state_obj.total_provider_count,
+
         }
         return OrderedDict((
             ("type", "FeatureCollection"),
