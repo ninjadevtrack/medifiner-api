@@ -21,4 +21,4 @@ RUN pip install -r dev.txt
 ADD . /code/
 WORKDIR /code
 
-CMD celery -A medfinder beat --scheduler django_celery_beat.schedulers:DatabaseScheduler -l info
+CMD newrelic-admin run-program celery -A medfinder beat --scheduler django_celery_beat.schedulers:DatabaseScheduler -l info

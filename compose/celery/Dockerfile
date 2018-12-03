@@ -21,4 +21,4 @@ RUN pip install -r dev.txt
 ADD . /code/
 WORKDIR /code
 
-CMD celery -A medfinder worker -E -Q celery,signals --autoscale=3,1
+CMD newrelic-admin run-program celery -A medfinder worker -E -Q celery,signals --autoscale=3,1

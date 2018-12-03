@@ -17,8 +17,9 @@ ENV C_INCLUDE_PATH=/usr/include/gdal
 RUN mkdir /code
 WORKDIR /code
 ADD requirements/base.txt requirements/dev.txt /code/
+RUN pip install --upgrade pip
 RUN pip install -r dev.txt
 ADD . /code/
 WORKDIR /code
 
-CMD gunicorn --bind 0.0.0.0:$PORT medfinder.wsgi:application --workers 2 --timeout 9000
+CMD newrelic-admin run-program gunicorn --bind 0.0.0.0:$PORT medfinder.wsgi:application --workers 2 --timeout 9000
