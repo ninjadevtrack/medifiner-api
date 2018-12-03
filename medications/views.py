@@ -9,7 +9,7 @@ from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned
 
 from django.utils.translation import ugettext_lazy as _
-
+from django.utils.timezone import get_current_timezone
 
 from rest_framework import status, viewsets, views
 from rest_registration.exceptions import BadRequest
@@ -731,9 +731,6 @@ class CSVExportView(GenericAPIView):
         if not (start_date and end_date):
             return Medication.objects.none()
 
-        start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        end_date = datetime.strptime(end_date, '%Y-%m-%d')
-
         # First we take list of provider medication for this med, we will
         # use it for future filters
         if zipcode:
@@ -811,6 +808,11 @@ class CSVExportView(GenericAPIView):
                 )
             except ValueError:
                 pass
+
+        tz = get_current_timezone()
+        end_date = tz.localize(datetime.strptime(end_date, "%Y-%m-%d"))
+        start_date = tz.localize(datetime.strptime(start_date, "%Y-%m-%d"))
+
         qs = ProviderMedicationNdcThrough.objects.filter(
             creation_date__gte=start_date,
             creation_date__lte=end_date + timedelta(days=1),
