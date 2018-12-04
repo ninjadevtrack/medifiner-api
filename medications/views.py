@@ -1,7 +1,11 @@
+import boto3
+import botocore
 import csv
+import time
 
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.db.models import Q, Count, Prefetch
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.gis.db.models.functions import Centroid, AsGeoJSON
@@ -9,7 +13,6 @@ from django.core.cache import cache
 from django.core.exceptions import MultipleObjectsReturned
 
 from django.utils.translation import ugettext_lazy as _
-from django.utils.timezone import get_current_timezone
 
 from rest_framework import status, viewsets, views
 from rest_registration.exceptions import BadRequest
@@ -25,7 +28,7 @@ from django.http import HttpResponse
 
 from auth_ex.models import User
 from epidemic.models import Epidemic
-from medications.tasks import generate_medications
+from medications.tasks import generate_medications, generate_csv_export
 from .serializers import (
     CSVUploadSerializer,
     MedicationNameSerializer,
@@ -703,241 +706,66 @@ class CSVExportView(GenericAPIView):
             self.zipcode = kwargs.pop('zipcode')
         return super().dispatch(request, *args, **kwargs)
 
-    def get_queryset(self, state_id=None, zipcode=None):
-        '''
-        query_params:
-            - med_id: MedicationName id
-            - start_date: Date str to start filter
-            - end_date: Date str to end filter
-            - formulations: list of Medication ids
-            - provider_category: list of ProviderCategory ids
-            - provider_type: list of ProviderType ids
-            - drug_type: list of 1 character str, for drug_type in Medication
-        '''
-        med_id = self.request.query_params.get('med_id')
-        start_date = self.request.query_params.get('start_date')
-        end_date = self.request.query_params.get('end_date')
-        try:
-            if not med_id or int(
-                med_id
-            ) not in MedicationName.objects.values_list(
-                'id',
-                flat=True,
-            ):
-                return Medication.objects.none()
-        except ValueError:
-            return Medication.objects.none()
-
-        if not (start_date and end_date):
-            return Medication.objects.none()
-
-        # First we take list of provider medication for this med, we will
-        # use it for future filters
-        if zipcode:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
-                medication_ndc__medication__medication_name__id=med_id,
-                provider__related_zipcode__zipcode=zipcode,
-                provider__active=True,
-            )
-        elif not zipcode and state_id:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
-                medication_ndc__medication__medication_name__id=med_id,
-                provider__related_zipcode__state=state_id,
-                provider__active=True,
-            )
-        else:
-            provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
-                medication_ndc__medication__medication_name__id=med_id,
-                provider__active=True,
-            )
-        # Now we check if there is a list of type of providers to filter
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-        if provider_type_list:
-            try:
-                provider_type_list = provider_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__type__in=provider_type_list,
-                )
-            except ValueError:
-                pass
-
-        # We take the formulation ids and transform them to use like filter
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-        if formulation_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication_ndc__medication__id__in=formulation_ids,
-            )
-
-        # Now we check if there is a list of category of providers to filter
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if provider_category_list:
-            try:
-                provider_category_list = provider_category_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    provider__category__in=provider_category_list,
-                )
-            except ValueError:
-                pass
-
-        # Now we check if there is a list of drug types to filter
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication_ndc__medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
-
-        tz = get_current_timezone()
-        end_date = tz.localize(datetime.strptime(end_date, "%Y-%m-%d"))
-        start_date = tz.localize(datetime.strptime(start_date, "%Y-%m-%d"))
-
-        qs = ProviderMedicationNdcThrough.objects.filter(
-            creation_date__gte=start_date,
-            creation_date__lte=end_date + timedelta(days=1),
-        ).prefetch_related(
-            'provider',
-            'provider__organization',
-            'provider__type',
-            'provider__category',
-            'medication_ndc__medication',
-            'medication_ndc__medication__medication_name',
-        )
-        return qs
-
     def get(self, request):
         state_id = getattr(self, 'state_id', None)
         zipcode = getattr(self, 'zipcode', None)
-        med_id = request.query_params.get('med_id')
-        start_date = request.query_params.get('start_date')
+        formulation_ids_raw = self.request.query_params.get('formulations')
+        drug_type_list = self.request.query_params.get('drug_type', [])
         end_date = request.query_params.get('end_date')
-        national_level_permission = \
-            request.user.permission_level == User.NATIONAL_LEVEL
-        if med_id and start_date and end_date:
-            qs = self.get_queryset(
-                state_id,
-                zipcode,
-            )
+        med_id = request.query_params.get('med_id')
+        provider_category_list = self.request.query_params.get(
+            'provider_category', [])
+        provider_type_list = self.request.query_params.get('provider_type', [])
+        start_date = request.query_params.get('start_date')
 
-            # Generate the name for the file
-            if zipcode:
-                geography = zipcode
-            elif state_id:
-                try:
-                    geography = State.objects.get(id=state_id).state_name
-                except State.DoesNotExist:
-                    raise BadRequest('No such state exists')
-            else:
-                geography = 'US'
+        national_level_permission = request.user.permission_level == User.NATIONAL_LEVEL
 
+        if zipcode:
+            geography = zipcode
+        elif state_id:
             try:
-                med_name = MedicationName.objects.get(id=med_id)
-            except MedicationName.DoesNotExist:
-                raise BadRequest('No such medication in database')
+                geography = State.objects.get(id=state_id).state_name
+            except State.DoesNotExist:
+                raise BadRequest('No such state exists')
+        else:
+            geography = 'US'
 
-            filename = '{medication_name}-{geography}_{date_from}-{date_to}.csv'.format(  # noqa
-                medication_name=med_name.name,
-                geography=geography,
-                date_from=start_date,
-                date_to=end_date,
-            )
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename={}'.format(
-                filename,
-            )
-            if national_level_permission:
-                header = [
-                    'Date',
-                    'Organization',
-                    'Provider ID',
-                    'Provider Name',
-                    'Provider Address',
-                    'Provider City',
-                    'Provider State',
-                    'Provider Zip',
-                    'Provider Type',
-                    'Pharmacy Category',
-                    'Medication Name',
-                    'Med ID',
-                    'Product Type',
-                    'Inventory',
-                    'Last Updated',
-                    'Latest',
-                ]
-            else:
-                header = [
-                    'Date',
-                    'Provider City',
-                    'Provider State',
-                    'Provider Zip',
-                    'Medication Name',
-                    'Med ID',
-                    'Product Type',
-                    'Inventory',
-                    'Last Updated',
-                    'Latest',
-                ]
-            writer = csv.DictWriter(response, fieldnames=header)
-            writer.writeheader()
-            for instance in qs:
-                if national_level_permission:
-                    data_row = (
-                        instance.creation_date.date().isoformat(),
-                        instance.provider.organization,
-                        instance.provider.store_number,
-                        instance.provider.name,
-                        instance.provider.address,
-                        instance.provider.city,
-                        instance.provider.state,
-                        instance.provider.zip,
-                        instance.provider.type,
-                        instance.provider.category,
-                        instance.medication_ndc.medication.medication_name,
-                        instance.medication_ndc.medication.name,
-                        dict(Medication.DRUG_TYPE_CHOICES).get(
-                            instance.medication_ndc.medication.drug_type
-                        ),
-                        instance.supply,
-                        instance.last_modified.ctime(),
-                        instance.latest,
-                    )
-                else:
-                    data_row = (
-                        instance.creation_date.date().isoformat(),
+        try:
+            med_name = MedicationName.objects.get(id=med_id)
+        except MedicationName.DoesNotExist:
+            raise BadRequest('No such medication in database')
 
-                        instance.provider.city,
-                        instance.provider.state,
-                        instance.provider.zip,
-                        instance.medication_ndc.medication.medication_name,
-                        instance.medication_ndc.medication.name,
-                        dict(Medication.DRUG_TYPE_CHOICES).get(
-                            instance.medication_ndc.medication.drug_type
-                        ),
-                        instance.supply,
-                        instance.last_modified.ctime(),
-                        instance.latest,
-                    )
-                writer.writerow(dict(zip(header, data_row)))
-            return response
-        raise BadRequest('No med_id start_date or end_date in request')
+        filename = '{medication_name}_{geography}_{date_from}_{date_to}_{user_id}_{timestamp}.csv'.format(
+            medication_name=med_name.name.replace(' ', '_'),
+            geography=geography,
+            date_from=start_date.format('%Y-%m-%d'),
+            date_to=end_date.format('%Y-%m-%d'),
+            user_id=self.request.user.id,
+            timestamp=str(time.time()),
+        )
+
+        generate_csv_export.delay(
+            filename,
+            self.request.user.id,
+            med_id,
+            start_date,
+            end_date,
+            formulation_ids_raw,
+            provider_type_list,
+            provider_category_list,
+            drug_type_list,
+            state_id,
+            zipcode
+        )
+
+        file_url = boto3.client('s3').generate_presigned_url(
+            ClientMethod='get_object',
+            Params={
+                'Bucket': settings.AWS_S3_BUCKET_NAME,
+                'Key': filename
+            }
+        )
+
+        return Response({
+            'file_url': file_url
+        })

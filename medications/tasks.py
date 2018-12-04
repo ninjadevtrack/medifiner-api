@@ -1,4 +1,6 @@
 import re
+import io
+import boto3
 import csv
 
 from datetime import datetime
@@ -14,13 +16,18 @@ from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.db.models import Count
 from django.utils import timezone
+from django.utils.timezone import get_current_timezone
 from io import BytesIO
 from urllib.request import urlopen
 from zipfile import ZipFile
 
+from auth_ex.models import User
+
 from .models import (
     County,
     ExistingMedication,
+    Medication,
+    MedicationName,
     MedicationNdc,
     Organization,
     Provider,
@@ -314,3 +321,181 @@ def cache_provider_count(model, count_entities):
         else:
             print('State cache count not found for ' + str(entity))
         entity.save()
+
+
+@shared_task
+def generate_csv_export(filename, user_id, med_id, start_date, end_date, formulation_ids_raw, provider_type_list=[], provider_category_list=[], drug_type_list=[], state_id=None, zipcode=None):
+    user = User.objects.get(pk=user_id)
+    # First we take list of provider medication for this med, we will
+    # use it for future filters
+    if zipcode:
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
+            medication_ndc__medication__medication_name__id=med_id,
+            provider__related_zipcode__zipcode=zipcode,
+            provider__active=True,
+        )
+    elif not zipcode and state_id:
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
+            medication_ndc__medication__medication_name__id=med_id,
+            provider__related_zipcode__state=state_id,
+            provider__active=True,
+        )
+    else:
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
+            medication_ndc__medication__medication_name__id=med_id,
+            provider__active=True,
+        )
+
+    if provider_type_list:
+        try:
+            provider_type_list = provider_type_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                provider__type__in=provider_type_list,
+            )
+        except ValueError:
+            pass
+
+    formulation_ids = []
+    if formulation_ids_raw:
+        try:
+            formulation_ids = list(
+                map(int, formulation_ids_raw.split(','))
+            )
+        except ValueError:
+            pass
+    if formulation_ids:
+        provider_medication_qs = provider_medication_qs.filter(
+            medication_ndc__medication__id__in=formulation_ids,
+        )
+
+    if provider_category_list:
+        try:
+            provider_category_list = provider_category_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                provider__category__in=provider_category_list,
+            )
+        except ValueError:
+            pass
+
+    if drug_type_list:
+        try:
+            drug_type_list = drug_type_list.split(',')
+            provider_medication_qs = provider_medication_qs.filter(
+                medication_ndc__medication__drug_type__in=drug_type_list,
+            )
+        except ValueError:
+            pass
+
+    tz = get_current_timezone()
+    end_date = tz.localize(datetime.strptime(end_date, "%Y-%m-%d"))
+    start_date = tz.localize(datetime.strptime(start_date, "%Y-%m-%d"))
+
+    qs = ProviderMedicationNdcThrough.objects.filter(
+        creation_date__gte=start_date,
+        creation_date__lte=end_date + timedelta(days=1),
+    ).prefetch_related(
+        'provider',
+        'provider__organization',
+        'provider__type',
+        'provider__category',
+        'medication_ndc__medication',
+        'medication_ndc__medication__medication_name',
+    )
+
+    national_level_permission = \
+        user.permission_level == User.NATIONAL_LEVEL
+
+    # Generate the name for the file
+    if zipcode:
+        geography = zipcode
+    elif state_id:
+        try:
+            geography = State.objects.get(id=state_id).state_name
+        except State.DoesNotExist:
+            return False
+    else:
+        geography = 'US'
+
+    try:
+        med_name = MedicationName.objects.get(id=med_id)
+    except MedicationName.DoesNotExist:
+        return False
+
+    if national_level_permission:
+        header = [
+            'Date',
+            'Organization',
+            'Provider ID',
+            'Provider Name',
+            'Provider Address',
+            'Provider City',
+            'Provider State',
+            'Provider Zip',
+            'Provider Type',
+            'Pharmacy Category',
+            'Medication Name',
+            'Med ID',
+            'Product Type',
+            'Inventory',
+            'Last Updated',
+            'Latest',
+        ]
+    else:
+        header = [
+            'Date',
+            'Provider City',
+            'Provider State',
+            'Provider Zip',
+            'Medication Name',
+            'Med ID',
+            'Product Type',
+            'Inventory',
+            'Last Updated',
+            'Latest',
+        ]
+    buff = io.StringIO()
+    writer = csv.DictWriter(buff, fieldnames=header)
+    writer.writeheader()
+    for instance in qs:
+        if national_level_permission:
+            data_row = (
+                instance.creation_date.date().isoformat(),
+                instance.provider.organization,
+                instance.provider.store_number,
+                instance.provider.name,
+                instance.provider.address,
+                instance.provider.city,
+                instance.provider.state,
+                instance.provider.zip,
+                instance.provider.type,
+                instance.provider.category,
+                instance.medication_ndc.medication.medication_name,
+                instance.medication_ndc.medication.name,
+                dict(Medication.DRUG_TYPE_CHOICES).get(
+                    instance.medication_ndc.medication.drug_type
+                ),
+                instance.supply,
+                instance.last_modified.ctime(),
+                instance.latest,
+            )
+        else:
+            data_row = (
+                instance.creation_date.date().isoformat(),
+
+                instance.provider.city,
+                instance.provider.state,
+                instance.provider.zip,
+                instance.medication_ndc.medication.medication_name,
+                instance.medication_ndc.medication.name,
+                dict(Medication.DRUG_TYPE_CHOICES).get(
+                    instance.medication_ndc.medication.drug_type
+                ),
+                instance.supply,
+                instance.last_modified.ctime(),
+                instance.latest,
+            )
+        writer.writerow(dict(zip(header, data_row)))
+
+    buff2 = io.BytesIO(buff.getvalue().encode())
+    client = boto3.client('s3')
+    client.upload_fileobj(buff2, 'medfinder', filename)
