@@ -324,7 +324,7 @@ def cache_provider_count(model, count_entities):
 
 
 @shared_task
-def generate_csv_export(filename, user_id, med_id, start_date, end_date, formulation_ids_raw, provider_type_list=[], provider_category_list=[], drug_type_list=[], state_id=None, zipcode=None):
+def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_date, formulation_ids_raw, provider_type_list=[], provider_category_list=[], drug_type_list=[], state_id=None, zipcode=None):
     user = User.objects.get(pk=user_id)
     # First we take list of provider medication for this med, we will
     # use it for future filters
@@ -496,6 +496,29 @@ def generate_csv_export(filename, user_id, med_id, start_date, end_date, formula
             )
         writer.writerow(dict(zip(header, data_row)))
 
-    buff2 = io.BytesIO(buff.getvalue().encode())
+    buff = io.BytesIO(buff.getvalue().encode())
     client = boto3.client('s3')
-    client.upload_fileobj(buff2, 'medfinder', filename)
+    client.upload_fileobj(buff, settings.AWS_S3_BUCKET_NAME, filename)
+
+    delete_csv_file_on_s3.apply_async([filename], countdown=60 * 60 * 24)
+
+    msg_plain = (
+        'CSV File is ready to download\n'
+        '\n'
+        '{}\n'
+        '\n'
+        'Url will expire in 24 hours \n'
+    ).format(
+        file_url,
+    )
+    send_mail(
+        'MedFinder - CSV Export',
+        msg_plain,
+        settings.FROM_EMAIL,
+        [user.email],
+    )
+
+
+@shared_task
+def delete_csv_file_on_s3(filename):
+    boto3.resource('s3').Object(settings.AWS_S3_BUCKET_NAME, filename).delete()

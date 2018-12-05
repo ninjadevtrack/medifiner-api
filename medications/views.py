@@ -744,8 +744,17 @@ class CSVExportView(GenericAPIView):
             timestamp=str(time.time()),
         )
 
+        file_url = boto3.client('s3').generate_presigned_url(
+            ClientMethod='get_object',
+            Params={
+                'Bucket': settings.AWS_S3_BUCKET_NAME,
+                'Key': filename
+            }
+        )
+
         generate_csv_export.delay(
             filename,
+            file_url,
             self.request.user.id,
             med_id,
             start_date,
@@ -756,14 +765,6 @@ class CSVExportView(GenericAPIView):
             drug_type_list,
             state_id,
             zipcode
-        )
-
-        file_url = boto3.client('s3').generate_presigned_url(
-            ClientMethod='get_object',
-            Params={
-                'Bucket': settings.AWS_S3_BUCKET_NAME,
-                'Key': filename
-            }
         )
 
         return Response({
