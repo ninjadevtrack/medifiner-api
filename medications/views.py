@@ -87,6 +87,174 @@ class CSVUploadView(GenericAPIView):
         )
 
 
+class MedicationFiltersView(GenericAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        # 1 - Extract all request params
+        user = self.request.user
+        formulations = self.request.query_params.getlist('formulations', [])
+        drug_types = self.request.query_params.getlist('drug_types', [])
+        med_id = self.request.query_params.get('med_id', None)
+        provider_type_filters = self.request.query_params.getlist(
+            'provider_types', [])
+        provider_category_filters = self.request.query_params.getlist(
+            'provider_categories', [])
+        state_id = request.query_params.get('state_id', None)
+        zipcode = request.query_params.get('zipcode', None)
+
+        # 2 - Check User permissions
+        if user.permission_level == user.STATE_LEVEL:
+            if not user.state_id:
+                msg = _('Permission denied - Please check with system administrator')
+                raise BadRequest(msg)
+            # or (zipcode and zipcode != user.state_id):
+            if (state_id and state_id != user.state_id):
+                msg = _('Permission denied')
+                raise BadRequest(msg)
+
+        drug_types = []
+        for id, name in Medication.DRUG_TYPE_CHOICES:
+            drug_types.append({'id': id, 'name': name})
+
+        # 3 - Extract all medications and medication ndcs codes filtered by Medication Name
+        medications = {}
+        med_ndc_ids = []
+        medications_qs = Medication.objects.filter(medication_name=med_id).values(
+            'id', 'drug_type', 'name', 'ndc_codes')
+        for medication in medications_qs:
+            if medication['id'] not in medications:
+                medications[medication['id']] = {
+                    'id': medication['id'],
+                    'disabled': not medication['drug_type'] in drug_types,
+                    'drug_type': medication['drug_type'],
+                    'name': medication['name'],
+                    'ndc_codes': []
+                }
+            medications[medication['id']]['ndc_codes'].append(
+                medication['ndc_codes'])
+            med_ndc_ids.append(medication['ndc_codes'])
+
+        provider_ids = ProviderMedicationNdcThrough.objects.filter(
+            latest=True,
+            medication_ndc_id__in=med_ndc_ids,
+        ).distinct().values('provider_id').values_list(
+            'provider_id',
+            flat=True,
+        )
+
+        # 3 - Extract all organization data that's active, categorized and with a type
+        organization_data = Provider.objects.filter(
+            active=True,
+            category__id__isnull=False,
+            type__id__isnull=False
+        ).values(
+            'category__id',
+            'category__name',
+            'organization__id',
+            'organization__organization_name',
+            'type__id',
+            'type__name'
+        ).annotate(
+            ignore_me=Count('organization__id'),
+        )
+
+        categories = {}
+        types = {}
+
+        # 4 - Build data structure for provider category filters and provider type filter
+        for org_data in organization_data:
+            category_id = org_data['category__id']
+            organization_id = org_data['organization__id']
+            type_id = org_data['type__id']
+
+            category = categories[category_id] if category_id in categories else {
+            }
+            type = types[type_id] if type_id in types else {
+            }
+
+            type['id'] = type_id
+            type['name'] = org_data['type__name']
+            type['providers_count'] = 0
+            types[type_id] = type
+
+            category['id'] = category_id
+            category['name'] = org_data['category__name']
+            category['organizations'] = category['organizations'] if 'organizations' in category else {}
+
+            category['organizations'][organization_id] = category['organizations'][
+                organization_id] if organization_id in category['organizations'] else {}
+
+            category['organizations'][organization_id]['disabled'] = True
+            category['organizations'][organization_id]['organization_id'] = organization_id
+            category['organizations'][organization_id]['organization_name'] = org_data['organization__organization_name']
+            category['organizations'][organization_id]['providers_count'] = 0
+
+            category['providers_count'] = 0
+            categories[category_id] = category
+
+        # 5 - Count Provider filtered by Category and Type
+        provider_categories_and_types_count_qs = Provider.objects.filter(
+            pk__in=provider_ids,
+            active=True,
+            category__id__in=provider_category_filters,
+            type__id__in=provider_type_filters,
+        )
+
+        # 6 - Add location filters if exists
+        if state_id:
+            provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
+                related_zipcode__state=state_id
+            )
+        if zipcode:
+            provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
+                related_zipcode__zipcode=zipcode
+            )
+
+        # we're dealing with a large data set, this query allows to capture
+        # all proper counts in one query which takes around 160ms to execute
+        provider_categories_and_types_count = provider_categories_and_types_count_qs.values(
+            'category__id',
+            'category__name',
+            'organization__id',
+            'organization__organization_name',
+            'type__id',
+            'type__name'
+        ).annotate(
+            providers_count=Count('id'),
+        )
+
+        # 7 - Add counts to types and categories data structures
+        for count_data in provider_categories_and_types_count:
+            category_id = count_data['category__id']
+            organization_id = count_data['organization__id']
+            type_id = count_data['type__id']
+
+            types[type_id]['providers_count'] += count_data['providers_count']
+
+            categories[category_id]['organizations'][organization_id]['disabled'] = False
+            categories[category_id]['organizations'][organization_id]['providers_count'] += count_data['providers_count']
+            categories[category_id]['providers_count'] += count_data['providers_count']
+
+        # 8 - remove keys from data struct
+        for category_id, category_values in categories.items():
+            categories[category_id]['organizations'] = categories[category_id]['organizations'].values(
+            )
+
+        # 9 - remove more keys from data struct and build response
+        filters = {
+            'drug_types': drug_types,
+            'formulations': medications.values(),
+            'provider_categories': categories.values(),
+            'provider_types': types.values(),
+        }
+
+        return Response(
+            filters,
+            status=status.HTTP_200_OK,
+        )
+
+
 class MedicationNameViewSet(viewsets.ModelViewSet):
     serializer_class = MedicationNameSerializer
     permission_classes = (AllowAny,)
@@ -154,8 +322,8 @@ class StateViewSet(viewsets.ModelViewSet):
                 states_qs = State.objects.filter(id=user_state.id)
             else:
                 msg = _(
-                    'This user has not national level permission '
-                    'and no attached state'
+                    'This user has no national level permission '
+                    'and has no states assigned'
                 )
                 raise BadRequest(msg)
 

@@ -9,6 +9,7 @@ from .views import (
     GeoStatsStatesWithMedicationsView,
     GeoStatsCountiesWithMedicationsView,
     GeoZipCodeWithMedicationsView,
+    MedicationFiltersView,
     MedicationTypesView,
     OrganizationViewSet,
     ProviderTypesView,
@@ -72,6 +73,10 @@ medications_api_urlpatterns = [
     path(
         'types/',
         MedicationTypesView.as_view(),
+    ),
+    path(
+        'filters/',
+        MedicationFiltersView.as_view(),
     ),
 ]
 
