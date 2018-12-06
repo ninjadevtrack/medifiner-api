@@ -476,11 +476,11 @@ class MedicationName(models.Model):
 class Medication(models.Model):
     BRAND_DRUG = 'b'
     GENERIC_DRUG = 'g'
-    PUBLIC_HEALTH_SUPPLY = 'p'
+    # PUBLIC_HEALTH_SUPPLY = 'p'
     DRUG_TYPE_CHOICES = (
         (BRAND_DRUG, _('Brand Drugs')),
         (GENERIC_DRUG, _('Generic Drugs')),
-        (PUBLIC_HEALTH_SUPPLY, _('Public Health Supply')),
+        # (PUBLIC_HEALTH_SUPPLY, _('Public Health Supply')),
     )
     name = models.CharField(
         _('medication name'),
