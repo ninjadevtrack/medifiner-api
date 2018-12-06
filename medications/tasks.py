@@ -166,7 +166,7 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
     if email_to:
         finnish_time = timezone.now()
         duration = finnish_time - beginning_time
-        duration_minutes = duration.seconds / 60
+        duration_minutes = round(duration.seconds / 60, 0)
         tz = timezone.pytz.timezone('EST')
         est_finnish_time = datetime.now(tz)
 
