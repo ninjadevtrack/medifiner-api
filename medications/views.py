@@ -143,7 +143,7 @@ class MedicationFiltersView(GenericAPIView):
             flat=True,
         )
 
-        # 3 - Extract all organization data that's active, categorized and with a type
+        # 3 - Extract all active organization data with category and with a type
         organization_data = Provider.objects.filter(
             active=True,
             category__id__isnull=False,
@@ -197,9 +197,17 @@ class MedicationFiltersView(GenericAPIView):
         provider_categories_and_types_count_qs = Provider.objects.filter(
             pk__in=provider_ids,
             active=True,
-            category__id__in=provider_category_filters,
-            type__id__in=provider_type_filters,
         )
+
+        if provider_category_filters:
+            provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
+                category__id__in=provider_category_filters,
+            )
+
+        if provider_type_filters:
+            provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
+                type__id__in=provider_type_filters,
+            )
 
         # 6 - Add location filters if exists
         if state_id:
