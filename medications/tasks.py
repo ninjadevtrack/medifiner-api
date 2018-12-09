@@ -324,7 +324,7 @@ def cache_provider_count(model, count_entities):
 
 
 @shared_task
-def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_date, formulation_ids_raw, provider_type_list=[], provider_category_list=[], drug_type_list=[], state_id=None, zipcode=None):
+def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_date, med_ndc_ids, provider_type_list=[], provider_category_list=[], drug_type_list=[], state_id=None, zipcode=None):
     user = User.objects.get(pk=user_id)
     # First we take list of provider medication for this med, we will
     # use it for future filters
@@ -355,18 +355,9 @@ def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_dat
         except ValueError:
             pass
 
-    formulation_ids = []
-    if formulation_ids_raw:
-        try:
-            formulation_ids = list(
-                map(int, formulation_ids_raw.split(','))
-            )
-        except ValueError:
-            pass
-    if formulation_ids:
-        provider_medication_qs = provider_medication_qs.filter(
-            medication_ndc__medication__id__in=formulation_ids,
-        )
+    provider_medication_qs = provider_medication_qs.filter(
+        medication_ndc_id__in=med_ndc_ids,
+    )
 
     if provider_category_list:
         try:

@@ -26,7 +26,6 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from django.http import HttpResponse
 
-from auth_ex.models import User
 from epidemic.models import Epidemic
 from medications.tasks import generate_medications, generate_csv_export
 from .serializers import (
@@ -43,7 +42,11 @@ from .serializers import (
 )
 from .models import (
     County,
+    MedicationMedicationNameMedicationDosageThrough,
     MedicationName,
+    MedicationNameEquivalence,
+    MedicationType,
+    MedicationTypeMedicationNameThrough,
     Organization,
     Provider,
     ProviderMedicationNdcThrough,
@@ -60,6 +63,8 @@ from .permissions import (
     SelfStatePermissionLevel,
     SelfZipCodePermissionLevel,
 )
+
+from .utils import force_user_state_id_and_zipcode
 
 
 class CSVUploadView(GenericAPIView):
@@ -92,49 +97,30 @@ class MedicationFiltersView(GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         # 1 - Extract all request params
-        user = self.request.user
-        formulations = self.request.query_params.getlist('formulations', [])
-        drug_types = self.request.query_params.getlist('drug_types', [])
+        user = request.user
+        dosages = self.request.query_params.getlist('dosages[]', [])
+        drug_types = self.request.query_params.getlist('drug_types[]', [])
         med_id = self.request.query_params.get('med_id', None)
-        provider_type_filters = self.request.query_params.getlist(
-            'provider_types', [])
         provider_category_filters = self.request.query_params.getlist(
-            'provider_categories', [])
+            'provider_categories[]', [])
+        provider_type_filters = self.request.query_params.getlist(
+            'provider_types[]', [])
         state_id = request.query_params.get('state_id', None)
         zipcode = request.query_params.get('zipcode', None)
 
         # 2 - Check User permissions
-        if user.permission_level == user.STATE_LEVEL:
-            if not user.state_id:
-                msg = _('Permission denied - Please check with system administrator')
-                raise BadRequest(msg)
-            # or (zipcode and zipcode != user.state_id):
-            if (state_id and state_id != user.state_id):
-                msg = _('Permission denied')
-                raise BadRequest(msg)
+        state_id, zipcode = force_user_state_id_and_zipcode(
+            user, state_id, zipcode)
 
-        drug_types = []
-        for id, name in Medication.DRUG_TYPE_CHOICES:
-            drug_types.append({'id': id, 'name': name})
+        # 3 - Extract all medications and medication ndcs codes filtered by Medication Name and Dosages
+        med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
+            medication_name_id=med_id,
+            medication_dosage_id__in=dosages
+        ).select_related(
+            'medication__ndc_codes',
+        ).distinct().values_list('medication__ndc_codes', flat=True)
 
-        # 3 - Extract all medications and medication ndcs codes filtered by Medication Name
-        medications = {}
-        med_ndc_ids = []
-        medications_qs = Medication.objects.filter(medication_name=med_id).values(
-            'id', 'drug_type', 'name', 'ndc_codes')
-        for medication in medications_qs:
-            if medication['id'] not in medications:
-                medications[medication['id']] = {
-                    'id': medication['id'],
-                    'disabled': not medication['drug_type'] in drug_types,
-                    'drug_type': medication['drug_type'],
-                    'name': medication['name'],
-                    'ndc_codes': []
-                }
-            medications[medication['id']]['ndc_codes'].append(
-                medication['ndc_codes'])
-            med_ndc_ids.append(medication['ndc_codes'])
-
+        # 4 - Filter down providers carriying the medications
         provider_ids = ProviderMedicationNdcThrough.objects.filter(
             latest=True,
             medication_ndc_id__in=med_ndc_ids,
@@ -143,7 +129,7 @@ class MedicationFiltersView(GenericAPIView):
             flat=True,
         )
 
-        # 3 - Extract all active organization data with category and with a type
+        # 5 - Extract all active organization data with category and with a type
         organization_data = Provider.objects.filter(
             active=True,
             category__id__isnull=False,
@@ -162,7 +148,7 @@ class MedicationFiltersView(GenericAPIView):
         categories = {}
         types = {}
 
-        # 4 - Build data structure for provider category filters and provider type filter
+        # 6 - Build data structure for provider category filters and provider type filter
         for org_data in organization_data:
             category_id = org_data['category__id']
             organization_id = org_data['organization__id']
@@ -193,10 +179,12 @@ class MedicationFiltersView(GenericAPIView):
             category['providers_count'] = 0
             categories[category_id] = category
 
-        # 5 - Count Provider filtered by Category and Type
+        # 7 - Count Provider filtered by Category and Type
         provider_categories_and_types_count_qs = Provider.objects.filter(
             pk__in=provider_ids,
             active=True,
+            category__id__isnull=False,
+            type__id__isnull=False
         )
 
         if provider_category_filters:
@@ -209,7 +197,7 @@ class MedicationFiltersView(GenericAPIView):
                 type__id__in=provider_type_filters,
             )
 
-        # 6 - Add location filters if exists
+        # 8 - Add location filters if exists
         if state_id:
             provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
                 related_zipcode__state=state_id
@@ -232,27 +220,86 @@ class MedicationFiltersView(GenericAPIView):
             providers_count=Count('id'),
         )
 
-        # 7 - Add counts to types and categories data structures
+        # 9 - Add counts to types and categories data structures
         for count_data in provider_categories_and_types_count:
             category_id = count_data['category__id']
             organization_id = count_data['organization__id']
             type_id = count_data['type__id']
-
             types[type_id]['providers_count'] += count_data['providers_count']
 
             categories[category_id]['organizations'][organization_id]['disabled'] = False
             categories[category_id]['organizations'][organization_id]['providers_count'] += count_data['providers_count']
             categories[category_id]['providers_count'] += count_data['providers_count']
 
-        # 8 - remove keys from data struct
+        # 10 - remove keys from data struct
         for category_id, category_values in categories.items():
             categories[category_id]['organizations'] = categories[category_id]['organizations'].values(
             )
 
-        # 9 - remove more keys from data struct and build response
+        # 11 - build medication/drug type/dosages
+        medication_type_mapping = {}
+        medication_name_mapping = {}
+        med_type_med_name_data = {}
+
+        for med in MedicationTypeMedicationNameThrough.objects.all():
+            medication_name_mapping[med.medication_name_id] = med.medication_name
+            medication_type_mapping[med.medication_type_id] = str(
+                med.medication_type)
+
+            med_type_med_name_data[med.medication_name_id] = {
+            } if med.medication_name_id not in med_type_med_name_data else med_type_med_name_data[med.medication_name_id]
+            med_type_med_name_data[med.medication_name_id][med.medication_type_id] = True
+
+        options = {}
+
+        for medication_name_id, medication_type_ids in med_type_med_name_data.items():
+            medication_type_key = str(medication_type_ids.keys())
+
+            medication_type_data = []
+            for med_type_key in medication_type_ids.keys():
+                medication_type_data.append({
+                    'id': med_type_key,
+                    'name': medication_type_mapping[med_type_key]
+                })
+
+            if medication_type_key not in options:
+                options[medication_type_key] = {
+                    'medication_types': medication_type_data,
+                    'medication_names': [],
+                    'medication_dosages': []
+                }
+
+            equivalent_medication_name_ids = MedicationNameEquivalence.objects.filter(
+                medication_name_id=medication_name_id).values_list(
+                'equivalent_medication_name_id', flat=True)
+
+            med_obj = {
+                'dosages': [],
+                'id': medication_name_id,
+                'name': str(medication_name_mapping[medication_name_id]),
+                'equivalent_medication_name_ids': equivalent_medication_name_ids
+            }
+
+            for medication_dosage in medication_name_mapping[medication_name_id].medication_dosages.values('medication_dosage__id', 'medication_dosage__name'):
+                dosage_obj = {
+                    'id': medication_dosage['medication_dosage__id'],
+                    'name': medication_dosage['medication_dosage__name']
+                }
+                if dosage_obj not in med_obj['dosages']:
+                    med_obj['dosages'].append(dosage_obj)
+                    options[medication_type_key]['medication_dosages'].append(
+                        dosage_obj)
+            options[medication_type_key]['medication_names'].append(med_obj)
+
+        options = options.values()
+
+        # 12 - load drug types
+        drug_types = MedicationType.objects.all().values('id', 'name')
+
+        # 13 - remove more keys from data struct and build response
         filters = {
             'drug_types': drug_types,
-            'formulations': medications.values(),
+            'formulations': options,
             'provider_categories': categories.values(),
             'provider_types': types.values(),
         }
@@ -263,77 +310,19 @@ class MedicationFiltersView(GenericAPIView):
         )
 
 
-class MedicationNameViewSet(viewsets.ModelViewSet):
-    serializer_class = MedicationNameSerializer
-    permission_classes = (AllowAny,)
-    allowed_methods = ['GET']
-
-    def get_queryset(self):
-        medications_qs = MedicationName.objects.all()
-        ordering = self.request.query_params.get('ordering')
-        medications_related_qs = Medication.objects.all()
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        provider_type_list = self.request.query_params.get(
-            'provider_type',
-            [],
-        )
-
-        provider_category_list = self.request.query_params.get(
-            'provider_category',
-            [],
-        )
-        if drug_type_list:
-            medications_related_qs = medications_related_qs.filter(
-                drug_type__in=drug_type_list,
-            )
-        if provider_type_list:
-            medications_related_qs = medications_related_qs.filter(
-                ndc_codes__provider_medication__provider__type__in=provider_type_list,  # noqa
-            )
-        if provider_category_list:
-            medications_related_qs = medications_related_qs.filter(
-                ndc_codes__provider_medication__provider__category__in=provider_category_list,  # noqa
-            )
-
-        medications_qs = medications_qs.prefetch_related(
-            Prefetch(
-                'medications',
-                queryset=medications_related_qs.prefetch_related(
-                    'ndc_codes',
-                )
-            )
-        )
-
-        if ordering and ('name' == ordering.replace('-', '')):
-            if ordering.startswith('-'):
-                medications_qs = medications_qs.order_by('-name')
-            else:
-                medications_qs = medications_qs.order_by('name')
-
-        return medications_qs
-
-
 class StateViewSet(viewsets.ModelViewSet):
     serializer_class = StateSerializer
     permission_classes = (IsAuthenticated,)
     allowed_methods = ['GET']
 
     def get_queryset(self):
+        user = self.request.user
         states_qs = State.objects.all()
 
-        if self.request.user.permission_level == self.request.user.STATE_LEVEL:
-            user_state = getattr(self.request.user, 'state', None)
-            if user_state:
-                states_qs = State.objects.filter(id=user_state.id)
-            else:
-                msg = _(
-                    'This user has no national level permission '
-                    'and has no states assigned'
-                )
-                raise BadRequest(msg)
+        state_id, zipcode = force_user_state_id_and_zipcode(user, None, None)
+
+        if state_id:
+            states_qs = states_qs.filter(id=state_id)
 
         ordering = self.request.query_params.get('ordering')
         if ordering and ('name' == ordering.replace('-', '')):
@@ -349,86 +338,40 @@ class StateViewSet(viewsets.ModelViewSet):
 
 def get_provider_medication_id(query_params):
     # Method use to save many line codes in the geo_stats views
-    med_id = query_params.get('med_id')
+    dosages = query_params.getlist('dosages[]', [])
+    med_id = query_params.get('med_id', None)
+    provider_category_filters = query_params.getlist(
+        'provider_categories[]', [])
+    provider_type_filters = query_params.getlist(
+        'provider_types[]', [])
+
+    # Find NDC code based on dosage and medication name
+    med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
+        medication_name_id=med_id,
+        medication_dosage_id__in=dosages
+    ).select_related(
+        'medication__ndc_codes',
+    ).distinct().values_list('medication__ndc_codes', flat=True)
 
     # First we take list of provider medication for this med, we will
     # use it for future filters
-    provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
-        latest=True,
-        medication_ndc__medication__medication_name__id=med_id,
-        provider__active=True,
-    )
-    # We take the formulation ids and transform them to use like filter
-    formulation_ids_raw = query_params.get(
-        'formulations',
-    )
-    formulation_ids = []
-    if not formulation_ids_raw and formulation_ids_raw is not None:
-        # Catch the case when in url we have &formulations=
-        # meaning the user unchecked all formulations
-        return ProviderMedicationNdcThrough.objects.none()
-    if formulation_ids_raw:
-        try:
-            formulation_ids = list(
-                map(int, formulation_ids_raw.split(','))
-            )
-        except ValueError:
-            pass
-    if formulation_ids:
-        provider_medication_qs = provider_medication_qs.filter(
-            medication_ndc__medication__id__in=formulation_ids,
-        )
-
-    # Now we check if there is a list of type of providers to filter
-    provider_type_list = query_params.get(
-        'provider_type',
-        [],
-    )
-    if provider_type_list:
-        try:
-            provider_type_list = provider_type_list.split(',')
-            provider_medication_qs = provider_medication_qs.filter(
-                provider__type__in=provider_type_list,
-            )
-        except ValueError:
-            pass
-
-    # Now we check if there is a list of category of providers to filter
-    provider_category_list = query_params.get(
-        'provider_category',
-        [],
-    )
-    if provider_category_list:
-        try:
-            provider_category_list = provider_category_list.split(',')
-            provider_medication_qs = provider_medication_qs.filter(
-                provider__category__in=provider_category_list,
-            )
-        except ValueError:
-            pass
-
-    # Now we check if there is a list of drug types to filter
-    drug_type_list = query_params.get(
-        'drug_type',
-        [],
-    )
-    if drug_type_list:
-        try:
-            drug_type_list = drug_type_list.split(',')
-            provider_medication_qs = provider_medication_qs.filter(
-                medication_ndc__medication__drug_type__in=drug_type_list,
-            )
-        except ValueError:
-            pass
 
     # Annotate the list of the medication levels for every state
     # to be used to calculate the low/medium/high after in the serializer.
     # We create a list of the ids of the provider medication objects that
     # we have after filtering.
-    provider_medication_ids = provider_medication_qs.values_list(
+
+    provider_medication_ids = ProviderMedicationNdcThrough.objects.filter(
+        latest=True,
+        medication_ndc_id__in=med_ndc_ids,
+        provider__active=True,
+        provider__category__in=provider_category_filters,
+        provider__type__in=provider_type_filters,
+    ).values_list(
         'id',
         flat=True,
     )
+
     return provider_medication_ids
 
 
@@ -440,26 +383,16 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
     def get_queryset(self):
         '''
         query_params:
+            - dosages: list of Dosage ids
+            - drug_type: list of 1 character str, for drug_type in Medication
             - med_id: MedicationName id
-            - formulations: list of Medication ids
             - provider_type: list of ProviderType ids
             - provider_category: list of ProviderCategory ids
-            - drug_type: list of 1 character str, for drug_type in Medication
         '''
-        med_id = self.request.query_params.get('med_id')
-        try:
-            if not med_id or int(
-                med_id
-            ) not in MedicationName.objects.values_list(
-                'id',
-                flat=True,
-            ):
-                return State.objects.none()
-        except ValueError:
-            return State.objects.none()
         provider_medication_ids = get_provider_medication_id(
             self.request.query_params,
         )
+
         qs = State.objects.all().annotate(
             medication_levels=ArrayAgg(
                 'state_zipcodes__providers__provider_medication__level',
@@ -489,6 +422,11 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
         '''
         med_id = self.request.query_params.get('med_id')
         state_id = self.kwargs.pop('state_id')
+        user = self.request.user
+
+        state_id, zipcode = force_user_state_id_and_zipcode(
+            user, state_id, None)
+
         try:
             if not med_id or int(
                 med_id
@@ -550,7 +488,13 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
         '''
         med_id = self.request.query_params.get('med_id')
         state_id = self.request.query_params.get('state_id')
+        user = self.request.user
         zipcode = self.kwargs.get('zipcode')
+
+        # check permission
+        state_id, zipcode = force_user_state_id_and_zipcode(
+            user, state_id, zipcode)
+
         try:
             int(med_id)
         except (ValueError, TypeError):
@@ -597,274 +541,11 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-def get_provider_category_or_type(request):
-    '''
-    query_params:
-        - med_id: MedicationName id
-        - formulations: list of Medication ids
-        - state_id: id of State object
-        - zipcode: zipcode
-        - drug_type: list of 1 character str, for drug_type in Medication
-    '''
-    med_id = request.query_params.get('med_id')
-    state_id = request.query_params.get('state_id')
-    zipcode = request.query_params.get('zipcode')
-    # skipping this to speed things up - trusting ids from frontend
-    # try:
-    #     if not med_id or int(
-    #         med_id
-    #     ) not in MedicationName.objects.values_list(
-    #         'id',
-    #         flat=True,
-    #     ):
-    #         return None
-    # except ValueError:
-    #     return None
-
-    med_ndc_qs = MedicationNdc.objects.all()
-
-    if med_id:
-        med_ndc_qs = med_ndc_qs.filter(
-            medication__medication_name__id=med_id,
-        )
-
-    # We take the formulation ids and transform them to use like filter
-    formulation_ids_raw = request.query_params.get(
-        'formulations',
-    )
-    formulation_ids = []
-    if formulation_ids_raw:
-        try:
-            formulation_ids = list(
-                map(int, formulation_ids_raw.split(','))
-            )
-        except ValueError:
-            pass
-    if formulation_ids:
-        med_ndc_qs = med_ndc_qs.filter(
-            medication__id__in=formulation_ids,
-        )
-
-    # Now we check if there is a list of drug types to filter
-    drug_type_list = request.query_params.get(
-        'drug_type',
-        [],
-    )
-    if drug_type_list:
-        try:
-            drug_type_list = drug_type_list.split(',')
-            med_ndc_qs = med_ndc_qs.filter(
-                medication__drug_type__in=drug_type_list,
-            )
-        except ValueError:
-            pass
-
-    med_ndc_ids = med_ndc_qs.values_list(
-        'id',
-        flat=True,
-    )
-
-    provider_ids = ProviderMedicationNdcThrough.objects.filter(
-        latest=True,
-        medication_ndc_id__in=med_ndc_ids,
-    ).distinct().values('provider_id').values_list(
-        'provider_id',
-        flat=True,
-    )
-
-    qs = Provider.objects.filter(
-        pk__in=provider_ids,
-        active=True,
-        category__id__isnull=False,
-        type__id__isnull=False
-    )
-
-    if state_id and not zipcode:
-        # If we have zipcode we dont take into account the state
-        try:
-            qs = qs.filter(
-                related_zipcode__state__id=int(state_id),
-            )
-        except ValueError:
-            pass
-
-    if zipcode:
-        qs = qs.filter(
-            zip=zipcode,
-        )
-    return qs
-
-
-class ProviderCategoriesView(APIView):
-    permission_classes = (NationalLevel,)
-    allowed_methods = ['GET']
-
-    def get(self, request):
-        qs = get_provider_category_or_type(request)
-
-        qs = qs.values(
-            'category__id',
-            'category__name',
-            'organization__id',
-            'organization__organization_name'
-        ).annotate(
-            providers_count=Count('id'),
-        )
-
-        context = {'request': request}
-        data = ProviderCategoriesSerializer(
-            context=context).to_representation(
-            qs
-        )
-        return Response(data)
-
-
-class ProviderTypesView(APIView):
-    permission_classes = (NationalLevel,)
-    allowed_methods = ['GET']
-
-    def get(self, request):
-        qs = get_provider_category_or_type(request)
-
-        qs = qs.values(
-            'type__id',
-            'type__name'
-        ).annotate(
-            providers_count=Count('id'),
-        )
-
-        context = {'request': request}
-        data = ProviderTypesSerializer(
-            context=context).to_representation(
-            qs
-        )
-        return Response(data)
-
-
 class OrganizationViewSet(viewsets.ModelViewSet):
     serializer_class = OrganizationSerializer
     permission_classes = (AllowAny,)
     allowed_methods = ['GET']
     queryset = Organization.objects.all()
-
-
-class MedicationTypesView(views.APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request):
-        '''
-        query_params:
-            - med_id: MedicationName id
-            - formulations: list of Medication ids
-            - state_id: id of State object
-            - zipcode: zipcode
-            - provider_category: list of ProviderCategory ids
-            - provider_type: list of ProviderType ids
-        '''
-        med_id = self.request.query_params.get('med_id')
-        state_id = self.request.query_params.get('state_id')
-        zipcode = self.request.query_params.get('zipcode')
-        returning_values = [
-            {'drug_type': 'b', 'count': 1},
-            {'drug_type': 'g', 'count': 1},
-        ]
-        if Epidemic.objects.first().active:
-            returning_values.append({'drug_type': 'p', 'count': 1})
-        for drug_type in returning_values:
-            drug_type['drug_type_verbose'] = dict(
-                Medication.DRUG_TYPE_CHOICES
-            ).get(drug_type['drug_type'])
-        try:
-            if not med_id or int(
-                med_id
-            ) not in MedicationName.objects.values_list(
-                'id',
-                flat=True,
-            ):
-                return Response(returning_values)
-        except ValueError:
-            return Response(returning_values)
-
-        # provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
-        #     latest=True,
-        #     medication_ndc__medication__medication_name__id=med_id,
-        #     provider__active=True,
-        # )
-        #
-        # if state_id and not zipcode:
-        #     # If we have zipcode we dont take into account the state
-        #     try:
-        #         provider_medication_qs = provider_medication_qs.filter(
-        #             provider__related_zipcode__state__id=int(state_id),
-        #         )
-        #     except ValueError:
-        #         pass
-        #
-        # if zipcode:
-        #     provider_medication_qs = provider_medication_qs.filter(
-        #         provider__zip=zipcode,
-        #     )
-        #
-        # # We take the formulation ids and transform them to use like filter
-        # formulation_ids_raw = self.request.query_params.get(
-        #     'formulations',
-        # )
-        # formulation_ids = []
-        # if formulation_ids_raw:
-        #     try:
-        #         formulation_ids = list(
-        #             map(int, formulation_ids_raw.split(','))
-        #         )
-        #     except ValueError:
-        #         pass
-        # if formulation_ids:
-        #     provider_medication_qs = provider_medication_qs.filter(
-        #         medication_ndc__medication__id__in=formulation_ids,
-        #     )
-        #
-        # # Now we check if there is a list of type of providers to filter
-        # provider_type_list = self.request.query_params.get(
-        #     'provider_type',
-        #     [],
-        # )
-        # if provider_type_list:
-        #     try:
-        #         provider_type_list = provider_type_list.split(',')
-        #         provider_medication_qs = provider_medication_qs.filter(
-        #             provider__type__in=provider_type_list,
-        #         )
-        #     except ValueError:
-        #         pass
-        #
-        # # Now we check if there is a list of category of providers to filter
-        # provider_category_list = self.request.query_params.get(
-        #     'provider_category',
-        #     [],
-        # )
-        # if provider_category_list:
-        #     try:
-        #         provider_category_list = provider_category_list.split(',')
-        #         provider_medication_qs = provider_medication_qs.filter(
-        #             provider__category__in=provider_category_list,
-        #         )
-        #     except ValueError:
-        #         pass
-        #
-        # provider_medication_ids = provider_medication_qs.values_list(
-        #     'id',
-        #     flat=True,
-        # )
-        # values = Medication.objects.filter(
-        #     ndc_codes__provider_medication__id__in=provider_medication_ids,
-        # ).values('drug_type').annotate(count=Count('drug_type'))
-        # for default_value in returning_values:
-        #     default_drug_type = default_value.get('drug_type')
-        #     for value in values:
-        #         drug_type = value.get('drug_type')
-        #         if default_drug_type == drug_type:
-        #             default_value['count'] = value['count']
-        #
-        return Response(returning_values)
 
 
 class CSVExportView(GenericAPIView):
@@ -883,19 +564,24 @@ class CSVExportView(GenericAPIView):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
+        user = request.user
         state_id = getattr(self, 'state_id', None)
         zipcode = getattr(self, 'zipcode', None)
-        formulation_ids_raw = self.request.query_params.get('formulations')
-        drug_type_list = self.request.query_params.get('drug_type', [])
+        dosages = request.query_params.getlist('dosages[]', [])
+        drug_types = request.query_params.getlist('drug_types[]', [])
         end_date = request.query_params.get('end_date')
         med_id = request.query_params.get('med_id')
-        provider_category_list = self.request.query_params.get(
-            'provider_category', [])
-        provider_type_list = self.request.query_params.get('provider_type', [])
+        provider_categories = request.query_params.getlist(
+            'provider_categories[]', [])
+        provider_types = request.query_params.getlist(
+            'provider_types[]', [])
         start_date = request.query_params.get('start_date')
 
-        national_level_permission = request.user.permission_level == User.NATIONAL_LEVEL
+        # check permission
+        state_id, zipcode = force_user_state_id_and_zipcode(
+            user, state_id, zipcode)
 
+        # ensure correct geography filters
         if zipcode:
             geography = zipcode
         elif state_id:
@@ -905,6 +591,14 @@ class CSVExportView(GenericAPIView):
                 raise BadRequest('No such state exists')
         else:
             geography = 'US'
+
+        # collect NDC ids for dosages and med
+        med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
+            medication_name_id=med_id,
+            medication_dosage_id__in=dosages
+        ).select_related(
+            'medication__ndc_codes',
+        ).distinct().values_list('medication__ndc_codes', flat=True)
 
         try:
             med_name = MedicationName.objects.get(id=med_id)
@@ -916,7 +610,7 @@ class CSVExportView(GenericAPIView):
             geography=geography,
             date_from=start_date.format('%Y-%m-%d'),
             date_to=end_date.format('%Y-%m-%d'),
-            user_id=self.request.user.id,
+            user_id=user.id,
             timestamp=str(time.time()),
         )
 
@@ -931,14 +625,14 @@ class CSVExportView(GenericAPIView):
         generate_csv_export.delay(
             filename,
             file_url,
-            self.request.user.id,
+            user.id,
             med_id,
             start_date,
             end_date,
-            formulation_ids_raw,
-            provider_type_list,
-            provider_category_list,
-            drug_type_list,
+            med_ndc_ids,
+            provider_types,
+            provider_categories,
+            drug_types,
             state_id,
             zipcode
         )

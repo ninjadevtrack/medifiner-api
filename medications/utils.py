@@ -1,9 +1,9 @@
 import json as simplejson
 
-from urllib.request import urlopen
-from urllib.parse import quote_plus
 from django.conf import settings
 from django.utils.encoding import smart_str
+from urllib.parse import quote_plus
+from urllib.request import urlopen
 
 
 def get_lat_lng(location):
@@ -11,7 +11,7 @@ def get_lat_lng(location):
     # Reference: http://djangosnippets.org/snippets/293/
 
     location = quote_plus(smart_str(location))
-    url = 'https://maps.googleapis.com/maps/api/geocode/json?address={}&sensor=false&key={}'.format( # noqa
+    url = 'https://maps.googleapis.com/maps/api/geocode/json?address={}&sensor=false&key={}'.format(  # noqa
         location,
         settings.GOOGLE_MAP_API_KEY,
     )
@@ -57,3 +57,12 @@ def get_supplies(supply_levels):
         low + medium + high,
     )
     return {'low': low, 'medium': medium, 'high': high}, dominant
+
+
+def force_user_state_id_and_zipcode(user, state_id, zipcode):
+    if user.permission_level == user.STATE_LEVEL:
+        if not user.state_id or (zipcode and ZipCode.objects.filter(zipcode=zipcode, state_id=user.state_id).count() == 0):
+            msg = _('Permission denied - Please check with system administrator')
+            raise BadRequest(msg)
+        return user.state_id, zipcode
+    return state_id, zipcode

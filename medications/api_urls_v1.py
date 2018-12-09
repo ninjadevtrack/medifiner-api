@@ -4,24 +4,15 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CSVUploadView,
     CSVExportView,
-    MedicationNameViewSet,
     StateViewSet,
     GeoStatsStatesWithMedicationsView,
     GeoStatsCountiesWithMedicationsView,
     GeoZipCodeWithMedicationsView,
     MedicationFiltersView,
-    MedicationTypesView,
     OrganizationViewSet,
-    ProviderTypesView,
-    ProviderCategoriesView,
 )
 
 router = DefaultRouter()
-router.register(
-    r'names',
-    MedicationNameViewSet,
-    base_name='name',
-)
 router.register(
     r'states',
     StateViewSet,
@@ -61,18 +52,6 @@ medications_api_urlpatterns = [
     path(
         'csv_export/zipcode/<str:zipcode>/',
         CSVExportView.as_view(),
-    ),
-    path(
-        'provider_types/',
-        ProviderTypesView.as_view(),
-    ),
-    path(
-        'provider_categories/',
-        ProviderCategoriesView.as_view(),
-    ),
-    path(
-        'types/',
-        MedicationTypesView.as_view(),
     ),
     path(
         'filters/',

@@ -473,6 +473,53 @@ class MedicationName(models.Model):
         return self.name
 
 
+class MedicationNameEquivalence(models.Model):
+    medication_name = models.ForeignKey(
+        MedicationName,
+        related_name='medication_name',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+    equivalent_medication_name = models.ForeignKey(
+        MedicationName,
+        related_name='equivalent_medication_names',
+        on_delete=models.CASCADE,
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = _('equivalent medication name')
+        verbose_name_plural = _('equivalent medication names')
+
+
+class MedicationDosage(models.Model):
+    name = models.CharField(
+        _('name'),
+        max_length=255,
+    )
+
+    class Meta:
+        verbose_name = _('medication dosage')
+        verbose_name_plural = _('medication dosages')
+
+    def __str__(self):
+        return self.name
+
+
+class MedicationType(models.Model):
+    name = models.CharField(
+        _('name'),
+        max_length=255,
+    )
+
+    class Meta:
+        verbose_name = _('medication dosage')
+        verbose_name_plural = _('medication dosages')
+
+    def __str__(self):
+        return self.name
+
+
 class Medication(models.Model):
     BRAND_DRUG = 'b'
     GENERIC_DRUG = 'g'
@@ -626,3 +673,53 @@ class ExistingMedication(models.Model):
 
     def __str__(self):
         return self.ndc
+
+
+class MedicationTypeMedicationNameThrough(models.Model):
+    medication_type = models.ForeignKey(
+        MedicationType,
+        related_name='medication_types',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    medication_name = models.ForeignKey(
+        MedicationName,
+        related_name='medication_names',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = _('medication name medication type relation')
+        verbose_name_plural = _('medication name medication type relations')
+        indexes = [
+            models.Index(fields=['medication_type_id', 'medication_name_id'])
+        ]
+
+
+class MedicationMedicationNameMedicationDosageThrough(models.Model):
+    medication_name = models.ForeignKey(
+        MedicationName,
+        related_name='medication_dosages',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    medication_dosage = models.ForeignKey(
+        MedicationDosage,
+        related_name='medication_medication_dosages',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    medication = models.ForeignKey(
+        Medication,
+        related_name='medication_medications',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = _('medication name medication dosage relation')
+        verbose_name_plural = _('medication name medication dosage relations')
+        indexes = [
+            models.Index(fields=['medication_name_id', 'medication_dosage_id'])
+        ]
