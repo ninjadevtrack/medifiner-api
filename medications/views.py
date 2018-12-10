@@ -92,6 +92,64 @@ class CSVUploadView(GenericAPIView):
         )
 
 
+def medication_name_dosage_type_filters():
+    medication_type_mapping = {}
+    medication_name_mapping = {}
+    med_type_med_name_data = {}
+
+    for med in MedicationTypeMedicationNameThrough.objects.all():
+        medication_name_mapping[med.medication_name_id] = med.medication_name
+        medication_type_mapping[med.medication_type_id] = str(
+            med.medication_type)
+
+        med_type_med_name_data[med.medication_name_id] = {
+        } if med.medication_name_id not in med_type_med_name_data else med_type_med_name_data[med.medication_name_id]
+        med_type_med_name_data[med.medication_name_id][med.medication_type_id] = True
+
+    options = {}
+
+    for medication_name_id, medication_type_ids in med_type_med_name_data.items():
+        medication_type_key = str(medication_type_ids.keys())
+
+        medication_type_data = []
+        for med_type_key in medication_type_ids.keys():
+            medication_type_data.append({
+                'id': med_type_key,
+                'name': medication_type_mapping[med_type_key]
+            })
+
+        if medication_type_key not in options:
+            options[medication_type_key] = {
+                'medication_types': medication_type_data,
+                'medication_names': [],
+                'medication_dosages': []
+            }
+
+        equivalent_medication_name_ids = MedicationNameEquivalence.objects.filter(
+            medication_name_id=medication_name_id).values_list(
+            'equivalent_medication_name_id', flat=True)
+
+        med_obj = {
+            'dosages': [],
+            'id': medication_name_id,
+            'name': str(medication_name_mapping[medication_name_id]),
+            'equivalent_medication_name_ids': equivalent_medication_name_ids
+        }
+
+        for medication_dosage in medication_name_mapping[medication_name_id].medication_dosages.values('medication_dosage__id', 'medication_dosage__name'):
+            dosage_obj = {
+                'id': medication_dosage['medication_dosage__id'],
+                'name': medication_dosage['medication_dosage__name']
+            }
+            if dosage_obj not in med_obj['dosages']:
+                med_obj['dosages'].append(dosage_obj)
+                options[medication_type_key]['medication_dosages'].append(
+                    dosage_obj)
+        options[medication_type_key]['medication_names'].append(med_obj)
+
+    return options.values()
+
+
 class MedicationFiltersView(GenericAPIView):
     permission_classes = (IsAuthenticated,)
 
@@ -237,61 +295,7 @@ class MedicationFiltersView(GenericAPIView):
             )
 
         # 11 - build medication/drug type/dosages
-        medication_type_mapping = {}
-        medication_name_mapping = {}
-        med_type_med_name_data = {}
-
-        for med in MedicationTypeMedicationNameThrough.objects.all():
-            medication_name_mapping[med.medication_name_id] = med.medication_name
-            medication_type_mapping[med.medication_type_id] = str(
-                med.medication_type)
-
-            med_type_med_name_data[med.medication_name_id] = {
-            } if med.medication_name_id not in med_type_med_name_data else med_type_med_name_data[med.medication_name_id]
-            med_type_med_name_data[med.medication_name_id][med.medication_type_id] = True
-
-        options = {}
-
-        for medication_name_id, medication_type_ids in med_type_med_name_data.items():
-            medication_type_key = str(medication_type_ids.keys())
-
-            medication_type_data = []
-            for med_type_key in medication_type_ids.keys():
-                medication_type_data.append({
-                    'id': med_type_key,
-                    'name': medication_type_mapping[med_type_key]
-                })
-
-            if medication_type_key not in options:
-                options[medication_type_key] = {
-                    'medication_types': medication_type_data,
-                    'medication_names': [],
-                    'medication_dosages': []
-                }
-
-            equivalent_medication_name_ids = MedicationNameEquivalence.objects.filter(
-                medication_name_id=medication_name_id).values_list(
-                'equivalent_medication_name_id', flat=True)
-
-            med_obj = {
-                'dosages': [],
-                'id': medication_name_id,
-                'name': str(medication_name_mapping[medication_name_id]),
-                'equivalent_medication_name_ids': equivalent_medication_name_ids
-            }
-
-            for medication_dosage in medication_name_mapping[medication_name_id].medication_dosages.values('medication_dosage__id', 'medication_dosage__name'):
-                dosage_obj = {
-                    'id': medication_dosage['medication_dosage__id'],
-                    'name': medication_dosage['medication_dosage__name']
-                }
-                if dosage_obj not in med_obj['dosages']:
-                    med_obj['dosages'].append(dosage_obj)
-                    options[medication_type_key]['medication_dosages'].append(
-                        dosage_obj)
-            options[medication_type_key]['medication_names'].append(med_obj)
-
-        options = options.values()
+        options = medication_name_dosage_type_filters()
 
         # 12 - load drug types
         drug_types = MedicationType.objects.all().values('id', 'name')

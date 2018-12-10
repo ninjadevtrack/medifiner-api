@@ -16,10 +16,18 @@ from django.utils.translation import ugettext_lazy as _
 
 from epidemic.models import Epidemic
 from medications.models import (
+    MedicationType,
+    MedicationTypeMedicationNameThrough,
+    MedicationMedicationNameMedicationDosageThrough,
     ProviderMedicationNdcThrough,
     Provider,
     Medication,
 )
+
+from medications.views import (
+    medication_name_dosage_type_filters,
+)
+
 from .serializers import FindProviderSerializer, ContactFormSerializer
 
 
@@ -32,83 +40,43 @@ class FindProviderMedicationView(ListAPIView):
         '''
         query_params:
             - med_ids: list of MedicaitonName ids
-            - formulations: list of Medication ids
+            - dosages: list of Dosage ids
             - localization: list of 2 coordinates (must be int or float)
-            - drug_type: list of 1 character str, for drug_type in Medication
             - distance: int, in miles
         '''
-        med_ids_raw = self.request.query_params.get('med_ids')
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-
-        med_ids = []
-        if med_ids_raw and not med_ids_raw == 'all':
-            try:
-                med_ids = list(
-                    map(int, med_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-
-        localization = self.request.query_params.get('localization')
-
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        # Distance is given in miles
+        med_ids = self.request.query_params.getlist('med_ids[]', None)
+        dosages = self.request.query_params.getlist('dosages[]', None)
+        location = self.request.query_params.get('localization')
         distance = self.request.query_params.get('distance')
-        if not distance:
-            distance = 10
 
+        # 1 - valid location
         try:
-            localization = list(
-                map(float, localization.split(','))
+            location = list(
+                map(float, location.split(','))
             )
-            localization_point = Point(
-                localization[0], localization[1], srid=4326,
+            location_point = Point(
+                location[0], location[1], srid=4326,
             )
         except (IndexError, ValueError, AttributeError):
             raise BadRequest(
-                'Localization should be provided and consist of 2 coordinates'
+                'Location should be provided and be a list of 2 coordinates'
             )
+
+        med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
+            medication_name_id__in=med_ids,
+            medication_dosage_id__in=dosages
+        ).select_related(
+            'medication__ndc_codes',
+        ).distinct().values_list('medication__ndc_codes', flat=True)
 
         provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
             latest=True,
+            medication_ndc_id__in=med_ndc_ids,
             provider__geo_localization__distance_lte=(
-                localization_point,
+                location_point,
                 D(mi=distance),
             ),
         )
-
-        if med_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication_ndc__medication__medication_name__id__in=med_ids,
-            )
-
-            if formulation_ids:
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication_ndc__medication__id__in=formulation_ids,
-                )
-
-        # Check the list of drug types to filter
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication_ndc__medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
 
         # Exclude public health medications if epidemic is not active
         if not Epidemic.objects.first().active:
@@ -120,20 +88,15 @@ class FindProviderMedicationView(ListAPIView):
             flat=True,
         )
 
-        if not formulation_ids_raw and formulation_ids_raw is not None and not med_ids_raw == 'all':
-            # Catch the case when in url we have &formulations=
-            # meaning the user unchecked all formulations
-            provider_medication_ids = []
-
         provider_qs = Provider.objects.filter(
             geo_localization__distance_lte=(
-                localization_point,
+                location_point,
                 D(mi=distance),
             ),
         ).annotate(
             distance=Distance(
                 'geo_localization',
-                localization_point,
+                location_point,
             ),
             total_supply=Coalesce(
                 Sum(
@@ -186,7 +149,26 @@ class BasicInfoView(APIView):
         map_choices = dict(Medication.DRUG_TYPE_CHOICES)
         if not Epidemic.objects.first().active:
             map_choices.pop(Medication.PUBLIC_HEALTH_SUPPLY)
-        response['drug_type'] = map_choices
+
+        # to uncomment for PUBLIC MEDFINDER DOSAGES
+
+        # response['drug_type'] = {}
+        # for med_type in MedicationType.objects.all():
+        #     response['drug_type'][med_type.id] = med_type.name
+
+        return Response(response)
+
+
+class GetFormOptionsView(APIView):
+    def get(self, request):
+        options = medication_name_dosage_type_filters()
+        medication_types = MedicationType.objects.order_by(
+            'name').values('id', 'name')
+
+        response = {
+            'medication_types': medication_types,
+            'options': options
+        }
         return Response(response)
 
 

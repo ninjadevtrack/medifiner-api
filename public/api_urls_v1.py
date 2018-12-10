@@ -1,12 +1,17 @@
 from django.urls import path
 
 from .views import (
-    FindProviderMedicationView,
     BasicInfoView,
     ContactFormView,
+    FindProviderMedicationView,
+    GetFormOptionsView,
 )
 
 public_api_urlpatterns = [
+    path(
+        'options/',
+        GetFormOptionsView.as_view(),
+    ),
     path(
         'find_providers/',
         FindProviderMedicationView.as_view(),
