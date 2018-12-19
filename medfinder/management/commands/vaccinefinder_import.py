@@ -7,6 +7,7 @@ from medications.models import Organization, Provider, ProviderType
 from vaccinefinder.models import VFOrganization, VFProvider
 
 
+# docker-compose -f dev.yml run django python manage.py vaccinefinder_import
 class Command(BaseCommand):
     """
     Import from Vaccine Finder DB to populate provider type
@@ -16,16 +17,27 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.import_providers_from_remote_db()
 
-    # def relate_related_zipcode(self, organization):
-    #     organization = Organization.objects.filter(
-    #         organization_name='Walgreens',
-    #     )[0]
-    #     for provider in organization.providers.all():
-    #         provider.relate_related_zipcode = True
-    #         provider.save()
+    def find_provider_type(self, vaccinefinder_type_id):
+        type = self.vaccine_finder_type_map(vaccinefinder_type_id)
+        if type:
+            provider_type, created = ProviderType.objects.get_or_create(
+                name=type)
+            return provider_type
+        else:
+            return None
+
+    def vaccine_finder_type_map(self, vaccinefinder_type_id):
+        types = {
+            1: "Clinic",
+            2: "Health Department",
+            3: "Healthcare Provider’s Office",
+            4: "Pharmacy",
+            5: "Community Provider / Immunizer",
+            6: "Tribal Health Center",
+        }
+        return types[vaccinefinder_type_id] if vaccinefinder_type_id != 0 else None
 
     def import_providers_from_remote_db(self):
-        walgreens_id = 102
         present = datetime.now().replace(tzinfo=None)
 
         provider_type, created = ProviderType.objects.get_or_create(
@@ -33,8 +45,7 @@ class Command(BaseCommand):
             name='Commercial',
         )
 
-        vaccine_finder_orgs = VFOrganization.objects.using(
-            'vaccinedb').exclude(pk=walgreens_id).all()
+        vaccine_finder_orgs = VFOrganization.objects.using('vaccinedb').all()
 
         for vaccine_finder_org in vaccine_finder_orgs:
             try:
@@ -49,25 +60,9 @@ class Command(BaseCommand):
                 print("Organization could not be created")
                 continue
 
-            # if vaccine_finder_org.vfproviders.exclude(store_number__isnull=True).count() == organization.providers.count():
-            #     print(organization.organization_name + " already imported")
-            #     continue
-
-            # already_imported_store_numbers = list(organization.providers.values_list(
-            #     'store_number',
-            #     flat=True,
-            # ))
-            #
-            # count = 0
-            # if vaccine_finder_org.vfproviders.exclude(store_number__in=already_imported_store_numbers, store_number__isnull=True).count() == 0:
-            #     print(organization.organization_name + " already imported")
-            #     continue
-
             for vaccine_finder_provider in vaccine_finder_org.vfproviders.all():
-                # if vaccine_finder_provider.store_number and vaccine_finder_provider.store_number != '':
-                # count += 1
                 try:
-                    Provider.objects.get_or_create(
+                    provider, created = Provider.objects.get_or_create(
                         address=vaccine_finder_provider.address,
                         city=vaccine_finder_provider.city,
                         email=vaccine_finder_provider.email,
@@ -85,20 +80,22 @@ class Command(BaseCommand):
                         start_date=vaccine_finder_provider.start_date,
                         state=vaccine_finder_provider.state,
                         store_number=vaccine_finder_provider.store_number,
-                        type=provider_type,
                         website=vaccine_finder_provider.website,
                         active=False,
                         walkins_accepted=(
                             True if vaccine_finder_provider.walkins_accepted == 'Y' else False),
                         zip=vaccine_finder_provider.zip,
                     )
+
+                    if vaccine_finder_provider.type == 4:
+                        provider.type = provider_type
+                    else:
+                        provider.type = self.find_provider_type(
+                            vaccine_finder_provider.type)
+
+                    provider.save()
+
                 except:
                     print('Provider could not be created')
-                # print(count)
-
-            # print("------------------------------------")
-            # print("Imported")
-            # print(vaccine_finder_org.organization_name)
-            # print(count)
 
             time.sleep(30)

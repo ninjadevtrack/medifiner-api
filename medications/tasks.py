@@ -273,7 +273,18 @@ def county_cache_provider_count():
 
 @shared_task
 def zipcode_cache_provider_count():
-    cache_provider_count(ZipCode, 'providers')
+    zipcodes = ZipCode.objects.values('id')
+    for zipcode in zipcodes:
+        zipcode_id = zipcode['id']
+        total_provider_count = Provider.objects.filter(
+            related_zipcode_id=zipcode_id).count()
+        active_provider_count = Provider.objects.filter(
+            related_zipcode_id=zipcode_id, active=True).count()
+
+        z = ZipCode.objects.get(pk=zipcode_id)
+        z.active_provider_count = active_provider_count
+        z.total_provider_count = total_provider_count
+        z.save()
 
 
 def cache_provider_count(model, count_entities):
@@ -346,36 +357,24 @@ def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_dat
             provider__active=True,
         )
 
-    if provider_type_list:
-        try:
-            provider_type_list = provider_type_list.split(',')
-            provider_medication_qs = provider_medication_qs.filter(
-                provider__type__in=provider_type_list,
-            )
-        except ValueError:
-            pass
-
     provider_medication_qs = provider_medication_qs.filter(
         medication_ndc_id__in=med_ndc_ids,
     )
 
+    if provider_type_list:
+        provider_medication_qs = provider_medication_qs.filter(
+            provider__type__in=provider_type_list,
+        )
+
     if provider_category_list:
-        try:
-            provider_category_list = provider_category_list.split(',')
-            provider_medication_qs = provider_medication_qs.filter(
-                provider__category__in=provider_category_list,
-            )
-        except ValueError:
-            pass
+        provider_medication_qs = provider_medication_qs.filter(
+            provider__category__in=provider_category_list,
+        )
 
     if drug_type_list:
-        try:
-            drug_type_list = drug_type_list.split(',')
-            provider_medication_qs = provider_medication_qs.filter(
-                medication_ndc__medication__drug_type__in=drug_type_list,
-            )
-        except ValueError:
-            pass
+        provider_medication_qs = provider_medication_qs.filter(
+            medication_ndc__medication__drug_type__in=drug_type_list,
+        )
 
     tz = get_current_timezone()
     end_date = tz.localize(datetime.strptime(end_date, "%Y-%m-%d"))

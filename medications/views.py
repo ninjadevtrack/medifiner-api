@@ -399,9 +399,9 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
 
         qs = State.objects.all().annotate(
             medication_levels=ArrayAgg(
-                'state_zipcodes__providers__provider_medication__level',
+                'counties__county_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                        state_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
+                    counties__county_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
                 )
             ),
         )
@@ -596,6 +596,11 @@ class CSVExportView(GenericAPIView):
         else:
             geography = 'US'
 
+        try:
+            med_name = MedicationName.objects.get(id=med_id)
+        except MedicationName.DoesNotExist:
+            raise BadRequest('No such medication in database')
+
         # collect NDC ids for dosages and med
         med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
             medication_name_id=med_id,
@@ -603,11 +608,6 @@ class CSVExportView(GenericAPIView):
         ).select_related(
             'medication__ndc_codes',
         ).distinct().values_list('medication__ndc_codes', flat=True)
-
-        try:
-            med_name = MedicationName.objects.get(id=med_id)
-        except MedicationName.DoesNotExist:
-            raise BadRequest('No such medication in database')
 
         filename = '{medication_name}_{geography}_{date_from}_{date_to}_{user_id}_{timestamp}.csv'.format(
             medication_name=med_name.name.replace(' ', '_'),
@@ -618,13 +618,16 @@ class CSVExportView(GenericAPIView):
             timestamp=str(time.time()),
         )
 
-        file_url = boto3.client('s3').generate_presigned_url(
-            ClientMethod='get_object',
-            Params={
-                'Bucket': settings.AWS_S3_BUCKET_NAME,
-                'Key': filename
-            }
-        )
+        if hasattr(settings, 'AWS_S3_BUCKET_NAME'):
+            file_url = boto3.client('s3').generate_presigned_url(
+                ClientMethod='get_object',
+                Params={
+                    'Bucket': settings.AWS_S3_BUCKET_NAME,
+                    'Key': filename
+                }
+            )
+        else:
+            file_url = 'local_csv_url'
 
         generate_csv_export.delay(
             filename,
@@ -633,7 +636,7 @@ class CSVExportView(GenericAPIView):
             med_id,
             start_date,
             end_date,
-            med_ndc_ids,
+            list(med_ndc_ids),
             provider_types,
             provider_categories,
             drug_types,
@@ -644,3 +647,56 @@ class CSVExportView(GenericAPIView):
         return Response({
             'file_url': file_url
         })
+
+
+class MedicationNameViewSet(viewsets.ModelViewSet):
+    serializer_class = MedicationNameSerializer
+    permission_classes = (AllowAny,)
+    allowed_methods = ['GET']
+
+    def get_queryset(self):
+        medications_qs = MedicationName.objects.filter(pk__in=[1, 2])
+        ordering = self.request.query_params.get('ordering')
+        medications_related_qs = Medication.objects.all()
+        drug_type_list = self.request.query_params.get(
+            'drug_type',
+            [],
+        )
+        provider_type_list = self.request.query_params.get(
+            'provider_type',
+            [],
+        )
+
+        provider_category_list = self.request.query_params.get(
+            'provider_category',
+            [],
+        )
+        if drug_type_list:
+            medications_related_qs = medications_related_qs.filter(
+                drug_type__in=drug_type_list,
+            )
+        if provider_type_list:
+            medications_related_qs = medications_related_qs.filter(
+                ndc_codes__provider_medication__provider__type__in=provider_type_list,  # noqa
+            )
+        if provider_category_list:
+            medications_related_qs = medications_related_qs.filter(
+                ndc_codes__provider_medication__provider__category__in=provider_category_list,  # noqa
+            )
+
+        medications_qs = medications_qs.prefetch_related(
+            Prefetch(
+                'medications',
+                queryset=medications_related_qs.prefetch_related(
+                    'ndc_codes',
+                )
+            )
+        )
+
+        if ordering and ('name' == ordering.replace('-', '')):
+            if ordering.startswith('-'):
+                medications_qs = medications_qs.order_by('-name')
+            else:
+                medications_qs = medications_qs.order_by('name')
+
+        return medications_qs

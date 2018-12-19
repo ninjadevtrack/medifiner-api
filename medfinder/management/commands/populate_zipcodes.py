@@ -17,7 +17,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         states = State.objects.all()
         if not states:
-            raise CommandError('You must generate states first.')
+            raise CommandError(
+                'Please import states before running this task.')
         if ZipCode.objects.all().count() > 33000:
             raise CommandError('ZipCodes already imported.')
         for state in states:
@@ -35,6 +36,7 @@ class Command(BaseCommand):
                     state.state_code.lower(),
                     state.state_name.lower().replace(' ', '_'),
                 )
+
             try:
                 state_response_json = requests.get(state_url).json()
                 for zipcode_json in state_response_json['features']:

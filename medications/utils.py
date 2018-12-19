@@ -60,6 +60,8 @@ def get_supplies(supply_levels):
 
 
 def force_user_state_id_and_zipcode(user, state_id, zipcode):
+    from medications.models import ZipCode
+
     if user.permission_level == user.STATE_LEVEL:
         if not user.state_id or (zipcode and ZipCode.objects.filter(zipcode=zipcode, state_id=user.state_id).count() == 0):
             msg = _('Permission denied - Please check with system administrator')

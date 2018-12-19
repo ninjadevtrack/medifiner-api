@@ -9,10 +9,17 @@ from .views import (
     GeoStatsCountiesWithMedicationsView,
     GeoZipCodeWithMedicationsView,
     MedicationFiltersView,
+    MedicationNameViewSet,
     OrganizationViewSet,
 )
 
 router = DefaultRouter()
+router.register(
+    r'names',
+    MedicationNameViewSet,
+    base_name='name',
+)
+
 router.register(
     r'states',
     StateViewSet,
