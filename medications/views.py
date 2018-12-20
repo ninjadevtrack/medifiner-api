@@ -610,7 +610,8 @@ class CSVExportView(GenericAPIView):
         ).distinct().values_list('medication__ndc_codes', flat=True)
 
         filename = '{medication_name}_{geography}_{date_from}_{date_to}_{user_id}_{timestamp}.csv'.format(
-            medication_name=med_name.name.replace(' ', '_'),
+            medication_name=med_name.name.replace(
+                ' ', '_').replace('(', '').replace(')', ''),
             geography=geography,
             date_from=start_date.format('%Y-%m-%d'),
             date_to=end_date.format('%Y-%m-%d'),
