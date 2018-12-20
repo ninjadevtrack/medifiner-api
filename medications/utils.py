@@ -28,8 +28,10 @@ def get_lat_lng(location):
         return (None, None)
 
 
-def get_dominant_supply(low, medium, high, total):
+def get_dominant_supply(nosupply, low, medium, high, total):
     if total:
+        if nosupply / total > 0.85:
+            return 'nosupply'
         if high / total > 0.85:
             return 'high'
         elif (high / total + medium / total) > 0.85:
@@ -40,10 +42,13 @@ def get_dominant_supply(low, medium, high, total):
 
 
 def get_supplies(supply_levels):
+    nosupply = 0
     low = 0
     medium = 0
     high = 0
     for level in supply_levels:
+        if level == 0:
+            nosupply += 1
         if level == 1:
             low += 1
         elif level == 2 or level == 3:
@@ -51,12 +56,13 @@ def get_supplies(supply_levels):
         elif level == 4:
             high += 1
     dominant = get_dominant_supply(
+        nosupply,
         low,
         medium,
         high,
-        low + medium + high,
+        nosupply + low + medium + high,
     )
-    return {'low': low, 'medium': medium, 'high': high}, dominant
+    return {'nosupply': nosupply, 'low': low, 'medium': medium, 'high': high}, dominant
 
 
 def force_user_state_id_and_zipcode(user, state_id, zipcode):

@@ -78,10 +78,11 @@ class AverageSupplyLevelSerializer(serializers.Serializer):
                         "medium": medium,
                         "high": high
                     }, get_dominant_supply(
+                        no_supply,
                         low,
                         medium,
                         high,
-                        low + medium + high,
+                        no_supply + low + medium + high,
                     )
                     ]
                 })
@@ -136,11 +137,13 @@ class OverallSupplyLevelSerializer(serializers.Serializer):
                 formatted_date
             ] if formatted_date in aggregated_data else {}
 
+            nosupply = date_data[0] if 0 in date_data else 0
             low = date_data[1] if 1 in date_data else 0
             medium = date_data[3] if 3 in date_data else 0
             high = date_data[4] if 4 in date_data else 0
-            total = low + medium + high
+            total = nosupply + low + medium + high
             formatted_data["supply"] = {
+                "nosupply": percentage(nosupply, total),
                 "low": percentage(low, total),
                 "medium": percentage(medium, total),
                 "high": percentage(high, total),
