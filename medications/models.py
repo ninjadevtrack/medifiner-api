@@ -45,6 +45,10 @@ class Organization(models.Model):
         _('registration_date'),
         default=timezone.now
     )
+    vaccine_finder_id = models.PositiveIntegerField(
+        _('vaccine finder id'),
+        null=True,
+    )
 
     class Meta:
         verbose_name = _('organization')
@@ -380,16 +384,22 @@ class Provider(models.Model):
         _('active'),
         default=True,
     )
-
     home_delivery = models.BooleanField(
         _('home delivery'),
         default=False,
     )
-
     home_delivery_info_url = models.URLField(
         _('home delivery info url'),
         max_length=255,
         blank=True,
+    )
+    vaccine_finder_id = models.PositiveIntegerField(
+        _('vaccine finder id'),
+        null=True,
+    )
+    vaccine_finder_type = models.PositiveIntegerField(
+        _('vaccine finder type'),
+        null=True,
     )
 
     objects = ActiveProviderManager()

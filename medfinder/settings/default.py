@@ -148,6 +148,7 @@ DATABASES = {
     'default': env.db(
         default='postgis://postgres:postgres@postgres:5432/postgres'),
     'vaccinedb': {
+        'CONN_MAX_AGE': 3600,
         'ENGINE': 'django.db.backends.mysql',
         'HOST': env('VACCINEFINDER_HOST', default=''),
         'NAME': env('VACCINEFINDER_NAME', default=''),
