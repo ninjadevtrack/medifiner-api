@@ -56,7 +56,7 @@ class Command(BaseCommand):
                 organization_id=organization.id).value_list('vaccine_finder_id', flat=True)
 
             for vaccine_finder_provider in vf_org.vfproviders.exclude(provider_id__in=already_existing_provider_vaccine_finder_ids):
-                Provider.objects.create(
+                Provider.objects.get_or_create(
                     address=vaccine_finder_provider.address,
                     city=vaccine_finder_provider.city,
                     email=vaccine_finder_provider.email,
@@ -152,7 +152,7 @@ class Command(BaseCommand):
                 already_processed_provider_ids)
 
             for vaccine_finder_provider in vf_org.vfproviders.exclude(provider_id__in=already_processed_provider_ids):
-                Provider.objects.create(
+                Provider.objects.get_or_create(
                     address=vaccine_finder_provider.address,
                     city=vaccine_finder_provider.city,
                     email=vaccine_finder_provider.email,

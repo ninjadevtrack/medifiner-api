@@ -53,9 +53,8 @@ class Command(BaseCommand):
             'vaccinedb').exclude(provider_id__in=already_processed_vaccine_finder_ids).values('provider_id', 'type')
 
         for vf_provider_id_and_type in vf_provider_ids_and_types:
-
             providers = Provider.objects.filter(
-                vaccine_finder_id=vf_provider_id_and_type['id'])
+                vaccine_finder_id=vf_provider_id_and_type['provider_id'])
 
             if len(providers) == 1:
                 provider = providers[0]

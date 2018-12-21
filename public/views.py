@@ -243,7 +243,12 @@ class FindProviderMedicationView(ListAPIView):
             # meaning the user unchecked all formulations
             provider_medication_ids = []
 
-        provider_qs = Provider.objects.filter(
+        # SPECIAL INSTRUCTION
+        # Exclude providers from vaccine finder organization ID 4504 (4383 in medfinder)
+        # vaccine finder type needs to be 4 (pharamacy), exclude all other
+        # More info at https://www.pivotaltracker.com/story/show/162711148
+
+        provider_qs = Provider.objects.filter(Q(organization_id=4383) | Q(vaccine_finder_type=4)).filter(
             geo_localization__distance_lte=(
                 localization_point,
                 D(mi=distance),
