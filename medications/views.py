@@ -136,7 +136,14 @@ def medication_name_dosage_type_filters():
             'equivalent_medication_name_ids': equivalent_medication_name_ids
         }
 
-        for medication_dosage in medication_name_mapping[medication_name_id].medication_dosages.values('medication_dosage__id', 'medication_dosage__name'):
+        medication_dosages = medication_name_mapping[medication_name_id].medication_dosages.values(
+            'medication_dosage__id',
+            'medication_dosage__name'
+        ).order_by(
+            'medication_dosage__order'
+        )
+
+        for medication_dosage in medication_dosages:
             dosage_obj = {
                 'id': medication_dosage['medication_dosage__id'],
                 'name': medication_dosage['medication_dosage__name']
@@ -298,7 +305,8 @@ class MedicationFiltersView(GenericAPIView):
         options = medication_name_dosage_type_filters()
 
         # 12 - load drug types
-        drug_types = MedicationType.objects.all().values('id', 'name')
+        drug_types = MedicationType.objects.order_by(
+            'name').values('id', 'name')
 
         # 13 - remove more keys from data struct and build response
         filters = {

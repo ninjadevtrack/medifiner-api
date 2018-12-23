@@ -507,6 +507,10 @@ class MedicationDosage(models.Model):
         _('name'),
         max_length=255,
     )
+    order = models.IntegerField(
+        _('order'),
+        default=0,
+    )
 
     class Meta:
         verbose_name = _('medication dosage')
