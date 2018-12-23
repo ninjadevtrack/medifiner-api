@@ -73,7 +73,8 @@ class Command(BaseCommand):
                     relate_related_zipcode=True,
                     start_date=vaccine_finder_provider.start_date,
                     state=vaccine_finder_provider.state,
-                    store_number=vaccine_finder_provider.store_number,
+                    store_number=(
+                        vaccine_finder_provider.store_number if vaccine_finder_provider.store_number else '001'),
                     website=vaccine_finder_provider.website,
                     active=False,
                     walkins_accepted=(
@@ -137,7 +138,6 @@ class Command(BaseCommand):
             'default').exclude(id=5).filter(id__in=organization_ids_to_treat)
 
         for organization in organizations:
-
             vf_orgs = VFOrganization.objects.using('vaccinedb').filter(
                 organization_id=organization.vaccine_finder_id)
 
@@ -152,34 +152,39 @@ class Command(BaseCommand):
                 already_processed_provider_ids)
 
             for vaccine_finder_provider in vf_org.vfproviders.exclude(provider_id__in=already_processed_provider_ids):
-                Provider.objects.get_or_create(
-                    address=vaccine_finder_provider.address,
-                    city=vaccine_finder_provider.city,
-                    email=vaccine_finder_provider.email,
-                    end_date=vaccine_finder_provider.end_date,
-                    insurance_accepted=(
-                        True if vaccine_finder_provider.insurance_accepted == 'Y' else False),
-                    lat=vaccine_finder_provider.lat,
-                    lng=vaccine_finder_provider.lon,
-                    name=vaccine_finder_provider.name,
-                    notes=vaccine_finder_provider.notes,
-                    operating_hours=vaccine_finder_provider.operating_hours,
-                    organization=organization,
-                    phone=vaccine_finder_provider.phone,
-                    relate_related_zipcode=True,
-                    start_date=vaccine_finder_provider.start_date,
-                    state=vaccine_finder_provider.state,
-                    store_number=vaccine_finder_provider.store_number,
-                    website=vaccine_finder_provider.website,
-                    active=False,
-                    walkins_accepted=(
-                        True if vaccine_finder_provider.walkins_accepted == 'Y' else False),
-                    zip=vaccine_finder_provider.zip,
-                    vaccine_finder_id=vaccine_finder_provider.provider_id,
-                    type=(provider_type if vaccine_finder_provider.type == 4 else self.find_provider_type(
-                        vaccine_finder_provider.type)),
-                    vaccine_finder_type=vaccine_finder_provider.type
-                )
+                try:
+                    provider, created = Provider.objects.get_or_create(
+                        address=vaccine_finder_provider.address,
+                        city=vaccine_finder_provider.city,
+                        email=vaccine_finder_provider.email,
+                        end_date=vaccine_finder_provider.end_date,
+                        insurance_accepted=(
+                            True if vaccine_finder_provider.insurance_accepted == 'Y' else False),
+                        lat=vaccine_finder_provider.lat,
+                        lng=vaccine_finder_provider.lon,
+                        name=vaccine_finder_provider.name,
+                        notes=vaccine_finder_provider.notes,
+                        operating_hours=vaccine_finder_provider.operating_hours,
+                        organization=organization,
+                        phone=vaccine_finder_provider.phone,
+                        relate_related_zipcode=True,
+                        start_date=vaccine_finder_provider.start_date,
+                        state=vaccine_finder_provider.state,
+                        store_number=(
+                            vaccine_finder_provider.store_number if vaccine_finder_provider.store_number else '001'),
+                        website=vaccine_finder_provider.website,
+                        active=False,
+                        walkins_accepted=(
+                            True if vaccine_finder_provider.walkins_accepted == 'Y' else False),
+                        zip=vaccine_finder_provider.zip,
+                        vaccine_finder_id=vaccine_finder_provider.provider_id,
+                        type=(provider_type if vaccine_finder_provider.type == 4 else self.find_provider_type(
+                            vaccine_finder_provider.type)),
+                        vaccine_finder_type=vaccine_finder_provider.type
+                    )
+                except Exception as e:
+                    print('Could not import vaccine finder provider id:')
+                    print(vaccine_finder_provider.provider_id)
 
             # DELETE all providers not linked to VF
             Provider.objects.filter(

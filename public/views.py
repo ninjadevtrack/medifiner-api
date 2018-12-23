@@ -31,116 +31,6 @@ from medications.views import (
 from .serializers import FindProviderSerializer, ContactFormSerializer
 
 
-# class FindProviderMedicationView(ListAPIView):
-#     serializer_class = FindProviderSerializer
-#     permission_classes = (AllowAny,)
-#     allowed_methods = ['GET']
-#
-#     def get_queryset(self):
-#         '''
-#         query_params:
-#             - med_ids: list of MedicaitonName ids
-#             - dosages: list of Dosage ids
-#             - localization: list of 2 coordinates (must be int or float)
-#             - distance: int, in miles
-#         '''
-#         med_ids = self.request.query_params.getlist('med_ids[]', None)
-#         dosages = self.request.query_params.getlist('dosages[]', None)
-#         location = self.request.query_params.get('localization')
-#         distance = self.request.query_params.get('distance')
-#
-#         # 1 - valid location
-#         try:
-#             location = list(
-#                 map(float, location.split(','))
-#             )
-#             location_point = Point(
-#                 location[0], location[1], srid=4326,
-#             )
-#         except (IndexError, ValueError, AttributeError):
-#             raise BadRequest(
-#                 'Location should be provided and be a list of 2 coordinates'
-#             )
-#
-#         med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
-#             medication_name_id__in=med_ids,
-#             medication_dosage_id__in=dosages
-#         ).select_related(
-#             'medication__ndc_codes',
-#         ).distinct().values_list('medication__ndc_codes', flat=True)
-#
-#         provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
-#             latest=True,
-#             medication_ndc_id__in=med_ndc_ids,
-#             provider__geo_localization__distance_lte=(
-#                 location_point,
-#                 D(mi=distance),
-#             ),
-#         )
-#
-#         # Exclude public health medications if epidemic is not active
-#         if not Epidemic.objects.first().active:
-#             provider_medication_qs = provider_medication_qs.exclude(
-#                 medication_ndc__medication__drug_type='p',
-#             )
-#         provider_medication_ids = provider_medication_qs.values_list(
-#             'id',
-#             flat=True,
-#         )
-#
-#         provider_qs = Provider.objects.filter(
-#             geo_localization__distance_lte=(
-#                 location_point,
-#                 D(mi=distance),
-#             ),
-#         ).annotate(
-#             distance=Distance(
-#                 'geo_localization',
-#                 location_point,
-#             ),
-#             total_supply=Coalesce(
-#                 Sum(
-#                     'provider_medication__level',
-#                     filter=Q(
-#                         provider_medication__id__in=provider_medication_ids,
-#                         provider_medication__latest=True,
-#                         active=True,
-#                     ),
-#                 ),
-#                 0,
-#             ),
-#             amount_medications=Count(
-#                 'provider_medication',
-#                 filter=Q(
-#                     provider_medication__id__in=provider_medication_ids,
-#                     provider_medication__latest=True,
-#                     active=True,
-#                 ),
-#             )
-#         ).prefetch_related(
-#             Prefetch(
-#                 'provider_medication',
-#                 queryset=ProviderMedicationNdcThrough.objects.filter(
-#                     latest=True,
-#                     id__in=provider_medication_ids,
-#                 ).select_related(
-#                     'medication_ndc__medication',
-#                     'medication_ndc__medication__medication_name',
-#                 ).order_by('-level', '-medication_ndc__medication__drug_type')
-#             )
-#         ).order_by('-total_supply', '-active', '-amount_medications')
-#         # TODO: other medications will be only if there is generoc nad brand
-#         # no other kind of medications
-#
-#         # TODO
-#         # first show the highest supply if they have the same supply
-#         # then the generic
-#
-#         # TODO in simple search if the same medication is brand an generic show
-#         # the generic
-#         return provider_qs
-#
-
 class FindProviderMedicationView(ListAPIView):
     serializer_class = FindProviderSerializer
     permission_classes = (AllowAny,)
@@ -150,113 +40,67 @@ class FindProviderMedicationView(ListAPIView):
         '''
         query_params:
             - med_ids: list of MedicaitonName ids
-            - formulations: list of Medication ids
+            - dosages: list of Dosage ids
             - localization: list of 2 coordinates (must be int or float)
-            - drug_type: list of 1 character str, for drug_type in Medication
             - distance: int, in miles
         '''
-        med_ids_raw = self.request.query_params.get('med_ids')
-        formulation_ids_raw = self.request.query_params.get(
-            'formulations',
-        )
-        formulation_ids = []
-        if formulation_ids_raw:
-            try:
-                formulation_ids = list(
-                    map(int, formulation_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-
-        med_ids = []
-        if med_ids_raw and not med_ids_raw == 'all':
-            try:
-                med_ids = list(
-                    map(int, med_ids_raw.split(','))
-                )
-            except ValueError:
-                pass
-
-        localization = self.request.query_params.get('localization')
-
-        drug_type_list = self.request.query_params.get(
-            'drug_type',
-            [],
-        )
-        # Distance is given in miles
+        med_ids = self.request.query_params.getlist('med_ids[]', None)
+        dosages = self.request.query_params.getlist('dosages[]', None)
+        location = self.request.query_params.get('localization')
         distance = self.request.query_params.get('distance')
-        if not distance:
-            distance = 10
 
+        # 1 - validate location
         try:
-            localization = list(
-                map(float, localization.split(','))
+            location = list(
+                map(float, location.split(','))
             )
-            localization_point = Point(
-                localization[0], localization[1], srid=4326,
+            location_point = Point(
+                location[0], location[1], srid=4326,
             )
         except (IndexError, ValueError, AttributeError):
             raise BadRequest(
-                'Localization should be provided and consist of 2 coordinates'
+                'Location should be provided and be a list of 2 coordinates'
             )
 
-        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+        # 2 - fetch ndc codes from filters: med id and dosage + support for all
+        if len(med_ids) == 1 and med_ids[0] == 'all':
+            med_ndc_qs = MedicationMedicationNameMedicationDosageThrough.objects.all()
+        else:
+            med_ndc_qs = MedicationMedicationNameMedicationDosageThrough.objects.filter(
+                medication_name_id__in=med_ids,
+                medication_dosage_id__in=dosages
+            )
+        med_ndc_ids = med_ndc_qs.select_related(
+            'medication__ndc_codes',
+        ).distinct().values_list('medication__ndc_codes', flat=True)
+
+        # 2 - fetch provider medication entries (supply levels) for the ndc ndc_codes
+        # and filter by distance
+        provider_medication_ids = ProviderMedicationNdcThrough.objects.filter(
             latest=True,
+            medication_ndc_id__in=med_ndc_ids,
             provider__geo_localization__distance_lte=(
-                localization_point,
+                location_point,
                 D(mi=distance),
             ),
-        )
-
-        if med_ids:
-            provider_medication_qs = provider_medication_qs.filter(
-                medication_ndc__medication__medication_name__id__in=med_ids,
-            )
-
-            if formulation_ids:
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication_ndc__medication__id__in=formulation_ids,
-                )
-
-        # Check the list of drug types to filter
-        if drug_type_list:
-            try:
-                drug_type_list = drug_type_list.split(',')
-                provider_medication_qs = provider_medication_qs.filter(
-                    medication_ndc__medication__drug_type__in=drug_type_list,
-                )
-            except ValueError:
-                pass
-
-        # Exclude public health medications if epidemic is not active
-        if not Epidemic.objects.first().active:
-            provider_medication_qs = provider_medication_qs.exclude(
-                medication_ndc__medication__drug_type='p',
-            )
-        provider_medication_ids = provider_medication_qs.values_list(
-            'id',
-            flat=True,
-        )
-
-        if not formulation_ids_raw and formulation_ids_raw is not None and not med_ids_raw == 'all':
-            # Catch the case when in url we have &formulations=
-            # meaning the user unchecked all formulations
-            provider_medication_ids = []
+        ).values_list('id', flat=True,)
 
         # SPECIAL INSTRUCTION
         # Exclude providers from vaccine finder organization ID 4504 (4383 in medfinder)
         # vaccine finder type needs to be 4 (pharamacy), exclude all other
         # More info at https://www.pivotaltracker.com/story/show/162711148
 
-        provider_qs = Provider.objects.filter(Q(organization_id=4383) | Q(vaccine_finder_type=4)).filter(
+        provider_qs = Provider.objects.filter(
+            Q(organization_id=4383) | Q(vaccine_finder_type=4)
+        ).filter(
             geo_localization__distance_lte=(
-                localization_point,
+                location_point,
                 D(mi=distance),
             ),
         ).annotate(
             distance=Distance(
                 'geo_localization',
-                localization_point,
+                location_point,
             ),
             total_supply=Coalesce(
                 Sum(
@@ -289,16 +133,168 @@ class FindProviderMedicationView(ListAPIView):
                 ).order_by('-level', '-medication_ndc__medication__drug_type')
             )
         ).order_by('-total_supply', '-active', '-amount_medications', 'distance')
-        # TODO: other medications will be only if there is generoc nad brand
-        # no other kind of medications
 
-        # TODO
-        # first show the highest supply if they have the same supply
-        # then the generic
-
-        # TODO in simple search if the same medication is brand an generic show
-        # the generic
         return provider_qs
+
+#
+# class FindProviderMedicationView(ListAPIView):
+#     serializer_class = FindProviderSerializer
+#     permission_classes = (AllowAny,)
+#     allowed_methods = ['GET']
+#
+#     def get_queryset(self):
+#         '''
+#         query_params:
+#             - med_ids: list of MedicaitonName ids
+#             - formulations: list of Medication ids
+#             - localization: list of 2 coordinates (must be int or float)
+#             - drug_type: list of 1 character str, for drug_type in Medication
+#             - distance: int, in miles
+#         '''
+#         med_ids_raw = self.request.query_params.get('med_ids')
+#         formulation_ids_raw = self.request.query_params.get(
+#             'formulations',
+#         )
+#         formulation_ids = []
+#         if formulation_ids_raw:
+#             try:
+#                 formulation_ids = list(
+#                     map(int, formulation_ids_raw.split(','))
+#                 )
+#             except ValueError:
+#                 pass
+#
+#         med_ids = []
+#         if med_ids_raw and not med_ids_raw == 'all':
+#             try:
+#                 med_ids = list(
+#                     map(int, med_ids_raw.split(','))
+#                 )
+#             except ValueError:
+#                 pass
+#
+#         localization = self.request.query_params.get('localization')
+#
+#         drug_type_list = self.request.query_params.get(
+#             'drug_type',
+#             [],
+#         )
+#         # Distance is given in miles
+#         distance = self.request.query_params.get('distance')
+#         if not distance:
+#             distance = 10
+#
+#         try:
+#             localization = list(
+#                 map(float, localization.split(','))
+#             )
+#             localization_point = Point(
+#                 localization[0], localization[1], srid=4326,
+#             )
+#         except (IndexError, ValueError, AttributeError):
+#             raise BadRequest(
+#                 'Localization should be provided and consist of 2 coordinates'
+#             )
+#
+#         provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
+#             latest=True,
+#             provider__geo_localization__distance_lte=(
+#                 localization_point,
+#                 D(mi=distance),
+#             ),
+#         )
+#
+#         if med_ids:
+#             provider_medication_qs = provider_medication_qs.filter(
+#                 medication_ndc__medication__medication_name__id__in=med_ids,
+#             )
+#
+#             if formulation_ids:
+#                 provider_medication_qs = provider_medication_qs.filter(
+#                     medication_ndc__medication__id__in=formulation_ids,
+#                 )
+#
+#         # Check the list of drug types to filter
+#         if drug_type_list:
+#             try:
+#                 drug_type_list = drug_type_list.split(',')
+#                 provider_medication_qs = provider_medication_qs.filter(
+#                     medication_ndc__medication__drug_type__in=drug_type_list,
+#                 )
+#             except ValueError:
+#                 pass
+#
+#         # Exclude public health medications if epidemic is not active
+#         if not Epidemic.objects.first().active:
+#             provider_medication_qs = provider_medication_qs.exclude(
+#                 medication_ndc__medication__drug_type='p',
+#             )
+#         provider_medication_ids = provider_medication_qs.values_list(
+#             'id',
+#             flat=True,
+#         )
+#
+#         if not formulation_ids_raw and formulation_ids_raw is not None and not med_ids_raw == 'all':
+#             # Catch the case when in url we have &formulations=
+#             # meaning the user unchecked all formulations
+#             provider_medication_ids = []
+#
+#         # SPECIAL INSTRUCTION
+#         # Exclude providers from vaccine finder organization ID 4504 (4383 in medfinder)
+#         # vaccine finder type needs to be 4 (pharamacy), exclude all other
+#         # More info at https://www.pivotaltracker.com/story/show/162711148
+#
+#         provider_qs = Provider.objects.filter(Q(organization_id=4383) | Q(vaccine_finder_type=4)).filter(
+#             geo_localization__distance_lte=(
+#                 localization_point,
+#                 D(mi=distance),
+#             ),
+#         ).annotate(
+#             distance=Distance(
+#                 'geo_localization',
+#                 localization_point,
+#             ),
+#             total_supply=Coalesce(
+#                 Sum(
+#                     'provider_medication__level',
+#                     filter=Q(
+#                         provider_medication__id__in=provider_medication_ids,
+#                         provider_medication__latest=True,
+#                         active=True,
+#                     ),
+#                 ),
+#                 0,
+#             ),
+#             amount_medications=Count(
+#                 'provider_medication',
+#                 filter=Q(
+#                     provider_medication__id__in=provider_medication_ids,
+#                     provider_medication__latest=True,
+#                     active=True,
+#                 ),
+#             )
+#         ).prefetch_related(
+#             Prefetch(
+#                 'provider_medication',
+#                 queryset=ProviderMedicationNdcThrough.objects.filter(
+#                     latest=True,
+#                     id__in=provider_medication_ids,
+#                 ).select_related(
+#                     'medication_ndc__medication',
+#                     'medication_ndc__medication__medication_name',
+#                 ).order_by('-level', '-medication_ndc__medication__drug_type')
+#             )
+#         ).order_by('-total_supply', '-active', '-amount_medications', 'distance')
+#         # TODO: other medications will be only if there is generoc nad brand
+#         # no other kind of medications
+#
+#         # TODO
+#         # first show the highest supply if they have the same supply
+#         # then the generic
+#
+#         # TODO in simple search if the same medication is brand an generic show
+#         # the generic
+#         return provider_qs
 
 
 class BasicInfoView(APIView):

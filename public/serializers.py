@@ -129,7 +129,6 @@ class FindProviderSerializer(serializers.ModelSerializer):
         ) if hasattr(instance, 'geo_localization') else None
 
         # GeoJSON properties
-
         feature["properties"] = self.get_properties(
             instance,
         )
