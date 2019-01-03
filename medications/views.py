@@ -343,9 +343,11 @@ class StateViewSet(viewsets.ModelViewSet):
             else:
                 states_qs = states_qs.order_by('state_name')
 
-        return states_qs.annotate(
-            county_list=ArrayAgg('counties__county_name'),
-        )
+        return states_qs
+
+        # return states_qs.annotate(
+        #     county_list=ArrayAgg('counties__county_name'),
+        # )
 
 
 def get_provider_medication_id(query_params):

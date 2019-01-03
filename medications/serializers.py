@@ -76,8 +76,6 @@ class CSVUploadSerializer(serializers.Serializer):
 
 
 class StateSerializer(serializers.ModelSerializer):
-    county_list = serializers.SerializerMethodField()
-
     class Meta:
         model = State
         fields = (
@@ -85,13 +83,9 @@ class StateSerializer(serializers.ModelSerializer):
             'state_name',
             'state_code',
             'population',
-            'county_list',
             'active_provider_count',
             'total_provider_count',
         )
-
-    def get_county_list(self, obj):
-        return obj.county_list
 
 
 class SimpleStateSerializer(serializers.ModelSerializer):
