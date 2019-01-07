@@ -345,13 +345,10 @@ class StateViewSet(viewsets.ModelViewSet):
 
         return states_qs
 
-        # return states_qs.annotate(
-        #     county_list=ArrayAgg('counties__county_name'),
-        # )
-
 
 def get_provider_medication_id(query_params):
     # Method use to save many line codes in the geo_stats views
+    date = query_params.get('map_date', False)
     dosages = query_params.getlist('dosages[]', [])
     med_id = query_params.get('med_id', None)
     provider_category_filters = query_params.getlist(
@@ -375,13 +372,28 @@ def get_provider_medication_id(query_params):
     # We create a list of the ids of the provider medication objects that
     # we have after filtering.
 
-    provider_medication_ids = ProviderMedicationNdcThrough.objects.filter(
-        latest=True,
+    provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(
         medication_ndc_id__in=med_ndc_ids,
         provider__active=True,
         provider__category__in=provider_category_filters,
         provider__type__in=provider_type_filters,
-    ).values_list(
+    )
+
+    if date:
+        date = datetime.strptime(date, "%Y-%m-%d")
+        the_day_after = date + timedelta(days=1)
+        the_day_after = datetime.strftime(the_day_after, "%Y-%m-%d")
+
+        provider_medication_qs = provider_medication_qs.filter(
+            creation_date__gt=date,
+            creation_date__lt=the_day_after,
+        )
+    else:
+        provider_medication_qs = provider_medication_qs.filter(
+            latest=True,
+        )
+
+    provider_medication_ids = provider_medication_qs.values_list(
         'id',
         flat=True,
     )
