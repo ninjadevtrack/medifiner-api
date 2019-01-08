@@ -612,7 +612,7 @@ class ProviderMedicationNdcThrough(models.Model):
             '<24, 24, 24-48, >48'
         ),
     )
-    level = models.PositiveIntegerField(
+    level = models.IntegerField(
         _('medication level'),
         default=0,
     )
@@ -654,6 +654,8 @@ class ProviderMedicationNdcThrough(models.Model):
             if self.last_modified is None:
                 self.last_modified = now
         supply_to_level_map = {
+            'NO REPORT': -1,
+            'NO SUPPLY': 0,
             '<24': 1,
             '24': 2,
             '24-48': 3,
