@@ -43,6 +43,29 @@ from .models import (
 # every ProviderMedicationThrough object created
 def generate_medications(cache_key, organization_id, email_to, import_date=False):
 
+    def notify_by_email(email_to, beginning_time, index):
+        finnish_time = timezone.now()
+        duration = finnish_time - beginning_time
+        duration_seconds = duration.seconds
+        tz = timezone.pytz.timezone('EST')
+        est_finnish_time = datetime.now(tz)
+
+        msg_plain = (
+            'Completion date time: {}\n'
+            'Duration: {} seconds\n'
+            'Status: {} CSV rows correctly imported.\n'
+        ).format(
+            est_finnish_time.strftime('%Y-%m-%d %H:%M'),
+            duration_seconds,
+            index,
+        )
+        send_mail(
+            'MedFinder Import Status',
+            msg_plain,
+            settings.FROM_EMAIL,
+            [email_to],
+        )
+
     def get_provider_id(store_data, organization_id, provider_map):
         store_number = store_data['store_number']
 
@@ -152,6 +175,21 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
 
         return provider_medication_ndc_throughs, provider_id
 
+    def mark_provider_has_active(updated_provider_ids):
+        Provider.objects.filter(
+            id__in=updated_provider_ids,
+        ).update(
+            last_import_date=timezone.now(),
+            active=True,
+        )
+
+    def mark_previous_entries_as_past(older_than_me, updated_provider_ids):
+        ProviderMedicationNdcThrough.objects.filter(
+            creation_date__lt=older_than_me,
+            latest=True,
+            provider_id__in=updated_provider_ids,
+        ).update(latest=False)
+
     def batch_create_provider_medication_ndc_throughs(provider_medication_ndc_throughs):
         ProviderMedicationNdcThrough.objects.bulk_create(
             provider_medication_ndc_throughs)
@@ -160,7 +198,7 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
 
     # A list to update the last_import_date field in
     # all providers during this import
-    updated_providers = []
+    updated_provider_ids = []
 
     number_of_medication_to_create = Medication.objects.count()
     organization = Organization.objects.get(pk=organization_id)
@@ -229,8 +267,8 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
                 provider_medication_ndc_throughs_to_batch_insert = provider_medication_ndc_throughs_to_batch_insert + \
                     provider_medication_ndc_throughs
 
-                if provider_id not in updated_providers:
-                    updated_providers.append(provider_id)
+                if provider_id not in updated_provider_ids:
+                    updated_provider_ids.append(provider_id)
 
             currently_processing_store_number = store_number
             current_store_medications_data = [current_medication_data]
@@ -246,41 +284,19 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
     batch_create_provider_medication_ndc_throughs(
         provider_medication_ndc_throughs_to_batch_insert)
 
+    # Mark previous ProviderMedicationNdcThrough as past
+    mark_previous_entries_as_past(beginning_time, updated_provider_ids)
+
     # Finally update the last_import_date in all the updated_providers
-    if updated_providers:
-        Provider.objects.filter(
-            id__in=updated_providers,
-        ).update(
-            last_import_date=timezone.now(),
-            active=True,
-        )
+    mark_provider_has_active(updated_provider_ids)
+
     # Make celery delete the csv file in cache
     if temporary_file_obj:
         cache.delete(cache_key)
 
     # Send mail not found ndcs
     if email_to:
-        finnish_time = timezone.now()
-        duration = finnish_time - beginning_time
-        duration_seconds = duration.seconds
-        tz = timezone.pytz.timezone('EST')
-        est_finnish_time = datetime.now(tz)
-
-        msg_plain = (
-            'Completion date time: {}\n'
-            'Duration: {} seconds\n'
-            'Status: {} CSV rows correctly imported.\n'
-        ).format(
-            est_finnish_time.strftime('%Y-%m-%d %H:%M'),
-            duration_seconds,
-            index,
-        )
-        send_mail(
-            'MedFinder Import Status',
-            msg_plain,
-            settings.FROM_EMAIL,
-            [email_to],
-        )
+        notify_by_email(email_to, beginning_time, index)
 
 
 # Task that handles the post_save signal asynchronously
@@ -342,79 +358,6 @@ def mark_inactive_providers():
     ).update(
         active=False,
     )
-
-
-@shared_task
-def state_cache_provider_count():
-    cache_provider_count(State, 'state_zipcodes__providers')
-
-
-@shared_task
-def county_cache_provider_count():
-    cache_provider_count(County, 'county_zipcodes__providers')
-
-
-@shared_task
-def zipcode_cache_provider_count():
-    zipcodes = ZipCode.objects.values('id')
-    for zipcode in zipcodes:
-        zipcode_id = zipcode['id']
-        total_provider_count = Provider.objects.filter(
-            related_zipcode_id=zipcode_id).count()
-        active_provider_count = Provider.objects.filter(
-            related_zipcode_id=zipcode_id, active=True).count()
-
-        z = ZipCode.objects.get(pk=zipcode_id)
-        z.active_provider_count = active_provider_count
-        z.total_provider_count = total_provider_count
-        z.save()
-
-
-def cache_provider_count(model, count_entities):
-    cached_counts = {}
-
-    total_provider_count = model.objects.annotate(
-        calculated_total_provider_count=Count(count_entities)
-    ).values('id', 'calculated_total_provider_count').distinct()
-
-    if model == ZipCode:
-        active_provider_count = model.objects.filter(
-            providers__active=True,
-        )
-    if model == State:
-        active_provider_count = model.objects.filter(
-            state_zipcodes__providers__active=True,
-        )
-    if model == County:
-        active_provider_count = model.objects.filter(
-            county_zipcodes__providers__active=True,
-        )
-
-    active_provider_count = active_provider_count.annotate(
-        calculated_active_provider_count=Count(count_entities)
-    ).values('id', 'calculated_active_provider_count').distinct()
-
-    for provider_count in total_provider_count:
-        if not provider_count['id'] in cached_counts:
-            cached_counts[provider_count['id']] = {}
-        cached_counts[provider_count['id']
-                      ]['calculated_total_provider_count'] = provider_count['calculated_total_provider_count']
-
-    for provider_count in active_provider_count:
-        if not provider_count['id'] in cached_counts:
-            cached_counts[provider_count['id']] = {}
-        cached_counts[provider_count['id']
-                      ]['calculated_active_provider_count'] = provider_count['calculated_active_provider_count']
-
-    for entity in model.objects.all():
-        if entity.pk in cached_counts:
-            entity.active_provider_count = cached_counts[entity.pk][
-                'calculated_active_provider_count'] if 'calculated_active_provider_count' in cached_counts[entity.pk] else 0
-            entity.total_provider_count = cached_counts[entity.pk][
-                'calculated_total_provider_count'] if 'calculated_total_provider_count' in cached_counts[entity.pk] else 0
-        else:
-            print('State cache count not found for ' + str(entity))
-        entity.save()
 
 
 @shared_task
