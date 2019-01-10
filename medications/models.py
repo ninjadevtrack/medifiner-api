@@ -571,11 +571,13 @@ class MedicationNdc(models.Model):
 class ProviderMedicationNdcThrough(models.Model):
     provider = models.ForeignKey(
         Provider,
+        db_index=True,
         related_name='provider_medication',
         on_delete=models.CASCADE,
     )
     medication_ndc = models.ForeignKey(
         MedicationNdc,
+        db_index=True,
         related_name='provider_medication',
         on_delete=models.CASCADE,
         null=True,
@@ -594,6 +596,7 @@ class ProviderMedicationNdcThrough(models.Model):
     )
     creation_date = models.DateTimeField(
         _('creation date'),
+        db_index=True,
         help_text=_('Creation date'),
     )
     last_modified = models.DateTimeField(
@@ -602,6 +605,7 @@ class ProviderMedicationNdcThrough(models.Model):
     )
     latest = models.BooleanField(
         _('latest'),
+        db_index=True,
         default=False,
     )
 
