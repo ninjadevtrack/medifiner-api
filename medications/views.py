@@ -185,7 +185,6 @@ class MedicationFiltersView(GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         # 1 - Extract all request params
-        date = self.request.query_params.get('map_date', False)
         dosages = self.request.query_params.getlist('dosages[]', [])
         drug_types = self.request.query_params.getlist('drug_types[]', [])
         med_id = self.request.query_params.get('med_id', None)
@@ -509,6 +508,12 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
             self.request.query_params,
         )
 
+        date = self.request.query_params.get('map_date', False)
+        if date:
+            date = datetime.strptime(date, "%Y-%m-%d")
+            the_day_after = date + timedelta(days=1)
+            the_day_after = datetime.strftime(the_day_after, "%Y-%m-%d")
+
         qs = County.objects.filter(
             state__id=state_id,
         ).select_related(
@@ -521,6 +526,8 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
                     county_zipcodes__providers__category__id__isnull=False,
                     county_zipcodes__providers__type__id__isnull=False,
                     county_zipcodes__providers__provider_medication__id__in=provider_medication_ids,
+                    county_zipcodes__providers__provider_medication__creation_date__gt=date,
+                    county_zipcodes__providers__provider_medication__creation_date__lt=the_day_after,
                 ),
                 distinct=True
             ),
@@ -534,7 +541,9 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
                     county_zipcodes__providers__active=True,
                     county_zipcodes__providers__category__id__in=provider_category_filters,
                     county_zipcodes__providers__type__id__in=provider_type_filters,
-                    county_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
+                    county_zipcodes__providers__provider_medication__id__in=provider_medication_ids,  # noqa
+                    county_zipcodes__providers__provider_medication__creation_date__gt=date,
+                    county_zipcodes__providers__provider_medication__creation_date__lt=the_day_after,
                 )
             ),
             centroid=AsGeoJSON(Centroid('state__geometry')),
