@@ -28,7 +28,7 @@ def get_lat_lng(location):
         return (None, None)
 
 
-def get_dominant_supply(nosupply, low, medium, high, total):
+def get_dominant_supply(noreport, nosupply, low, medium, high, total):
     if total:
         if nosupply / total > 0.85:
             return 'nosupply'
@@ -42,11 +42,14 @@ def get_dominant_supply(nosupply, low, medium, high, total):
 
 
 def get_supplies(supply_levels):
+    noreport = 0
     nosupply = 0
     low = 0
     medium = 0
     high = 0
     for level in supply_levels:
+        if level == -1:
+            noreport += 1
         if level == 0:
             nosupply += 1
         if level == 1:
@@ -56,6 +59,7 @@ def get_supplies(supply_levels):
         elif level == 4:
             high += 1
     dominant = get_dominant_supply(
+        noreport,
         nosupply,
         low,
         medium,
