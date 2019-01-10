@@ -78,6 +78,7 @@ class AverageSupplyLevelSerializer(serializers.Serializer):
                         "medium": medium,
                         "high": high
                     }, get_dominant_supply(
+                        0,
                         no_supply,
                         low,
                         medium,
