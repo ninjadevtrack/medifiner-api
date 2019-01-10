@@ -7,6 +7,9 @@ from django.core.management.base import BaseCommand
 
 from medications.models import ProviderMedicationNdcThrough
 
+# python manage.py mark_medicationndcthrough_as_latest
+# docker-compose -f dev.yml run django python manage.py mark_medicationndcthrough_as_latest
+
 
 class Command(BaseCommand):
     """
