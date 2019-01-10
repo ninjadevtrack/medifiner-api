@@ -82,9 +82,7 @@ class StateSerializer(serializers.ModelSerializer):
             'id',
             'state_name',
             'state_code',
-            'population',
-            'active_provider_count',
-            'total_provider_count',
+            'population'
         )
 
 
@@ -160,6 +158,17 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         else:
             center = ''
 
+        active_provider_count = 0
+        total_provider_count = 0
+        flatten_medications_levels = []
+
+        for entry in data:
+            active_provider_count += entry.active_provider_count
+            total_provider_count += entry.total_provider_count
+            if hasattr(state_data, 'medication_levels'):
+                for item in entry.medication_levels:
+                    flatten_medications_levels.append(item)
+
         if not hasattr(state_data, 'medication_levels'):
             state_obj = state_data.state
             state = {
@@ -167,8 +176,8 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
                 'id': state_obj.id,
                 'code': state_obj.state_code,
                 'population': state_obj.population,
-                'active_provider_count': state_obj.active_provider_count,
-                'total_provider_count': state_obj.total_provider_count,
+                'active_provider_count': active_provider_count,
+                'total_provider_count': total_provider_count,
             }
             return OrderedDict((
                 ("type", "FeatureCollection"),
@@ -177,10 +186,6 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
                 ("state", state),
                 ("features", [])
             ))
-
-        flatten_medications_levels = [
-            item for entry in data for item in entry.medication_levels
-        ]
 
         supplies, supply = get_supplies(flatten_medications_levels)
         state_obj = state_data.state
@@ -191,8 +196,8 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
             'supplies': supplies,
             'supply': supply,
             'population': state_obj.population,
-            'active_provider_count': state_obj.active_provider_count,
-            'total_provider_count': state_obj.total_provider_count,
+            'active_provider_count': active_provider_count,
+            'total_provider_count': total_provider_count,
 
         }
         return OrderedDict((

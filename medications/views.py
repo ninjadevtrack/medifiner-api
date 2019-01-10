@@ -97,16 +97,37 @@ def medication_name_dosage_type_filters():
     medication_name_mapping = {}
     med_type_med_name_data = {}
 
-    for med in MedicationTypeMedicationNameThrough.objects.all():
-        medication_name_mapping[med.medication_name_id] = med.medication_name
-        medication_type_mapping[med.medication_type_id] = str(
-            med.medication_type)
+    for med in MedicationTypeMedicationNameThrough.objects.all().values(
+        'medication_name_id',
+        'medication_name__name',
+        'medication_type__name',
+        'medication_type_id',
+    ):
+        medication_name_mapping[med['medication_name_id']
+                                ] = med['medication_name__name']
+        medication_type_mapping[med['medication_type_id']
+                                ] = med['medication_type__name']
 
-        med_type_med_name_data[med.medication_name_id] = {
-        } if med.medication_name_id not in med_type_med_name_data else med_type_med_name_data[med.medication_name_id]
-        med_type_med_name_data[med.medication_name_id][med.medication_type_id] = True
+        med_type_med_name_data[med['medication_name_id']] = {
+        } if med['medication_name_id'] not in med_type_med_name_data else med_type_med_name_data[med['medication_name_id']]
+
+        med_type_med_name_data[med['medication_name_id']
+                               ][med['medication_type_id']] = True
 
     options = {}
+
+    medication_dosages_data = MedicationMedicationNameMedicationDosageThrough.objects.values(
+        'medication_name_id',
+        'medication_dosage__id',
+        'medication_dosage__name'
+    ).order_by(
+        'medication_dosage__order'
+    )
+
+    equivalent_medication_name_data = MedicationNameEquivalence.objects.values(
+        'equivalent_medication_name_id',
+        'medication_name_id'
+    )
 
     for medication_name_id, medication_type_ids in med_type_med_name_data.items():
         medication_type_key = str(medication_type_ids.keys())
@@ -125,9 +146,12 @@ def medication_name_dosage_type_filters():
                 'medication_dosages': []
             }
 
-        equivalent_medication_name_ids = MedicationNameEquivalence.objects.filter(
-            medication_name_id=medication_name_id).values_list(
-            'equivalent_medication_name_id', flat=True)
+        equivalent_medication_name_ids = []
+
+        for equivalent_medication_name_entry in equivalent_medication_name_data:
+            if equivalent_medication_name_entry['medication_name_id'] == medication_name_id:
+                equivalent_medication_name_ids.append(
+                    equivalent_medication_name_entry['equivalent_medication_name_id'])
 
         med_obj = {
             'dosages': [],
@@ -136,12 +160,11 @@ def medication_name_dosage_type_filters():
             'equivalent_medication_name_ids': equivalent_medication_name_ids
         }
 
-        medication_dosages = medication_name_mapping[medication_name_id].medication_dosages.values(
-            'medication_dosage__id',
-            'medication_dosage__name'
-        ).order_by(
-            'medication_dosage__order'
-        )
+        medication_dosages = []
+
+        for medication_dosages_entry in medication_dosages_data:
+            if medication_dosages_entry['medication_name_id'] == medication_name_id:
+                medication_dosages.append(medication_dosages_entry)
 
         for medication_dosage in medication_dosages:
             dosage_obj = {
@@ -162,7 +185,7 @@ class MedicationFiltersView(GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         # 1 - Extract all request params
-        user = request.user
+        date = self.request.query_params.get('map_date', False)
         dosages = self.request.query_params.getlist('dosages[]', [])
         drug_types = self.request.query_params.getlist('drug_types[]', [])
         med_id = self.request.query_params.get('med_id', None)
@@ -171,6 +194,7 @@ class MedicationFiltersView(GenericAPIView):
         provider_type_filters = self.request.query_params.getlist(
             'provider_types[]', [])
         state_id = request.query_params.get('state_id', None)
+        user = request.user
         zipcode = request.query_params.get('zipcode', None)
 
         # 2 - Check User permissions
@@ -178,21 +202,8 @@ class MedicationFiltersView(GenericAPIView):
             user, state_id, zipcode)
 
         # 3 - Extract all medications and medication ndcs codes filtered by Medication Name and Dosages
-        med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
-            medication_name_id=med_id,
-            medication_dosage_id__in=dosages
-        ).select_related(
-            'medication__ndc_codes',
-        ).distinct().values_list('medication__ndc_codes', flat=True)
-
-        # 4 - Filter down providers carriying the medications
-        provider_ids = ProviderMedicationNdcThrough.objects.filter(
-            latest=True,
-            medication_ndc_id__in=med_ndc_ids,
-        ).distinct().values('provider_id').values_list(
-            'provider_id',
-            flat=True,
-        )
+        provider_ids = get_provider_medication_id(
+            request.query_params, field='provider_id')
 
         # 5 - Extract all active organization data with category and with a type
         organization_data = Provider.objects.filter(
@@ -265,7 +276,7 @@ class MedicationFiltersView(GenericAPIView):
         # 8 - Add location filters if exists
         if state_id:
             provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
-                related_zipcode__state=state_id
+                related_zipcode__counties__state_id=state_id
             )
         if zipcode:
             provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
@@ -346,7 +357,7 @@ class StateViewSet(viewsets.ModelViewSet):
         return states_qs
 
 
-def get_provider_medication_id(query_params):
+def get_provider_medication_id(query_params, field='id'):
     # Method use to save many line codes in the geo_stats views
     date = query_params.get('map_date', False)
     dosages = query_params.getlist('dosages[]', [])
@@ -394,7 +405,7 @@ def get_provider_medication_id(query_params):
         )
 
     provider_medication_ids = provider_medication_qs.values_list(
-        'id',
+        field,
         flat=True,
     )
 
@@ -420,6 +431,20 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
         )
 
         qs = State.objects.all().annotate(
+            active_provider_count=Count(
+                'counties__county_zipcodes__providers__id',
+                filter=Q(
+                    counties__county_zipcodes__providers__active=True,
+                    counties__county_zipcodes__providers__category__id__isnull=False,
+                    counties__county_zipcodes__providers__type__id__isnull=False,
+                    counties__county_zipcodes__providers__provider_medication__id__in=provider_medication_ids,
+                ),
+                distinct=True
+            ),
+            total_provider_count=Count(
+                'counties__county_zipcodes__providers__id',
+                distinct=True
+            ),
             medication_levels=ArrayAgg(
                 'counties__county_zipcodes__providers__provider_medication__level',
                 filter=Q(
@@ -447,6 +472,10 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
             - drug_type: list of 1 character str, for drug_type in Medication
         '''
         med_id = self.request.query_params.get('med_id')
+        provider_category_filters = self.request.query_params.getlist(
+            'provider_categories[]', [])
+        provider_type_filters = self.request.query_params.getlist(
+            'provider_types[]', [])
         state_id = self.kwargs.pop('state_id')
         user = self.request.user
 
@@ -479,15 +508,33 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
         provider_medication_ids = get_provider_medication_id(
             self.request.query_params,
         )
+
         qs = County.objects.filter(
             state__id=state_id,
         ).select_related(
             'state',
         ).annotate(
+            active_provider_count=Count(
+                'county_zipcodes__providers__id',
+                filter=Q(
+                    county_zipcodes__providers__active=True,
+                    county_zipcodes__providers__category__id__isnull=False,
+                    county_zipcodes__providers__type__id__isnull=False,
+                    county_zipcodes__providers__provider_medication__id__in=provider_medication_ids,
+                ),
+                distinct=True
+            ),
+            total_provider_count=Count(
+                'county_zipcodes__providers__id',
+                distinct=True
+            ),
             medication_levels=ArrayAgg(
                 'county_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                        county_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
+                    county_zipcodes__providers__active=True,
+                    county_zipcodes__providers__category__id__in=provider_category_filters,
+                    county_zipcodes__providers__type__id__in=provider_type_filters,
+                    county_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
                 )
             ),
             centroid=AsGeoJSON(Centroid('state__geometry')),
@@ -514,6 +561,11 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
         '''
         med_id = self.request.query_params.get('med_id')
         state_id = self.request.query_params.get('state_id')
+        provider_category_filters = self.request.query_params.getlist(
+            'provider_categories[]', [])
+        provider_type_filters = self.request.query_params.getlist(
+            'provider_types[]', [])
+
         user = self.request.user
         zipcode = self.kwargs.get('zipcode')
 
@@ -545,10 +597,24 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
             )
         else:
             zipcode_qs = ZipCode.objects.filter(zipcode=zipcode).annotate(
+                active_provider_count=Count(
+                    'providers__id',
+                    filter=Q(
+                        providers__active=True,
+                        providers__category__id__isnull=False,
+                        providers__type__id__isnull=False,
+                        providers__provider_medication__id__in=provider_medication_ids
+                    ),
+                    distinct=True
+                ),
+                total_provider_count=Count(
+                    'providers__id',
+                    distinct=True
+                ),
                 medication_levels=ArrayAgg(
                     'providers__provider_medication__level',
                     filter=Q(
-                            providers__provider_medication__id__in=provider_medication_ids  # noqa
+                        providers__provider_medication__id__in=provider_medication_ids  # noqa
                     )
                 ),
                 centroid=AsGeoJSON(Centroid('geometry')),
