@@ -505,9 +505,8 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
                 centroid=AsGeoJSON(Centroid('state__geometry')),
             )
 
-        provider_ids = get_provider_medication_id(
+        provider_medication_ids = get_provider_medication_id(
             self.request.query_params,
-            field="provider_id"
         )
 
         qs = County.objects.filter(
@@ -519,7 +518,9 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
                 'county_zipcodes__providers__id',
                 filter=Q(
                     county_zipcodes__providers__active=True,
-                    county_zipcodes__providers__id__in=provider_ids,
+                    county_zipcodes__providers__category__id__isnull=False,
+                    county_zipcodes__providers__type__id__isnull=False,
+                    county_zipcodes__providers__provider_medication__id__in=provider_medication_ids,
                 ),
                 distinct=True
             ),
@@ -531,7 +532,9 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
                 'county_zipcodes__providers__provider_medication__level',
                 filter=Q(
                     county_zipcodes__providers__active=True,
-                    county_zipcodes__providers__id__in=provider_ids
+                    county_zipcodes__providers__category__id__in=provider_category_filters,
+                    county_zipcodes__providers__type__id__in=provider_type_filters,
+                    county_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
                 )
             ),
             centroid=AsGeoJSON(Centroid('state__geometry')),
