@@ -529,6 +529,11 @@ class Medication(models.Model):
         on_delete=models.CASCADE,
         null=True,
     )
+    dosage = models.CharField(
+        _('medication dosage'),
+        max_length=255,
+        null=True,
+    )
     drug_type = models.CharField(
         _('drug type'),
         max_length=1,

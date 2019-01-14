@@ -13,6 +13,7 @@ class ProviderMedicationSimpleSerializer(serializers.ModelSerializer):
         source='medication_ndc.medication.medication_name',
     )
     name = serializers.CharField(source='medication_ndc.medication.name')
+    dosage = serializers.SerializerMethodField()
     drug_type = serializers.SerializerMethodField()
     supply_level = serializers.SerializerMethodField()
 
@@ -22,9 +23,13 @@ class ProviderMedicationSimpleSerializer(serializers.ModelSerializer):
             'id',
             'medication_name',
             'name',
+            'dosage',
             'drug_type',
             'supply_level',
         )
+
+    def get_dosage(self, obj):
+        return obj.medication_ndc.medication.dosage
 
     def get_drug_type(self, obj):
         return obj.medication_ndc.medication.get_drug_type_display()
