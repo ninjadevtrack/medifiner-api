@@ -432,23 +432,20 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
 
         qs = State.objects.all().annotate(
             active_provider_count=Count(
-                'counties__county_zipcodes__providers__id',
+                'providers__id',
                 filter=Q(
-                    counties__county_zipcodes__providers__active=True,
-                    counties__county_zipcodes__providers__category__id__isnull=False,
-                    counties__county_zipcodes__providers__type__id__isnull=False,
-                    counties__county_zipcodes__providers__provider_medication__id__in=provider_medication_ids,
+                    providers__provider_medication__id__in=provider_medication_ids,
                 ),
                 distinct=True
             ),
             total_provider_count=Count(
-                'counties__county_zipcodes__providers__id',
+                'providers__id',
                 distinct=True
             ),
             medication_levels=ArrayAgg(
-                'counties__county_zipcodes__providers__provider_medication__level',
+                'providers__provider_medication__level',
                 filter=Q(
-                    counties__county_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
+                    providers__provider_medication__id__in=provider_medication_ids  # noqa
                 )
             ),
         )

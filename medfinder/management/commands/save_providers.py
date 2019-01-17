@@ -3,7 +3,7 @@ from datetime import datetime
 
 from django.core.management.base import BaseCommand
 
-from medications import tasks
+from medications.models import Provider
 
 
 class Command(BaseCommand):
@@ -13,6 +13,5 @@ class Command(BaseCommand):
     help = 'Run Task state_cache_provier_count'
 
     def handle(self, *args, **options):
-        tasks.state_cache_provider_count()
-        tasks.county_cache_provider_count()
-        tasks.zipcode_cache_provider_count()
+        for provider in Provider.objects.all():
+            provider.save()

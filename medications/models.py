@@ -264,6 +264,12 @@ class Provider(models.Model):
         _('us state'),
         validators=[validate_state],
     )
+    related_state = models.ForeignKey(
+        State,
+        related_name='providers',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     zip = USZipCodeField(
         _('zip code'),
         validators=[validate_zip],
@@ -425,6 +431,7 @@ class Provider(models.Model):
                     float(self.lat),
                 )
             self.change_coordinates = False
+
         if self.relate_related_zipcode and self.zip:
             zipcode = False
             try:
@@ -442,6 +449,15 @@ class Provider(models.Model):
             if zipcode:
                 self.related_zipcode = zipcode
             self.relate_related_zipcode = False
+
+        if self.related_zipcode and not self.related_state:
+            state_ids = []
+            for county in self.related_zipcode.counties.all():
+                state_ids.append(county.state_id)
+
+            if len(state_ids) > 0:
+                self.related_state_id = state_ids[0]
+
         super().save(*args, **kwargs)
 
 
