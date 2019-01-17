@@ -519,10 +519,7 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
             active_provider_count=Count(
                 'county_zipcodes__providers__id',
                 filter=Q(
-                    county_zipcodes__providers__active=True,
-                    county_zipcodes__providers__category__id__isnull=False,
-                    county_zipcodes__providers__type__id__isnull=False,
-                    county_zipcodes__providers__provider_medication__id__in=provider_medication_ids,
+                    providers__provider_medication__id__in=provider_medication_ids,
                 ),
                 distinct=True
             ),
@@ -533,10 +530,7 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
             medication_levels=ArrayAgg(
                 'county_zipcodes__providers__provider_medication__level',
                 filter=Q(
-                    county_zipcodes__providers__active=True,
-                    county_zipcodes__providers__category__id__in=provider_category_filters,
-                    county_zipcodes__providers__type__id__in=provider_type_filters,
-                    county_zipcodes__providers__provider_medication__id__in=provider_medication_ids  # noqa
+                    providers__provider_medication__id__in=provider_medication_ids  # noqa
                 )
             ),
             centroid=AsGeoJSON(Centroid('state__geometry')),
