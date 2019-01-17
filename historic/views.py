@@ -136,8 +136,8 @@ class HistoricAverageView(APIView):
         provider_medication_ndcs = ProviderMedicationNdcThrough.objects.filter(
             medication_ndc_id__in=medication_ndc_ids,
             provider_id__in=provider_ids,
-            creation_date__gte=start_date,
-            creation_date__lte=end_date + timedelta(days=1),
+            date__gte=start_date,
+            date__lte=end_date + timedelta(days=1),
         ).distinct(
         ).values(
             'medication_ndc_id', 'level'
@@ -217,8 +217,8 @@ class HistoricOverallView(APIView):
         provider_medication_ndcs = ProviderMedicationNdcThrough.objects.filter(
             medication_ndc_id__in=medication_ndc_ids,
             provider_id__in=provider_ids,
-            creation_date__gte=start_date,
-            creation_date__lte=end_date + timedelta(days=1),
+            date__gte=start_date,
+            date__lte=end_date + timedelta(days=1),
         ).distinct(
         ).values(
             'level'

@@ -360,6 +360,8 @@ class StateViewSet(viewsets.ModelViewSet):
 def get_provider_medication_id(query_params, field='id'):
     # Method use to save many line codes in the geo_stats views
     date = query_params.get('map_date', False)
+    start_date = query_params.get('start_date', False)
+    end_date = query_params.get('end_date', False)
     dosages = query_params.getlist('dosages[]', [])
     med_id = query_params.get('med_id', None)
     provider_category_filters = query_params.getlist(
@@ -394,6 +396,13 @@ def get_provider_medication_id(query_params, field='id'):
         date = datetime.strptime(date, "%Y-%m-%d")
         provider_medication_qs = provider_medication_qs.filter(
             date=date,
+        )
+    elif start_date and end_date:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+        provider_medication_qs = provider_medication_qs.filter(
+            date__gte=start_date,
+            date__lte=end_date + timedelta(days=1),
         )
     else:
         provider_medication_qs = provider_medication_qs.filter(
