@@ -147,8 +147,8 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
             if import_date:
                 return ProviderMedicationNdcThrough(
                     creation_date=import_date,
+                    date=import_date,
                     latest=False,
-                    last_modified=import_date,
                     level=level,
                     medication_ndc_id=medication_ndc_id,
                     provider_id=provider_id,
@@ -158,8 +158,8 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
                 now = timezone.now()
                 return ProviderMedicationNdcThrough(
                     creation_date=now,
+                    date=now,
                     latest=True,
-                    last_modified=now,
                     level=level,
                     medication_ndc_id=medication_ndc_id,
                     provider_id=provider_id,

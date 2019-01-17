@@ -24,7 +24,7 @@ class ProviderMedicationNDCThroughAdmin(admin.ModelAdmin):
     list_display = (
         '__str__',
         'creation_date',
-        'last_modified',
+        'date',
         'latest',
         'level',
     )
@@ -34,7 +34,7 @@ class ProviderMedicationNDCThroughAdmin(admin.ModelAdmin):
     readonly_fields = (
         'level',
         'creation_date',
-        'last_modified',
+        'date',
     )
     search_fields = (
         'provider__name',

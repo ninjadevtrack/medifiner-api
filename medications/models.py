@@ -615,14 +615,14 @@ class ProviderMedicationNdcThrough(models.Model):
         _('medication level'),
         default=0,
     )
+    date = models.DateField(
+        _('date'),
+        db_index=True,
+        help_text=_('Date'),
+    )
     creation_date = models.DateTimeField(
         _('creation date'),
-        db_index=True,
         help_text=_('Creation date'),
-    )
-    last_modified = models.DateTimeField(
-        _('last modified date'),
-        help_text=_('Last modification date'),
     )
     latest = models.BooleanField(
         _('latest'),
@@ -648,12 +648,13 @@ class ProviderMedicationNdcThrough(models.Model):
         # Using a simple map for now, according to the specs
         if not self.medication_ndc:
             raise IntegrityError(_('Medication NDC object must be provided'))
-        if self.creation_date is None or self.last_modified is None:
+        if self.creation_date is None or self.date is None:
             now = timezone.now()
             if self.creation_date is None:
                 self.creation_date = now
-            if self.last_modified is None:
-                self.last_modified = now
+            if self.date is None:
+                self.date = now
+
         supply_to_level_map = {
             'NO REPORT': -1,
             'NO SUPPLY': 0,

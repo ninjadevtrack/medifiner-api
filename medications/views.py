@@ -276,7 +276,7 @@ class MedicationFiltersView(GenericAPIView):
         # 8 - Add location filters if exists
         if state_id:
             provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
-                related_zipcode__counties__state_id=state_id
+                related_state_id=state_id
             )
         if zipcode:
             provider_categories_and_types_count_qs = provider_categories_and_types_count_qs.filter(
@@ -392,12 +392,8 @@ def get_provider_medication_id(query_params, field='id'):
 
     if date:
         date = datetime.strptime(date, "%Y-%m-%d")
-        the_day_after = date + timedelta(days=1)
-        the_day_after = datetime.strftime(the_day_after, "%Y-%m-%d")
-
         provider_medication_qs = provider_medication_qs.filter(
-            creation_date__gt=date,
-            creation_date__lt=the_day_after,
+            date=date,
         )
     else:
         provider_medication_qs = provider_medication_qs.filter(
