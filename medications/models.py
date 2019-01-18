@@ -59,6 +59,18 @@ class Organization(models.Model):
 
 
 class State(models.Model):
+    center_lat = models.CharField(
+        _('center latitude'),
+        blank=True,
+        null=True,
+        max_length=250,
+    )
+    center_lng = models.CharField(
+        _('center longitude'),
+        blank=True,
+        null=True,
+        max_length=250,
+    )
     state_code = USStateField(
         _('us state code'),
         validators=[validate_state],
@@ -456,13 +468,8 @@ class Provider(models.Model):
                 self.related_zipcode = zipcode
             self.relate_related_zipcode = False
 
-        if self.related_zipcode and not self.related_state:
-            state_ids = []
-            for county in self.related_zipcode.counties.all():
-                state_ids.append(county.state_id)
-
-            if len(state_ids) > 0:
-                self.related_state_id = state_ids[0]
+        if self.related_zipcode and not self.related_state_id:
+            self.related_state_id = self.related_zipcode.state_id
 
         if self.related_zipcode and not self.related_county:
             county_ids = []

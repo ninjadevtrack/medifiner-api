@@ -154,7 +154,15 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
 
         if data:
             state_data = data[0]
-            center = json.loads(state_data.centroid) if data else ''
+            state_obj = state_data.state
+
+            center = {
+                "type": "Point",
+                "coordinates": [
+                    state_obj.center_lng,
+                    state_obj.center_lat
+                ]
+            }
         else:
             center = ''
 
@@ -309,11 +317,11 @@ class GeoCountyWithMedicationsSerializer(GeoJSONWithMedicationsSerializer):
 
 
 class GeoZipCodeWithMedicationsSerializer(serializers.ModelSerializer):
-    zoom = serializers.SerializerMethodField()
     center = serializers.SerializerMethodField()
-    properties = serializers.SerializerMethodField()
     geometry = serializers.SerializerMethodField()
+    properties = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
+    zoom = serializers.SerializerMethodField()
 
     class Meta:
         model = ZipCode
