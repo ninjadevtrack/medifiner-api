@@ -293,7 +293,10 @@ class MedicationFiltersView(GenericAPIView):
             'type__id',
             'type__name'
         ).annotate(
-            providers_count=Count('id'),
+            providers_count=Count(
+                'id',
+                distinct=True
+            ),
         )
 
         # 9 - Add counts to types and categories data structures
