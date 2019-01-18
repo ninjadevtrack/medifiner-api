@@ -431,15 +431,33 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
             - provider_type: list of ProviderType ids
             - provider_category: list of ProviderCategory ids
         '''
-        provider_medication_ids = get_provider_medication_id(
-            self.request.query_params,
-        )
+        date = self.request.query_params.get('map_date', False)
+        start_date = self.request.query_params.get('start_date', False)
+        end_date = self.request.query_params.get('end_date', False)
+        dosages = self.request.query_params.getlist('dosages[]', [])
+        med_id = self.request.query_params.get('med_id', None)
+        provider_category_filters = self.request.query_params.getlist(
+            'provider_categories[]', [])
+        provider_type_filters = self.request.query_params.getlist(
+            'provider_types[]', [])
+
+        # Find NDC code based on dosage and medication name
+        med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
+            medication_name_id=med_id,
+            medication_dosage_id__in=dosages
+        ).select_related(
+            'medication__ndc_codes',
+        ).distinct().values_list('medication__ndc_codes', flat=True)
 
         qs = State.objects.all().annotate(
             active_provider_count=Count(
                 'providers__id',
                 filter=Q(
-                    providers__provider_medication__id__in=provider_medication_ids,
+                    providers__active=True,
+                    providers__category__in=provider_category_filters,
+                    providers__provider_medication__date=date,
+                    providers__provider_medication__medication_ndc_id__in=med_ndc_ids,
+                    providers__type__in=provider_type_filters,
                 ),
                 distinct=True
             ),
@@ -450,8 +468,11 @@ class GeoStatsStatesWithMedicationsView(ListAPIView):
             medication_levels=ArrayAgg(
                 'providers__provider_medication__level',
                 filter=Q(
-                    providers__provider_medication__id__in=provider_medication_ids  # noqa
-                )
+                    providers__active=True,
+                    providers__category__in=provider_category_filters,
+                    providers__provider_medication__date=date,
+                    providers__provider_medication__medication_ndc_id__in=med_ndc_ids,
+                    providers__type__in=provider_type_filters,)
             ),
         )
         return qs
@@ -516,10 +537,6 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
             ).annotate(
                 centroid=AsGeoJSON(Centroid('state__geometry')),
             )
-
-        # provider_medication_ids = get_provider_medication_id(
-        #     self.request.query_params,
-        # )
 
         # Find NDC code based on dosage and medication name
         med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
