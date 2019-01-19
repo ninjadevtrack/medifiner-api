@@ -59,6 +59,7 @@ INSTALLED_APPS = (
     'rest_registration',
     'rest_framework',
     'rest_framework_swagger',
+    'tinymce',
 ) + LOCAL_APPS
 
 AUTH_USER_MODEL = 'auth_ex.User'
@@ -411,3 +412,4 @@ if RAVEN_DSN:
 django_heroku.settings(locals())
 
 DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
+TYNYMCE_JS_URL=path.join(MEDIA_URL, 'js/tiny_mce')
