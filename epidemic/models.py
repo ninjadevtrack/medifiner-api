@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
-
+from tinymce.models import HTMLField
 
 class Epidemic(models.Model):
     active = models.BooleanField(
@@ -11,6 +11,8 @@ class Epidemic(models.Model):
             'Designates whether the flag Epidemic is active or not globally'
         )
     )
+
+    content = HTMLField()
 
     class Meta:
         verbose_name = _('Epidemic')
