@@ -19,11 +19,11 @@ def cleanhtml(raw_html):
   return cleantext
 class EpidemicForm(forms.ModelForm):
 
-  content = forms.CharField(required=False, widget=TinyMCE(attrs={'cols':120, 'rows':10}, mce_attrs={   
+  content = forms.CharField(required=False, label="Content", widget=TinyMCE(attrs={'cols':120, 'rows':10}, mce_attrs={   
       "theme": "advanced",
       "plugins": "table,spellchecker,paste,searchreplace",           
     }))
-  active = forms.BooleanField()  
+  active = forms.BooleanField(label="Alert Banner ON/OFF")  
 
   def clean_content(self):
         content = self.cleaned_data['content']
