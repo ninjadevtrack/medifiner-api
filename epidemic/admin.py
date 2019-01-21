@@ -13,6 +13,9 @@ class EpidemicAdmin(admin.ModelAdmin):
     fields = ('active', 'content')
     form = EpidemicForm
 
+    class Media:
+        js = ('js/epidemic.js',)
+
     def has_add_permission(self, request):
         # check if generally has add permission
         permission = super().has_add_permission(request)
