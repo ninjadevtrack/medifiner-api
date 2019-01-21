@@ -19,12 +19,10 @@ def cleanhtml(raw_html):
   return cleantext
 class EpidemicForm(forms.ModelForm):
 
-  content = forms.CharField(required=False, widget=TinyMCE(attrs={'cols':80, 'rows': 4}, mce_attrs={   
+  content = forms.CharField(required=False, widget=TinyMCE(attrs={'cols':120, 'rows':10}, mce_attrs={   
       "theme": "advanced",
-      "plugins": "table,spellchecker,paste,searchreplace",
-      'max_chars': "300",         
-     
-  }))
+      "plugins": "table,spellchecker,paste,searchreplace",           
+    }))
   active = forms.BooleanField()  
 
   def clean_content(self):
