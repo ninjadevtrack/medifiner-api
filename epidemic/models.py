@@ -15,11 +15,11 @@ class Epidemic(models.Model):
     content = HTMLField()
 
     class Meta:
-        verbose_name = _('Epidemic')
-        verbose_name_plural = _('Epidemic')
+        verbose_name = _('Alert Banner')
+        verbose_name_plural = _('Alert Banner')
 
     def __str__(self):
-        return 'Epidemic'
+        return 'Alert Banner'
 
     def save(self, *args, **kwargs):
         if Epidemic.objects.exists() and not self.pk:
