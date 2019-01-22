@@ -33,4 +33,4 @@ pytz==2018.4
 raven==6.9.0
 redis==2.10.6
 uwsgi==2.0.15
-django-tinymce-2.8.0
+django-tinymce==2.8.0
