@@ -23,7 +23,7 @@ class EpidemicForm(forms.ModelForm):
       "theme": "advanced",
       "plugins": "table,spellchecker,paste,searchreplace",           
     }))
-  active = forms.BooleanField(label="Alert Banner ON/OFF")  
+  active = forms.BooleanField(label="Alert Banner ON/OFF", required=False)  
 
   def clean_content(self):
         content = self.cleaned_data['content']
