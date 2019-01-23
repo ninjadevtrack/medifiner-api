@@ -491,7 +491,7 @@ def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_dat
                     instance.medication_ndc.medication.drug_type
                 ),
                 instance.supply,
-                instance.last_modified.ctime(),
+                instance.creation_date.ctime(),
                 instance.latest,
             )
         else:
@@ -507,7 +507,7 @@ def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_dat
                     instance.medication_ndc.medication.drug_type
                 ),
                 instance.supply,
-                instance.last_modified.ctime(),
+                instance.creation_date.ctime(),
                 instance.latest,
             )
         writer.writerow(dict(zip(header, data_row)))
