@@ -62,6 +62,9 @@ api_urlpatterns = [
         'epidemic/',
         EpidemicInfoView.as_view(),
     ),
+    path(
+        '^tinymce/', include('tinymce.urls')
+    ),
 ]
 
 

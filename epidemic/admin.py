@@ -1,9 +1,7 @@
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
-
+from .forms import EpidemicForm
 from .models import Epidemic
-
-
 @admin.register(Epidemic)
 class EpidemicAdmin(admin.ModelAdmin):
 
@@ -12,7 +10,11 @@ class EpidemicAdmin(admin.ModelAdmin):
         'active',
     )
 
-    fields = ('active',)
+    fields = ('active', 'content')
+    form = EpidemicForm
+
+    class Media:
+        js = ('js/epidemic.js',)
 
     def has_add_permission(self, request):
         # check if generally has add permission
