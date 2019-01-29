@@ -147,7 +147,7 @@ def generate_medications(cache_key, organization_id, email_to, import_date=False
             if import_date:
                 return ProviderMedicationNdcThrough(
                     creation_date=import_date,
-                    date=import_date,
+                    date=import_date[0:10],
                     latest=False,
                     level=level,
                     medication_ndc_id=medication_ndc_id,
