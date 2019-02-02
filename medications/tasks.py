@@ -28,6 +28,7 @@ from .models import (
     County,
     ExistingMedication,
     Medication,
+    MedicationMedicationNameMedicationDosageThrough,
     MedicationName,
     MedicationNdc,
     Organization,
@@ -361,30 +362,35 @@ def mark_inactive_providers():
 
 
 @shared_task
-def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_date, med_ndc_ids, provider_type_list=[], provider_category_list=[], drug_type_list=[], state_id=None, zipcode=None):
+def generate_csv_export(filename, file_url, user_id, med_id, dosages, start_date, end_date, provider_type_list=[], provider_category_list=[], state_id=None, zipcode=None):
     user = User.objects.get(pk=user_id)
+
+    med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
+        medication_name_id=med_id,
+        medication_dosage_id__in=dosages
+    ).select_related(
+        'medication__ndc_codes',
+    ).distinct().values_list('medication__ndc_codes', flat=True)
+
+    print(med_ndc_ids)
+    print(list(med_ndc_ids))
+
     # First we take list of provider medication for this med, we will
     # use it for future filters
     if zipcode:
         provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
-            medication_ndc__medication__medication_name__id=med_id,
             provider__related_zipcode__zipcode=zipcode,
-            provider__active=True,
         )
     elif not zipcode and state_id:
         provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
-            medication_ndc__medication__medication_name__id=med_id,
             provider__related_zipcode__state=state_id,
-            provider__active=True,
         )
     else:
-        provider_medication_qs = ProviderMedicationNdcThrough.objects.filter(  # noqa
-            medication_ndc__medication__medication_name__id=med_id,
-            provider__active=True,
-        )
+        provider_medication_qs = ProviderMedicationNdcThrough.objects.all()
 
     provider_medication_qs = provider_medication_qs.filter(
         medication_ndc_id__in=med_ndc_ids,
+        provider__active=True,
     )
 
     if provider_type_list:
@@ -397,18 +403,13 @@ def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_dat
             provider__category__in=provider_category_list,
         )
 
-    if drug_type_list:
-        provider_medication_qs = provider_medication_qs.filter(
-            medication_ndc__medication__drug_type__in=drug_type_list,
-        )
-
     tz = get_current_timezone()
     end_date = tz.localize(datetime.strptime(end_date, "%Y-%m-%d"))
     start_date = tz.localize(datetime.strptime(start_date, "%Y-%m-%d"))
 
-    qs = ProviderMedicationNdcThrough.objects.filter(
-        creation_date__gte=start_date,
-        creation_date__lte=end_date + timedelta(days=1),
+    qs = provider_medication_qs.filter(
+        date__gte=start_date,
+        date__lte=end_date + timedelta(days=1),
     ).prefetch_related(
         'provider',
         'provider__organization',
@@ -416,7 +417,7 @@ def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_dat
         'provider__category',
         'medication_ndc__medication',
         'medication_ndc__medication__medication_name',
-    )
+    ).order_by('date')
 
     national_level_permission = \
         user.permission_level == User.NATIONAL_LEVEL
@@ -469,6 +470,7 @@ def generate_csv_export(filename, file_url, user_id, med_id, start_date, end_dat
             'Last Updated',
             'Latest',
         ]
+
     buff = io.StringIO()
     writer = csv.DictWriter(buff, fieldnames=header)
     writer.writeheader()

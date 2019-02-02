@@ -42,9 +42,11 @@ from .serializers import (
 )
 from .models import (
     County,
+    Medication,
     MedicationMedicationNameMedicationDosageThrough,
     MedicationName,
     MedicationNameEquivalence,
+    MedicationNdc,
     MedicationType,
     MedicationTypeMedicationNameThrough,
     Organization,
@@ -54,8 +56,6 @@ from .models import (
     ProviderCategory,
     State,
     ZipCode,
-    Medication,
-    MedicationNdc,
 )
 
 from .permissions import (
@@ -701,7 +701,6 @@ class CSVExportView(GenericAPIView):
         state_id = getattr(self, 'state_id', None)
         zipcode = getattr(self, 'zipcode', None)
         dosages = request.query_params.getlist('dosages[]', [])
-        drug_types = request.query_params.getlist('drug_types[]', [])
         end_date = request.query_params.get('end_date')
         med_id = request.query_params.get('med_id')
         provider_categories = request.query_params.getlist(
@@ -730,14 +729,6 @@ class CSVExportView(GenericAPIView):
         except MedicationName.DoesNotExist:
             raise BadRequest('No such medication in database')
 
-        # collect NDC ids for dosages and med
-        med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
-            medication_name_id=med_id,
-            medication_dosage_id__in=dosages
-        ).select_related(
-            'medication__ndc_codes',
-        ).distinct().values_list('medication__ndc_codes', flat=True)
-
         filename = '{medication_name}_{geography}_{date_from}_{date_to}_{user_id}_{timestamp}.csv'.format(
             medication_name=med_name.name.replace(
                 ' ', '_').replace('(', '').replace(')', ''),
@@ -764,12 +755,11 @@ class CSVExportView(GenericAPIView):
             file_url,
             user.id,
             med_id,
+            dosages,
             start_date,
             end_date,
-            list(med_ndc_ids),
             provider_types,
             provider_categories,
-            drug_types,
             state_id,
             zipcode
         )
