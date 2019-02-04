@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand
 
 from medications.models import ProviderMedicationNdcThrough
 
+# heroku run python manage.py mark_medicationndcthrough_as_latest -a medfinder-api
 # python manage.py mark_medicationndcthrough_as_latest
 # docker-compose -f dev.yml run django python manage.py mark_medicationndcthrough_as_latest
 
@@ -32,7 +33,7 @@ class Command(BaseCommand):
             provider_id = provider_medication_ndc.provider_id
 
             latest_entry = ProviderMedicationNdcThrough.objects.filter(
-                provider_id=provider_id, medication_ndc_id=medication_ndc_id).order_by('-last_modified')[:1][0]
+                provider_id=provider_id, medication_ndc_id=medication_ndc_id).order_by('-creation_date')[:1][0]
 
             ProviderMedicationNdcThrough.objects.filter(
                 provider_id=provider_id, medication_ndc_id=medication_ndc_id).update(latest=False)
