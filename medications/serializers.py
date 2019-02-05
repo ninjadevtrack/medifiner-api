@@ -171,6 +171,10 @@ class GeoCountyWithMedicationsListSerializer(serializers.ListSerializer):
         flatten_medications_levels = []
 
         for entry in data:
+
+            print(entry)
+            print(entry.__dict__)
+
             active_provider_count += entry.active_provider_count
             total_provider_count += entry.total_provider_count
             if hasattr(state_data, 'medication_levels'):

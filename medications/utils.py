@@ -5,6 +5,9 @@ from django.utils.encoding import smart_str
 from urllib.parse import quote_plus
 from urllib.request import urlopen
 
+from django.utils.translation import ugettext_lazy as _
+from rest_registration.exceptions import BadRequest
+
 
 def get_lat_lng(location):
     # Helper method to geocode address using Google Geocoder

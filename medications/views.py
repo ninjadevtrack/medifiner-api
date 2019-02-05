@@ -518,28 +518,28 @@ class GeoStatsCountiesWithMedicationsView(ListAPIView):
         state_id, zipcode = force_user_state_id_and_zipcode(
             user, state_id, None)
 
-        try:
-            if not med_id or int(
-                med_id
-            ) not in MedicationName.objects.values_list(
-                'id',
-                flat=True,
-            ):
-                return County.objects.filter(
-                    state__id=state_id,
-                ).select_related(
-                    'state',
-                ).annotate(
-                    centroid=AsGeoJSON(Centroid('state__geometry')),
-                )
-        except ValueError:
-            return County.objects.filter(
-                state__id=state_id,
-            ).select_related(
-                'state',
-            ).annotate(
-                centroid=AsGeoJSON(Centroid('state__geometry')),
-            )
+        # try:
+        #     if not med_id or int(
+        #         med_id
+        #     ) not in MedicationName.objects.values_list(
+        #         'id',
+        #         flat=True,
+        #     ):
+        #         return County.objects.filter(
+        #             state__id=state_id,
+        #         ).select_related(
+        #             'state',
+        #         ).annotate(
+        #             centroid=AsGeoJSON(Centroid('state__geometry')),
+        #         )
+        # except ValueError:
+        #     return County.objects.filter(
+        #         state__id=state_id,
+        #     ).select_related(
+        #         'state',
+        #     ).annotate(
+        #         centroid=AsGeoJSON(Centroid('state__geometry')),
+        #     )
 
         # Find NDC code based on dosage and medication name
         med_ndc_ids = MedicationMedicationNameMedicationDosageThrough.objects.filter(
@@ -623,43 +623,38 @@ class GeoZipCodeWithMedicationsView(RetrieveAPIView):
         provider_medication_ids = get_provider_medication_id(
             self.request.query_params,
         )
+
         if state_id:
             zipcode_qs = ZipCode.objects.filter(
                 zipcode=zipcode,
                 state=state_id,
-            ).annotate(
-                medication_levels=ArrayAgg(
-                    'providers__provider_medication__level',
-                    filter=Q(
-                            providers__provider_medication__id__in=provider_medication_ids  # noqa
-                    )
-                ),
-                centroid=AsGeoJSON(Centroid('geometry')),
             )
         else:
-            zipcode_qs = ZipCode.objects.filter(zipcode=zipcode).annotate(
-                active_provider_count=Count(
-                    'providers__id',
-                    filter=Q(
-                        providers__active=True,
-                        providers__category__id__isnull=False,
-                        providers__type__id__isnull=False,
-                        providers__provider_medication__id__in=provider_medication_ids
-                    ),
-                    distinct=True
+            zipcode_qs = ZipCode.objects.filter(zipcode=zipcode)
+
+        zipcode_qs = zipcode_qs.annotate(
+            active_provider_count=Count(
+                'providers__id',
+                filter=Q(
+                    providers__active=True,
+                    providers__category__id__isnull=False,
+                    providers__type__id__isnull=False,
+                    providers__provider_medication__id__in=provider_medication_ids
                 ),
-                total_provider_count=Count(
-                    'providers__id',
-                    distinct=True
-                ),
-                medication_levels=ArrayAgg(
-                    'providers__provider_medication__level',
-                    filter=Q(
-                        providers__provider_medication__id__in=provider_medication_ids  # noqa
-                    )
-                ),
-                centroid=AsGeoJSON(Centroid('geometry')),
-            )
+                distinct=True
+            ),
+            total_provider_count=Count(
+                'providers__id',
+                distinct=True
+            ),
+            medication_levels=ArrayAgg(
+                'providers__provider_medication__level',
+                filter=Q(
+                    providers__provider_medication__id__in=provider_medication_ids  # noqa
+                )
+            ),
+            centroid=AsGeoJSON(Centroid('geometry')),
+        )
 
         return zipcode_qs
 
